@@ -1,0 +1,117 @@
+1.    switch (expression)
+    {
+	case const_expression_1:
+	{
+	    ...block of statements...
+            break;
+	}
+	case const_expression_2:
+	{
+	    ...block of statements...
+            break;
+	}
+	default:
+	{
+	    ...block of statements..
+	}
+    }
+
+2.  for ( ; ; ); 
+2.1  main(int argc, char** argv)
+2.2  a_value = atoi(argv[++i]);
+     b_value = atof(argv[++i]);
+	
+3. Array[n] 从0～n-1;	  char message[] = "Hello, I am a string; what are you?";
+3.1 printf("  %d  %f \n", i, x[i]);
+
+4. char *strcpy(s,ct)     -> copy  ct into s, including ``\0''; return s
+char *strncpy(s,ct,n)  -> copy ncharcater of ct into s, return s
+char *strncat(s,ct)    -> concatenate ct to end of s; return s
+char *strncat(s,ct,n)  -> concatenate n character of ct to end
+                           of s, terminate with ``\0''; return s
+int strcmp(cs,ct)      -> compare cs and ct; return 0 if cs=ct,
+                             <0 if cs0 if cs>ct 
+char *strchr(cs,c)     -> return pointer to first occurence of c
+                            in cs or NULL if not encountered
+size_t strlen(cs)      -> return length of cs
+
+5.     sprintf(string, "format string", variables);
+    scanf(string, "format string", variables);
+
+	fscanf(fp, "format string", variable list);
+    fprintf(fp, "format string", variable list);
+
+6. 
+< stdio.h>  -> defining I/O routines
+< ctype.h>  -> defining character manipulation routines
+< string.h> -> defining string manipulation routines
+< math.h>   -> defining mathematical routines
+< stdlib.h> -> defining number conversion, storage allocation 
+              	and similar tasks
+< stdarg.h> -> defining libraries to handle routines with variable 
+              	numbers of arguments
+< time.h>   -> defining time-manipulation routines
+
+In addition, the following header files exist:
+
+< assert.h> -> defining diagnostic routines
+< setjmp.h> -> defining non-local function calls
+< signal.h> -> defining signal handlers
+< limits.h> -> defining constants of the int type
+< float.h>  -> defining constants of the float type
+
+
+7.在fotran中     ADJUSTL(STR) will left adjust a string by removing leading spaces. Spaces are inserted at the end of the string as needed.
+
+8.在C中给数组赋值
+int myPoints[][3] = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 9} };
+int myArray[10] = { 5, 5, 5, 5, 5, 5, 5, 5, 5, 5 };
+	Elements with missing values will be initialized to 0:
+int myArray[10] = { 1, 2 }; //initialize to 1,2,0,0,0...
+	So this will initialize all elements to 0:
+int myArray[10] = { 0 }; //all elements 0
+	In C++, an empty initialization list will also initialize every element to 0:
+int myArray[10] = {}; //all elements 0 in C++
+
+
+9.The varieties of real numbers are these:
+float，double，long double
+Type 	Format
+float 	%f
+double 	%f
+long double 	%lf
+在程序中出现数字默认为double， 但5.0f则为float.
+Single precision (float) gives you 23 bits of significand, 8 bits of exponent, and 1 sign bit.
+Double precision (double) gives you 52 bits of significand, 11 bits of exponent, and 1 sign bit.
+
+9.1 
+ C中 if ( statement is TRUE )
+    Execute this line of code。   如果执行语句超过1句，需要加括号
+C中不等于 !=
+9.2  如何定义二维阵列
+int **Array;
+Array = (int**)malloc(m*sizeof(int *)); 
+或者
+int **array;
+array = malloc(rows * sizeof(int *));
+for (i = 0; i < rows; i++)
+  array[i] = malloc(cols * sizeof(int));
+或者三维数组
+float ***A;
+A=malloc(3*sizeof(float **));
+for(int i=0;i<3;i++)
+{
+ A[i]=malloc(3*sizeof(float *));
+for(int j=0;j<3;j++)
+ A[i][j]=malloc(3*sizeof(float));
+}
+即使定义一个简单指针，在赋值前必须给其malloc空间！
+9.3 The header file of malloc is in stdlib.h (C) and cstdlib (C++).
+9.4 定义在main后面的函数，如果main需要用到，必须在前面声明。  但是可以在程序中间声明变量。
+9.5 以Ref传递数据只能用于C++中，而不能用到C中。
+9.6  读入文件的方法 fscanf(FILE *fp, "%s %s %s %d", str1, str2, str3, &year);
+
+
+
+
+

@@ -1,0 +1,2113 @@
+==22796== Memcheck, a memory error detector
+==22796== Copyright (C) 2002-2012, and GNU GPL'd, by Julian Seward et al.
+==22796== Using Valgrind-3.8.1 and LibVEX; rerun with -h for copyright info
+==22796== Command: ./bluebottle
+==22796== 
+==22796== Syscall param sched_setaffinity(mask) points to unaddressable byte(s)
+==22796==    at 0x67F4B79: syscall (syscall.S:38)
+==22796==    by 0x798D5F4: ??? (in /usr/lib/openmpi/lib/openmpi/mca_paffinity_linux.so)
+==22796==    by 0x798DA0C: ??? (in /usr/lib/openmpi/lib/openmpi/mca_paffinity_linux.so)
+==22796==    by 0x798E5F9: ??? (in /usr/lib/openmpi/lib/openmpi/mca_paffinity_linux.so)
+==22796==    by 0x798D47C: ??? (in /usr/lib/openmpi/lib/openmpi/mca_paffinity_linux.so)
+==22796==    by 0x716E39A: opal_paffinity_base_select (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7143C0D: opal_init (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x6EF0AFE: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796==  Address 0x0 is not stack'd, malloc'd or (recently) free'd
+==22796== 
+==22796== Syscall param writev(vector[...]) points to uninitialised byte(s)
+==22796==    at 0x67F1417: writev (writev.c:50)
+==22796==    by 0x8FB3E02: ??? (in /usr/lib/openmpi/lib/openmpi/mca_oob_tcp.so)
+==22796==    by 0x8FB4C3C: ??? (in /usr/lib/openmpi/lib/openmpi/mca_oob_tcp.so)
+==22796==    by 0x8FB835B: ??? (in /usr/lib/openmpi/lib/openmpi/mca_oob_tcp.so)
+==22796==    by 0x8DAA69D: ??? (in /usr/lib/openmpi/lib/openmpi/mca_rml_oob.so)
+==22796==    by 0x8DAAC98: ??? (in /usr/lib/openmpi/lib/openmpi/mca_rml_oob.so)
+==22796==    by 0x89A09B8: ??? (in /usr/lib/openmpi/lib/openmpi/mca_grpcomm_bad.so)
+==22796==    by 0x89A03BE: ??? (in /usr/lib/openmpi/lib/openmpi/mca_grpcomm_bad.so)
+==22796==    by 0x5E43A1E: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796==  Address 0x9d1dcf7 is 87 bytes inside a block of size 256 alloc'd
+==22796==    at 0x4C2CF8E: realloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x7144EC7: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71459DD: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x89A098C: ??? (in /usr/lib/openmpi/lib/openmpi/mca_grpcomm_bad.so)
+==22796==    by 0x89A03BE: ??? (in /usr/lib/openmpi/lib/openmpi/mca_grpcomm_bad.so)
+==22796==    by 0x5E43A1E: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== Warning: set address range perms: large range [0x800000000, 0x1500000000) (noaccess)
+==22796== Warning: set address range perms: large range [0x1500000000, 0x1c00000000) (noaccess)
+==22796== Conditional jump or move depends on uninitialised value(s)
+==22796==    at 0x4C2FECD: strchrnul (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6749003: vfprintf (printf-parse.h:109)
+==22796==    by 0x6770AA3: vsprintf (iovsprintf.c:42)
+==22796==    by 0x67531D6: sprintf (sprintf.c:32)
+==22796==    by 0x556955: cgns_flow_field (recorder.c:349)
+==22796==    by 0x53852E: main (bluebottle.c:575)
+==22796== 
+==22796== Conditional jump or move depends on uninitialised value(s)
+==22796==    at 0x6748B8C: vfprintf (vfprintf.c:1390)
+==22796==    by 0x6770AA3: vsprintf (iovsprintf.c:42)
+==22796==    by 0x67531D6: sprintf (sprintf.c:32)
+==22796==    by 0x556955: cgns_flow_field (recorder.c:349)
+==22796==    by 0x53852E: main (bluebottle.c:575)
+==22796== 
+==22796== Conditional jump or move depends on uninitialised value(s)
+==22796==    at 0x674D1EB: vfprintf (vfprintf.c:1658)
+==22796==    by 0x6770AA3: vsprintf (iovsprintf.c:42)
+==22796==    by 0x67531D6: sprintf (sprintf.c:32)
+==22796==    by 0x556955: cgns_flow_field (recorder.c:349)
+==22796==    by 0x53852E: main (bluebottle.c:575)
+==22796== 
+==22796== Conditional jump or move depends on uninitialised value(s)
+==22796==    at 0x4C2FEC2: strchrnul (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6749003: vfprintf (printf-parse.h:109)
+==22796==    by 0x6770AA3: vsprintf (iovsprintf.c:42)
+==22796==    by 0x67531D6: sprintf (sprintf.c:32)
+==22796==    by 0x55697B: cgns_flow_field (recorder.c:350)
+==22796==    by 0x53852E: main (bluebottle.c:575)
+==22796== 
+==22796== Conditional jump or move depends on uninitialised value(s)
+==22796==    at 0x6748B8C: vfprintf (vfprintf.c:1390)
+==22796==    by 0x6770AA3: vsprintf (iovsprintf.c:42)
+==22796==    by 0x67531D6: sprintf (sprintf.c:32)
+==22796==    by 0x55697B: cgns_flow_field (recorder.c:350)
+==22796==    by 0x53852E: main (bluebottle.c:575)
+==22796== 
+==22796== Conditional jump or move depends on uninitialised value(s)
+==22796==    at 0x674D1EB: vfprintf (vfprintf.c:1658)
+==22796==    by 0x6770AA3: vsprintf (iovsprintf.c:42)
+==22796==    by 0x67531D6: sprintf (sprintf.c:32)
+==22796==    by 0x55697B: cgns_flow_field (recorder.c:350)
+==22796==    by 0x53852E: main (bluebottle.c:575)
+==22796== 
+==22796== 
+==22796== HEAP SUMMARY:
+==22796==     in use at exit: 48,445,065 bytes in 172,684 blocks
+==22796==   total heap usage: 3,660,003 allocs, 3,487,319 frees, 10,583,176,231 bytes allocated
+==22796== 
+==22796== 1 bytes in 1 blocks are definitely lost in loss record 12 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7154EE6: mca_base_param_reg_string_name (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xB44E9BD: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 1 bytes in 1 blocks are definitely lost in loss record 13 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71558D7: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7154EE6: mca_base_param_reg_string_name (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E8758B: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 2 bytes in 1 blocks are definitely lost in loss record 20 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155DAF: mca_base_param_reg_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xBC7EC99: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 3 bytes in 1 blocks are definitely lost in loss record 57 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155F98: mca_base_param_lookup_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xC096AAB: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 3 bytes in 1 blocks are definitely lost in loss record 58 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E875C9: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 4 bytes in 1 blocks are definitely lost in loss record 397 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x71560B2: mca_base_param_set_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E432AD: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 4 bytes in 1 blocks are definitely lost in loss record 398 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155DAF: mca_base_param_reg_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xA6071DE: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E834D2: mca_mpool_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E43798: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 4 bytes in 1 blocks are definitely lost in loss record 399 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155DAF: mca_base_param_reg_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xBC7E9C3: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 4 bytes in 1 blocks are definitely lost in loss record 400 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x71572CD: opal_argv_join (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xBC8326E: ???
+==22796==    by 0xBC7F914: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 4 bytes in 1 blocks are definitely lost in loss record 401 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E875A9: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 5 bytes in 1 blocks are definitely lost in loss record 569 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x7165BD7: opal_crs_base_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7144397: opal_cr_init (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7143D0A: opal_init (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x6EF0AFE: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 5 bytes in 1 blocks are definitely lost in loss record 570 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6F1C62E: orte_snapc_base_select (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x6F08F93: orte_ess_base_app_setup (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8BA4F59: ???
+==22796==    by 0x6EF0C63: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 5 bytes in 1 blocks are definitely lost in loss record 571 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x6EFB891: orte_session_dir_get_name (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x6EFBA42: orte_session_dir (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x6F08EE9: orte_ess_base_app_setup (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8BA4F59: ???
+==22796==    by 0x6EF0C63: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 5 bytes in 1 blocks are definitely lost in loss record 572 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E80CF9: ompi_crcp_base_select (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E43890: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 5 bytes in 1 blocks are definitely lost in loss record 573 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155DAF: mca_base_param_reg_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xB85995E: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 5 bytes in 1 blocks are definitely lost in loss record 574 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155DAF: mca_base_param_reg_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xBC7EB47: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 5 bytes in 1 blocks are definitely lost in loss record 575 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155F98: mca_base_param_lookup_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xBC7EB51: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 6 bytes in 1 blocks are definitely lost in loss record 638 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155DAF: mca_base_param_reg_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x8FB069E: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x6F14A70: mca_oob_base_open (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8DA8E08: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x6F1B06C: orte_rml_base_open (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x6F08D2A: orte_ess_base_app_setup (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796== 
+==22796== 7 bytes in 1 blocks are definitely lost in loss record 743 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155DAF: mca_base_param_reg_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xB23BEF2: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 7 bytes in 1 blocks are definitely lost in loss record 744 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155F98: mca_base_param_lookup_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xB44E95D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 8 bytes in 1 blocks are definitely lost in loss record 795 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x798E1F2: ???
+==22796==    by 0x798FA66: ???
+==22796==    by 0x798DA18: ???
+==22796==    by 0x798E5F9: ???
+==22796==    by 0x798D47C: ???
+==22796==    by 0x716E39A: opal_paffinity_base_select (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7143C0D: opal_init (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x6EF0AFE: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 8 bytes in 1 blocks are definitely lost in loss record 796 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x798E20D: ???
+==22796==    by 0x798FA66: ???
+==22796==    by 0x798DA18: ???
+==22796==    by 0x798E5F9: ???
+==22796==    by 0x798D47C: ???
+==22796==    by 0x716E39A: opal_paffinity_base_select (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7143C0D: opal_init (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x6EF0AFE: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 8 bytes in 1 blocks are definitely lost in loss record 797 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E40843: ompi_proc_all (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xCD3BF51: ??? (in /dev/nvidia3)
+==22796==    by 0x5E80929: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E4385E: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 8 bytes in 1 blocks are definitely lost in loss record 798 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E40843: ompi_proc_all (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB653631: ???
+==22796==    by 0xB23BA0D: ???
+==22796==    by 0x5E44044: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x538C2F: main (bluebottle.c:890)
+==22796== 
+==22796== 16 bytes in 1 blocks are definitely lost in loss record 1,166 of 3,420
+==22796==    at 0x4C2C7A7: operator new(unsigned long) (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x58CA202: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58F66D8: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58B5E0F: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x400FF46: _dl_fini (dl-fini.c:253)
+==22796==    by 0x673B120: __run_exit_handlers (exit.c:77)
+==22796==    by 0x673B1A4: exit (exit.c:99)
+==22796==    by 0x6720EAB: (below main) (libc-start.c:294)
+==22796== 
+==22796== 17 bytes in 1 blocks are definitely lost in loss record 1,190 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x715E45E: opal_os_path (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x715F831: opal_path_access (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x8BA5075: ???
+==22796==    by 0x6EF0C63: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 25 bytes in 2 blocks are definitely lost in loss record 1,329 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x71486D5: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x714757D: opal_dss_unpack_buffer (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7147681: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x6F0C3CE: orte_grpcomm_base_update_modex_entries (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x89A029C: ???
+==22796==    by 0x5E43A1E: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 32 bytes in 1 blocks are definitely lost in loss record 1,606 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6810BB7: __vasprintf_chk (vasprintf_chk.c:80)
+==22796==    by 0x6810A61: __asprintf_chk (asprintf_chk.c:33)
+==22796==    by 0x6F1D247: orte_snapc_base_unique_global_snapshot_name (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x6F1C57B: orte_snapc_base_open (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x6F08F5B: orte_ess_base_app_setup (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8BA4F59: ???
+==22796==    by 0x6EF0C63: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 40 bytes in 1 blocks are definitely lost in loss record 1,907 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xBC8332B: ???
+==22796==    by 0xBC7F914: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 41 bytes in 1 blocks are definitely lost in loss record 1,955 of 3,420
+==22796==    at 0x4C2CF8E: realloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE1262F1: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58DB21A: cudaSetDevice (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x4CAACB: cuda_dom_malloc (cuda_bluebottle.cu:113)
+==22796==    by 0x538000: main (bluebottle.c:279)
+==22796== 
+==22796== 48 bytes in 1 blocks are definitely lost in loss record 2,265 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x71532C0: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7DFB5: mca_bml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 48 (24 direct, 24 indirect) bytes in 1 blocks are definitely lost in loss record 2,266 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE057DED: ???
+==22796==    by 0xE1AC9F0: ???
+==22796==    by 0xE1B219F: ???
+==22796==    by 0xE1592DD: ???
+==22796==    by 0xE148A00: ???
+==22796==    by 0xE148D01: ???
+==22796==    by 0xE149278: ???
+==22796==    by 0xE06D9A4: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 52 bytes in 1 blocks are definitely lost in loss record 2,349 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155DAF: mca_base_param_reg_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xBC7E963: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 52 bytes in 1 blocks are definitely lost in loss record 2,350 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155F98: mca_base_param_lookup_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xBC7E987: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 55 bytes in 1 blocks are definitely lost in loss record 2,392 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7154EE6: mca_base_param_reg_string_name (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x715D23C: opal_net_init (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7143AB5: opal_init_util (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E430EE: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 64 bytes in 1 blocks are definitely lost in loss record 2,513 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E2A0DE: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2A4DB: ompi_attr_create_keyval (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2B5A1: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E43976: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 64 bytes in 1 blocks are definitely lost in loss record 2,514 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E2A0DE: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2A4DB: ompi_attr_create_keyval (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2B5E8: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E43976: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 64 bytes in 1 blocks are definitely lost in loss record 2,515 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E2A0DE: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2A4DB: ompi_attr_create_keyval (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2B62E: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E43976: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 64 bytes in 1 blocks are definitely lost in loss record 2,516 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E2A0DE: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2A4DB: ompi_attr_create_keyval (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2B674: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E43976: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 64 bytes in 1 blocks are definitely lost in loss record 2,517 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E2A0DE: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2A4DB: ompi_attr_create_keyval (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2B704: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E43976: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 64 bytes in 1 blocks are definitely lost in loss record 2,518 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E2A0DE: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2A4DB: ompi_attr_create_keyval (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E2B74A: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E43976: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 74 bytes in 1 blocks are definitely lost in loss record 2,557 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0xBC7F5C7: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 74 bytes in 1 blocks are definitely lost in loss record 2,558 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x71559A8: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155DAF: mca_base_param_reg_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xBC7F5FB: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 74 bytes in 1 blocks are definitely lost in loss record 2,559 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6788971: strdup (strdup.c:42)
+==22796==    by 0x7154D3D: ??? (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7155F98: mca_base_param_lookup_string (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0xBC7F605: ???
+==22796==    by 0xBC7253D: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796== 
+==22796== 96 (48 direct, 48 indirect) bytes in 1 blocks are definitely lost in loss record 2,681 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x71532C0: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E7E41C: mca_btl_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB0244DF: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 96 (48 direct, 48 indirect) bytes in 1 blocks are definitely lost in loss record 2,682 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x71532C0: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E437DD: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 112 bytes in 1 blocks are definitely lost in loss record 2,728 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE1B0A46: ???
+==22796==    by 0xE1B0AE4: ???
+==22796==    by 0xE126648: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58DB21A: cudaSetDevice (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x4CAACB: cuda_dom_malloc (cuda_bluebottle.cu:113)
+==22796==    by 0x538000: main (bluebottle.c:279)
+==22796== 
+==22796== 125 (64 direct, 61 indirect) bytes in 1 blocks are definitely lost in loss record 2,753 of 3,420
+==22796==    at 0x4C2CF8E: realloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x7156F73: opal_argv_append_nosize (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7157083: opal_argv_append (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x8BA5159: ???
+==22796==    by 0x6EF0C63: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 128 bytes in 1 blocks are definitely lost in loss record 2,810 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x8DA8A34: ???
+==22796==    by 0x6F1B19C: orte_rml_base_select (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x6F08D84: orte_ess_base_app_setup (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8BA4F59: ???
+==22796==    by 0x6EF0C63: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,894 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142023: ???
+==22796==    by 0xE06D80C: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D1153: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CA4B2: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58BA8A8: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58E0022: cudaMalloc (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x4CAB26: cuda_dom_malloc (cuda_bluebottle.cu:116)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,895 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE1AEDD9: ???
+==22796==    by 0xE1AFC24: ???
+==22796==    by 0xE141D6D: ???
+==22796==    by 0xE142245: ???
+==22796==    by 0xE06D80C: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D1153: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CA4B2: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,896 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE14237D: ???
+==22796==    by 0xE06D80C: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D1153: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,897 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE14237D: ???
+==22796==    by 0xE06D80C: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,898 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE15915B: ???
+==22796==    by 0xE06D83E: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,899 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE15915B: ???
+==22796==    by 0xE06D83E: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,900 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE15915B: ???
+==22796==    by 0xE06D83E: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D1153: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,901 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE14CB35: ???
+==22796==    by 0xE14CD9F: ???
+==22796==    by 0xE1591C9: ???
+==22796==    by 0xE06D83E: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,902 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144A76: ???
+==22796==    by 0xE144FD8: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE14CB35: ???
+==22796==    by 0xE14CD9F: ???
+==22796==    by 0xE1591C9: ???
+==22796==    by 0xE06D83E: ???
+==22796==    by 0xE1E46F0: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,903 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE14CB35: ???
+==22796==    by 0xE14CD9F: ???
+==22796==    by 0xE1591C9: ???
+==22796==    by 0xE06D83E: ???
+==22796==    by 0xE1E46F0: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,904 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1AF611: ???
+==22796==    by 0xE1AF964: ???
+==22796==    by 0xE1AF9EE: ???
+==22796==    by 0xE14269F: ???
+==22796==    by 0xE143013: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE06D432: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,905 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE06D432: ???
+==22796==    by 0xE06E067: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,906 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE150749: ???
+==22796==    by 0xE06D8F7: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D1153: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CA4B2: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,907 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144A76: ???
+==22796==    by 0xE144FD8: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE14A543: ???
+==22796==    by 0xE1B1806: ???
+==22796==    by 0xE147083: ???
+==22796==    by 0xE1488F9: ???
+==22796==    by 0xE148D01: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,908 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1AF611: ???
+==22796==    by 0xE1AF964: ???
+==22796==    by 0xE1AF9EE: ???
+==22796==    by 0xE14269F: ???
+==22796==    by 0xE143013: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE137517: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,909 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE137517: ???
+==22796==    by 0xE06DB88: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,910 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE13410B: ???
+==22796==    by 0xE06DC30: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D1153: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CA4B2: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,911 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144A76: ???
+==22796==    by 0xE144FD8: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE13410B: ???
+==22796==    by 0xE06DC30: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,912 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE13410B: ???
+==22796==    by 0xE06DC30: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,913 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE13410B: ???
+==22796==    by 0xE06DC30: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,914 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE11F9A8: ???
+==22796==    by 0xE121E8E: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1341F0: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,915 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE068CFF: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D1153: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CA4B2: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,916 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144A76: ???
+==22796==    by 0xE144FD8: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE068CFF: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,917 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE068CFF: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,918 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE068CFF: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,919 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12ACFB: ???
+==22796==    by 0xE12ADFA: ???
+==22796==    by 0xE068F06: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,920 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12ACFB: ???
+==22796==    by 0xE12ADFA: ???
+==22796==    by 0xE068F06: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,921 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12ACFB: ???
+==22796==    by 0xE12ADFA: ???
+==22796==    by 0xE068F06: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,922 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE068DAD: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,923 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE068FF4: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,924 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE06901C: ???
+==22796==    by 0xE06DC49: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,925 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE11F9A8: ???
+==22796==    by 0xE121E8E: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE154974: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,926 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1210AD: ???
+==22796==    by 0xE1218CA: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CBD6F: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C45AA: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,927 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144F93: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE06E924: ???
+==22796==    by 0xE121FF9: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CBD6F: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,928 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE06E924: ???
+==22796==    by 0xE121FF9: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,929 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE06E924: ???
+==22796==    by 0xE121FF9: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,930 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE06E924: ???
+==22796==    by 0xE121FF9: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CBD6F: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,931 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12AC68: ???
+==22796==    by 0xE2021A5: ???
+==22796==    by 0xE133EE3: ???
+==22796==    by 0xE12F92F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CBD6F: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,932 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144A76: ???
+==22796==    by 0xE144FD8: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12AC68: ???
+==22796==    by 0xE2021A5: ???
+==22796==    by 0xE133EE3: ???
+==22796==    by 0xE12F92F: ???
+==22796==    by 0xE1E4828: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,933 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12AC68: ???
+==22796==    by 0xE2021A5: ???
+==22796==    by 0xE133EE3: ???
+==22796==    by 0xE12F92F: ???
+==22796==    by 0xE1E4828: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,934 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE12AC68: ???
+==22796==    by 0xE2021A5: ???
+==22796==    by 0xE133EE3: ???
+==22796==    by 0xE12F92F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,935 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12ACFB: ???
+==22796==    by 0xE12ADFA: ???
+==22796==    by 0xE202245: ???
+==22796==    by 0xE133EE3: ???
+==22796==    by 0xE12F92F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,936 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12ACFB: ???
+==22796==    by 0xE12ADFA: ???
+==22796==    by 0xE202245: ???
+==22796==    by 0xE133EE3: ???
+==22796==    by 0xE12F92F: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,937 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12ACFB: ???
+==22796==    by 0xE12ADFA: ???
+==22796==    by 0xE202245: ???
+==22796==    by 0xE133EE3: ???
+==22796==    by 0xE12F92F: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,938 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE12ACFB: ???
+==22796==    by 0xE12ADFA: ???
+==22796==    by 0xE202245: ???
+==22796==    by 0xE133EE3: ???
+==22796==    by 0xE12F92F: ???
+==22796==    by 0xE1E4828: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,939 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE06D432: ???
+==22796==    by 0xE12A3F4: ???
+==22796==    by 0xE17B16F: ???
+==22796==    by 0xE1293B3: ???
+==22796==    by 0xE13ABC3: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,940 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE06D432: ???
+==22796==    by 0xE12A3F4: ???
+==22796==    by 0xE17B16F: ???
+==22796==    by 0xE1293B3: ???
+==22796==    by 0xE13ABC3: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,941 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12AC68: ???
+==22796==    by 0xE201EEC: ???
+==22796==    by 0xE1336D8: ???
+==22796==    by 0xE17B101: ???
+==22796==    by 0xE1293B3: ???
+==22796==    by 0xE13ABC3: ???
+==22796==    by 0xE05E514: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,942 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144A76: ???
+==22796==    by 0xE144FD8: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12AC68: ???
+==22796==    by 0xE201EEC: ???
+==22796==    by 0xE1336D8: ???
+==22796==    by 0xE17B101: ???
+==22796==    by 0xE1293B3: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,943 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12AC68: ???
+==22796==    by 0xE201EEC: ???
+==22796==    by 0xE1336D8: ???
+==22796==    by 0xE17B101: ???
+==22796==    by 0xE1293B3: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,944 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE12AC68: ???
+==22796==    by 0xE201EEC: ???
+==22796==    by 0xE1336D8: ???
+==22796==    by 0xE17B101: ???
+==22796==    by 0xE1293B3: ???
+==22796== 
+==22796== 136 bytes in 1 blocks are possibly lost in loss record 2,945 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE12AC68: ???
+==22796==    by 0xE201EEC: ???
+==22796==    by 0xE1336D8: ???
+==22796==    by 0xE17B101: ???
+==22796==    by 0xE1293B3: ???
+==22796==    by 0xE13ABC3: ???
+==22796== 
+==22796== 176 bytes in 1 blocks are definitely lost in loss record 2,988 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x8FB23A3: ???
+==22796==    by 0x6F14C4A: mca_oob_base_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8DA88EB: ???
+==22796==    by 0x6F1B19C: orte_rml_base_select (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x6F08D84: orte_ess_base_app_setup (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8BA4F59: ???
+==22796==    by 0x6EF0C63: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 248 bytes in 1 blocks are definitely lost in loss record 3,050 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE1311FA: ???
+==22796==    by 0xE1266C2: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58DB21A: cudaSetDevice (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x4CAACB: cuda_dom_malloc (cuda_bluebottle.cu:113)
+==22796==    by 0x538000: main (bluebottle.c:279)
+==22796== 
+==22796== 256 bytes in 1 blocks are definitely lost in loss record 3,066 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x555308: recorder_read_config (recorder.c:7)
+==22796==    by 0x537F39: main (bluebottle.c:232)
+==22796== 
+==22796== 264 (128 direct, 136 indirect) bytes in 1 blocks are definitely lost in loss record 3,068 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135A59: ???
+==22796==    by 0xE126703: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58DB21A: cudaSetDevice (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x4CAACB: cuda_dom_malloc (cuda_bluebottle.cu:113)
+==22796==    by 0x538000: main (bluebottle.c:279)
+==22796== 
+==22796== 272 bytes in 2 blocks are possibly lost in loss record 3,087 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE1AEDD9: ???
+==22796==    by 0xE1ABAA5: ???
+==22796==    by 0xE15B009: ???
+==22796==    by 0xE1266D3: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58DB21A: cudaSetDevice (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x4CAACB: cuda_dom_malloc (cuda_bluebottle.cu:113)
+==22796== 
+==22796== 272 bytes in 2 blocks are possibly lost in loss record 3,088 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1AF611: ???
+==22796==    by 0xE1AF964: ???
+==22796==    by 0xE1AF9EE: ???
+==22796==    by 0xE14269F: ???
+==22796==    by 0xE143013: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE06D432: ???
+==22796== 
+==22796== 272 bytes in 2 blocks are possibly lost in loss record 3,089 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144A76: ???
+==22796==    by 0xE144FD8: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE137517: ???
+==22796==    by 0xE06DB88: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 272 bytes in 2 blocks are possibly lost in loss record 3,090 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE17E624: ???
+==22796==    by 0xE1778DB: ???
+==22796==    by 0xE06DBAB: ???
+==22796==    by 0xE1E46F0: ???
+==22796== 
+==22796== 272 bytes in 2 blocks are possibly lost in loss record 3,091 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE17E7C1: ???
+==22796==    by 0xE1778DB: ???
+==22796==    by 0xE06DBAB: ???
+==22796==    by 0xE1E46F0: ???
+==22796== 
+==22796== 272 bytes in 2 blocks are possibly lost in loss record 3,092 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE11F9A8: ???
+==22796==    by 0xE121E8E: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE20791C: ???
+==22796== 
+==22796== 272 bytes in 2 blocks are possibly lost in loss record 3,093 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144F93: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE05F981: ???
+==22796==    by 0xE05FBD4: ???
+==22796==    by 0xE04F410: ???
+==22796==    by 0x58D371E: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58BA8B3: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58E0022: cudaMalloc (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 296 bytes in 1 blocks are possibly lost in loss record 3,102 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x535AC3: cuda_move_points (shigan.cu:233)
+==22796==    by 0x538423: main (bluebottle.c:539)
+==22796== 
+==22796== 304 bytes in 1 blocks are possibly lost in loss record 3,103 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x4012598: _dl_allocate_tls (dl-tls.c:296)
+==22796==    by 0x64EA7B5: pthread_create@@GLIBC_2.2.5 (allocatestack.c:579)
+==22796==    by 0xE6D93E1: ???
+==22796==    by 0xE159E36: ???
+==22796==    by 0xE06D960: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D1153: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CA4B2: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58BA8A8: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 304 (48 direct, 256 indirect) bytes in 1 blocks are definitely lost in loss record 3,104 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x8FB33E7: ???
+==22796==    by 0x8DA9624: ???
+==22796==    by 0x879CD7C: ???
+==22796==    by 0x6F08F31: orte_ess_base_app_setup (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8BA4F59: ???
+==22796==    by 0x6EF0C63: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 320 (288 direct, 32 indirect) bytes in 1 blocks are definitely lost in loss record 3,109 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x8DAA16E: ???
+==22796==    by 0x6F1B805: orte_rml_base_comm_start (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8DA9011: ???
+==22796==    by 0x6F08EA6: orte_ess_base_app_setup (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x8BA4F59: ???
+==22796==    by 0x6EF0C63: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 357 (176 direct, 181 indirect) bytes in 1 blocks are definitely lost in loss record 3,120 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x6F0C636: orte_grpcomm_base_update_modex_entries (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x89A029C: ???
+==22796==    by 0x5E43A1E: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 408 bytes in 3 blocks are possibly lost in loss record 3,129 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1AEE34: ???
+==22796==    by 0xE1ABAA5: ???
+==22796==    by 0xE15B009: ???
+==22796==    by 0xE1266D3: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 408 bytes in 3 blocks are possibly lost in loss record 3,130 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE142D70: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE11F9A8: ???
+==22796==    by 0xE121E8E: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CBD6F: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 408 bytes in 3 blocks are possibly lost in loss record 3,131 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE05F981: ???
+==22796==    by 0xE05FBD4: ???
+==22796==    by 0xE04F410: ???
+==22796==    by 0x58D371E: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58BA8B3: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 408 bytes in 3 blocks are possibly lost in loss record 3,132 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE05F981: ???
+==22796==    by 0xE05FBD4: ???
+==22796==    by 0xE04F410: ???
+==22796==    by 0x58D371E: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58BA8B3: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 408 bytes in 3 blocks are possibly lost in loss record 3,133 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE05F981: ???
+==22796==    by 0xE05FBD4: ???
+==22796==    by 0xE04F410: ???
+==22796==    by 0x58D371E: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58BA8B3: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58E0022: cudaMalloc (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 448 (232 direct, 216 indirect) bytes in 1 blocks are definitely lost in loss record 3,150 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xB652C54: ???
+==22796==    by 0xB239762: ???
+==22796==    by 0x5E43A93: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 544 bytes in 4 blocks are possibly lost in loss record 3,188 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE1AAF38: ???
+==22796==    by 0xE1AB23B: ???
+==22796==    by 0xE14393A: ???
+==22796==    by 0xE1266B1: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58DB21A: cudaSetDevice (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x4CAACB: cuda_dom_malloc (cuda_bluebottle.cu:113)
+==22796== 
+==22796== 544 bytes in 4 blocks are possibly lost in loss record 3,189 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1AEE34: ???
+==22796==    by 0xE1ABBEA: ???
+==22796==    by 0xE143ED2: ???
+==22796==    by 0xE1AB0FD: ???
+==22796==    by 0xE1AB23B: ???
+==22796==    by 0xE14393A: ???
+==22796==    by 0xE1266B1: ???
+==22796==    by 0xE05E05C: ???
+==22796== 
+==22796== 544 bytes in 4 blocks are possibly lost in loss record 3,190 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135ACE: ???
+==22796==    by 0xE1AEDD9: ???
+==22796==    by 0xE1ABBEA: ???
+==22796==    by 0xE143ED2: ???
+==22796==    by 0xE1AB0FD: ???
+==22796==    by 0xE1AB23B: ???
+==22796==    by 0xE14393A: ???
+==22796==    by 0xE1266B1: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 544 bytes in 4 blocks are possibly lost in loss record 3,191 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE14A543: ???
+==22796==    by 0xE1B1806: ???
+==22796==    by 0xE147083: ???
+==22796==    by 0xE1488F9: ???
+==22796==    by 0xE148DBE: ???
+==22796== 
+==22796== 544 bytes in 4 blocks are possibly lost in loss record 3,192 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144A76: ???
+==22796==    by 0xE144FD8: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE13822E: ???
+==22796==    by 0xE1B18E1: ???
+==22796==    by 0xE147083: ???
+==22796==    by 0xE1488F9: ???
+==22796==    by 0xE148DBE: ???
+==22796== 
+==22796== 544 bytes in 4 blocks are possibly lost in loss record 3,193 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE120CCE: ???
+==22796==    by 0xE1218CA: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1341F0: ???
+==22796==    by 0xE06DC30: ???
+==22796== 
+==22796== 544 bytes in 4 blocks are possibly lost in loss record 3,194 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE120CCE: ???
+==22796==    by 0xE1218CA: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1341F0: ???
+==22796==    by 0xE06DC30: ???
+==22796== 
+==22796== 544 bytes in 4 blocks are possibly lost in loss record 3,195 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE120CCE: ???
+==22796==    by 0xE1218CA: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1341F0: ???
+==22796==    by 0xE06DC30: ???
+==22796==    by 0xE1E46F0: ???
+==22796== 
+==22796== 544 bytes in 4 blocks are possibly lost in loss record 3,196 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE11F9A8: ???
+==22796==    by 0xE121E8E: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796== 
+==22796== 576 (176 direct, 400 indirect) bytes in 1 blocks are definitely lost in loss record 3,197 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x798E3E1: ???
+==22796==    by 0x798FA66: ???
+==22796==    by 0x798DA18: ???
+==22796==    by 0x798E5F9: ???
+==22796==    by 0x798D47C: ???
+==22796==    by 0x716E39A: opal_paffinity_base_select (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x7143C0D: opal_init (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x6EF0AFE: orte_init (in /usr/lib/openmpi/lib/libopen-rte.so.0.0.0)
+==22796==    by 0x5E431E3: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 816 bytes in 6 blocks are possibly lost in loss record 3,223 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1AEE34: ???
+==22796==    by 0xE1ABAA5: ???
+==22796==    by 0xE15B009: ???
+==22796==    by 0xE1266D3: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 952 bytes in 7 blocks are possibly lost in loss record 3,231 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE179608: ???
+==22796==    by 0xE1321E6: ???
+==22796==    by 0xE06DA12: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 952 bytes in 7 blocks are possibly lost in loss record 3,232 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE179608: ???
+==22796==    by 0xE1321E6: ???
+==22796==    by 0xE06DA12: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 952 bytes in 7 blocks are possibly lost in loss record 3,233 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE179608: ???
+==22796==    by 0xE1321E6: ???
+==22796==    by 0xE06DA12: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58D0B80: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 1,088 bytes in 8 blocks are possibly lost in loss record 3,264 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE14A543: ???
+==22796==    by 0xE1B1806: ???
+==22796==    by 0xE147083: ???
+==22796==    by 0xE1488F9: ???
+==22796==    by 0xE148D01: ???
+==22796== 
+==22796== 1,088 bytes in 8 blocks are possibly lost in loss record 3,265 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144A76: ???
+==22796==    by 0xE144FD8: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE13822E: ???
+==22796==    by 0xE1B18E1: ???
+==22796==    by 0xE147083: ???
+==22796==    by 0xE1488F9: ???
+==22796==    by 0xE148D01: ???
+==22796== 
+==22796== 1,208 bytes in 1 blocks are definitely lost in loss record 3,270 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x5E2826D: ompi_free_list_grow (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0xB239EB4: ???
+==22796==    by 0x5E43A4B: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 1,496 bytes in 11 blocks are possibly lost in loss record 3,288 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1AF611: ???
+==22796==    by 0xE1AF964: ???
+==22796==    by 0xE1AF9EE: ???
+==22796==    by 0xE14269F: ???
+==22796==    by 0xE143013: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE14A543: ???
+==22796== 
+==22796== 1,496 bytes in 11 blocks are possibly lost in loss record 3,289 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE120CCE: ???
+==22796==    by 0xE1218CA: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 1,496 bytes in 11 blocks are possibly lost in loss record 3,290 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE120CCE: ???
+==22796==    by 0xE1218CA: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 1,496 bytes in 11 blocks are possibly lost in loss record 3,291 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE120CCE: ???
+==22796==    by 0xE1218CA: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE1E4828: ???
+==22796==    by 0x58C6AC5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58CBD6F: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 1,768 bytes in 13 blocks are possibly lost in loss record 3,298 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE11F9A8: ???
+==22796==    by 0xE121E8E: ???
+==22796==    by 0xE12FD0F: ???
+==22796==    by 0xE203756: ???
+==22796== 
+==22796== 2,304 (136 direct, 2,168 indirect) bytes in 1 blocks are definitely lost in loss record 3,312 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE13604C: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A79F: ???
+==22796==    by 0xE142F72: ???
+==22796==    by 0xE145315: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE05F981: ???
+==22796==    by 0xE05FBD4: ???
+==22796==    by 0xE04F410: ???
+==22796==    by 0x58D371E: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 2,400 bytes in 1 blocks are definitely lost in loss record 3,314 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x9FFCAE6: ???
+==22796==    by 0x9FFCA26: ???
+==22796==    by 0xB23BF1E: ???
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 2,480 (80 direct, 2,400 indirect) bytes in 1 blocks are definitely lost in loss record 3,315 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x9FFCA0A: ???
+==22796==    by 0xB0244CE: ??? (in /lib/x86_64-linux-gnu/librt-2.17.so)
+==22796==    by 0x7153163: mca_base_components_open (in /usr/lib/openmpi/lib/libopen-pal.so.0.0.0)
+==22796==    by 0x5E874F8: mca_pml_base_open (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E437AF: ??? (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x5E6421A: PMPI_Init (in /usr/lib/openmpi/lib/libmpi.so.0.0.4)
+==22796==    by 0x537CAA: main (bluebottle.c:148)
+==22796== 
+==22796== 3,264 (56 direct, 3,208 indirect) bytes in 1 blocks are definitely lost in loss record 3,322 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE058016: ???
+==22796==    by 0xE059DD3: ???
+==22796==    by 0xE05AFCA: ???
+==22796==    by 0xE1AD4F3: ???
+==22796==    by 0xE1AB00A: ???
+==22796==    by 0xE1AB23B: ???
+==22796==    by 0xE14393A: ???
+==22796==    by 0xE1266B1: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 3,808 bytes in 28 blocks are possibly lost in loss record 3,326 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE13451F: ???
+==22796==    by 0xE06DC30: ???
+==22796==    by 0xE1E46F0: ???
+==22796==    by 0x58D0AE5: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 4,352 bytes in 32 blocks are possibly lost in loss record 3,334 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE1243E4: ???
+==22796==    by 0xE17E956: ???
+==22796==    by 0xE1778DB: ???
+==22796==    by 0xE06DBAB: ???
+==22796==    by 0xE1E46F0: ???
+==22796== 
+==22796== 8,264 (72 direct, 8,192 indirect) bytes in 1 blocks are definitely lost in loss record 3,346 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE1353E1: ???
+==22796==    by 0xE12654B: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58DB21A: cudaSetDevice (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x4CAACB: cuda_dom_malloc (cuda_bluebottle.cu:113)
+==22796==    by 0x538000: main (bluebottle.c:279)
+==22796== 
+==22796== 90,392 (10,368 direct, 80,024 indirect) bytes in 1 blocks are definitely lost in loss record 3,390 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE15ACE8: ???
+==22796==    by 0xE1266D3: ???
+==22796==    by 0xE05E05C: ???
+==22796==    by 0xE030544: ???
+==22796==    by 0x58C783B: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58C7967: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58DB21A: cudaSetDevice (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x4CAACB: cuda_dom_malloc (cuda_bluebottle.cu:113)
+==22796==    by 0x538000: main (bluebottle.c:279)
+==22796== 
+==22796== 1,749,064 bytes in 5,909 blocks are definitely lost in loss record 3,412 of 3,420
+==22796==    at 0x4C2CD7B: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0x535AC3: cuda_move_points (shigan.cu:233)
+==22796==    by 0x538423: main (bluebottle.c:539)
+==22796== 
+==22796== 2,411,416 bytes in 17,731 blocks are possibly lost in loss record 3,413 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE144842: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE05F981: ???
+==22796==    by 0xE05FBD4: ???
+==22796==    by 0xE04F410: ???
+==22796==    by 0x58D371E: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58BA8B3: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 2,411,416 bytes in 17,731 blocks are possibly lost in loss record 3,414 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE1448BD: ???
+==22796==    by 0xE145349: ???
+==22796==    by 0xE1459B5: ???
+==22796==    by 0xE05F981: ???
+==22796==    by 0xE05FBD4: ???
+==22796==    by 0xE04F410: ???
+==22796==    by 0x58D371E: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58BA8B3: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== 2,411,416 bytes in 17,731 blocks are possibly lost in loss record 3,415 of 3,420
+==22796==    at 0x4C2ABB4: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==22796==    by 0xE135B98: ???
+==22796==    by 0xE1361F2: ???
+==22796==    by 0xE1363FF: ???
+==22796==    by 0xE15A6A0: ???
+==22796==    by 0xE145AA9: ???
+==22796==    by 0xE05F981: ???
+==22796==    by 0xE05FBD4: ???
+==22796==    by 0xE04F410: ???
+==22796==    by 0x58D371E: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58BA8B3: ??? (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796==    by 0x58E0022: cudaMalloc (in /usr/local/cuda-5.0/lib64/libcudart.so.5.0.35)
+==22796== 
+==22796== LEAK SUMMARY:
+==22796==    definitely lost: 1,766,637 bytes in 5,975 blocks
+==22796==    indirectly lost: 97,394 bytes in 124 blocks
+==22796==      possibly lost: 7,272,520 bytes in 53,472 blocks
+==22796==    still reachable: 39,308,514 bytes in 113,113 blocks
+==22796==         suppressed: 0 bytes in 0 blocks
+==22796== Reachable blocks (those to which a pointer was found) are not shown.
+==22796== To see them, rerun with: --leak-check=full --show-reachable=yes
+==22796== 
+==22796== For counts of detected and suppressed errors, rerun with: -v
+==22796== Use --track-origins=yes to see where uninitialised values come from
+==22796== ERROR SUMMARY: 311 errors from 165 contexts (suppressed: 2 from 2)
