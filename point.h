@@ -10,9 +10,8 @@
 #define _POINT_H
 
 #include "bluebottle.h"
-//#include "scalar.h"
-//#include "cuda_point.h"
 
+//typedef double float int ireal;
 
 //Determins whether particle will have momentum reaction to fluid flow
 //if lpt_twoway >0, there is reaction back to flow, otherwise the particles are passive.
@@ -80,12 +79,26 @@ void lpt_point_twoway_forcing();
 //calculate fluid stress du/dt to impose on particles
 void cuda_flow_stress(void);
 
+/*
+void cuda_free_array_int(int** &A);
+void cuda_free_array_real(real**& A);
+void cuda_malloc_array_int(int**& A,int len);
+void cuda_malloc_array_real(real**& A,int len);
+*/
 
-void cuda_free_array_int(int **&A);
-void cuda_free_array_real(real **&A);
-void cuda_malloc_array_int(int **&A,int len);
-void cuda_malloc_array_real(real (**&A),int len);
+/*
+void cuda_free_array_int((int**&) A);
+void cuda_free_array_real((real**&) A);
+void cuda_malloc_array_int((int**&) A,int len);
+void cuda_malloc_array_real((real**&) A,int len);
+*/
 
+/*
+void cuda_free_array_int((int**) &A);
+void cuda_free_array_real((real **) &A);
+void cuda_malloc_array_int((int **) &A,int len);
+void cuda_malloc_array_real((real **) &A,int len);
+*/
 
 
 

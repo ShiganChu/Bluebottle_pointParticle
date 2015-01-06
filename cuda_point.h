@@ -21,13 +21,20 @@ extern "C"
 #include "thrust/sort.h"
 
 
+
+void cuda_free_array_int(int** &A);
+void cuda_free_array_real(real**& A);
+void cuda_malloc_array_int(int**& A,int len);
+void cuda_malloc_array_real(real**& A,int len);
+
+
+
 //initialize array A with length n, initialize the array to be a constant C 
 __global__ void array_init(real *A,dom_struct *dom, int n, real C);
 
 __global__ void print_kernel_array_int(int *cell,int lenCell);
 __global__ void print_kernel_array_real(int *cell,int lenCell);
 
-//extern "C"
 void sortParticles(int *dGridParticleHash, int *dGridParticleIndex, int npoints);
 
 /*

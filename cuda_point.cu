@@ -384,8 +384,7 @@ void block_thread_point(dim3 &dimBlocks,dim3 &numBlocks,int npoints)
 }
 
 
-extern "C"
-void cuda_malloc_array_int(int **&A,int lenArray)
+void cuda_malloc_array_int(int** &A,int lenArray)
 {
 A= (int**) malloc(nsubdom * sizeof(int*));
           cpumem += nsubdom * sizeof(int*);
@@ -400,8 +399,7 @@ A= (int**) malloc(nsubdom * sizeof(int*));
   }
 }
 
-extern "C"
-void cuda_malloc_array_real(real (**&A),int lenArray)
+void cuda_malloc_array_real(real**& A,int lenArray)
 {   
 A= (real**) malloc(nsubdom * sizeof(real*));
           cpumem += nsubdom * sizeof(real*);
@@ -418,8 +416,7 @@ A= (real**) malloc(nsubdom * sizeof(real*));
 }   
 
 
-extern "C"
-void cuda_free_array_real(real **&A)
+void cuda_free_array_real(real**& A)
 {
   // free device memory on device
   #pragma omp parallel num_threads(nsubdom)
@@ -433,8 +430,7 @@ void cuda_free_array_real(real **&A)
 
 }
 
-extern "C"
-void cuda_free_array_int(int **&A)
+void cuda_free_array_int(int** &A)
 {
   // free device memory on device
   #pragma omp parallel num_threads(nsubdom)
