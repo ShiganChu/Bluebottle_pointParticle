@@ -468,7 +468,13 @@ default: break;
       threads_z = lenZ;
     else
       threads_z = MAX_THREADS_DIM3;
-
+/*
+int MAX_THREADS_Z=(int) MAX_THREADS_DIM3*1.0f/(1.0f*MAX_THREADS_DIM*MAX_THREADS_DIM);
+    if(lenZ < MAX_THREADS_Z)
+      threads_z = lenZ;
+    else
+      threads_z = MAX_THREADS_Z;
+*/
     blocks_x = (int)ceil((real) lenX / (real) (threads_x));
     blocks_y = (int)ceil((real) lenY / (real) (threads_y));
     blocks_z = (int)ceil((real) lenZ / (real) (threads_z));

@@ -48,7 +48,7 @@ The following two subroutines are for mollifying point source with a Gaussian ke
 extern "C"
 void lpt_mollify_scH(int coordiSys,int valType,int dev,real *scSrc);
 
-
+//__device__ void calcGridPos(int &ip,int &jp,int &kp,real xp,real yp,real zp,int coordiSys,real xs,real ys,real zs,real ddx,real ddy,real ddz);
 __device__ void calcGridPos(point_struct *points,dom_struct *dom,int pp,int coordiSys);
 //__device__ int calcGridHash(int &ic, int &jc,int &kc,dom_struct *dom,int coordiSys);
 __device__ int calcGridHash(int ic, int jc,int kc,dom_struct *dom,int coordiSys);
@@ -56,6 +56,22 @@ __device__ int calcGridHash(int ic, int jc,int kc,dom_struct *dom,int coordiSys)
 
 __device__ void dom_startEnd_index(int &is, int &js,int &ks,int &ie, int &je,int &ke,dom_struct *dom,int coordiSys,int incGhost);
 __device__ real lpt_mol_typeVal(point_struct *points,dom_struct *dom,int pp,int coordiSys,int valType);
+
+//Make the position (x,y,z) periodic
+__device__ void periodic_grid_position(real &x,real &y,real &z,dom_struct *dom);
+
+
+//Make the index (i,j,k) periodic
+__device__ void periodic_grid_index(int &ic,int &jc,int &kc,dom_struct *dom, int coordiSys);
+
+/*
+Gaussian kernel with object position index (ic,jc,kc) and Gaussian center position (xp,yp,zp), basically calculate their distance substitute into Gaussian kernel. 
+	dx~dz are grid cell size, xs~zs are start position of the whole fluid domain
+	coordiSys =0 indicate cell-center; coordiSys =1,2,3 indicate x,y,z-face-center;
+*/
+//__device__ real lpt_integrate_mol(int ic,int jc,int kc,real xp,real yp,real zp,int coordiSys,real xs,real ys,real zs,real dx,real dy,real dz);
+__device__ real lpt_integrate_mol(int ic,int jc,int kc,real xp,real yp,real zp, dom_struct *dom, int coordiSys);
+
 
 __device__ real sum_ksi_cell( int ic,int jc,int kc,
                    point_struct *points,
@@ -94,20 +110,6 @@ __global__ void lpt_point_ksi(   point_struct *points,
 				 int  *gridParticleIndex,
 				 int npoints,
 				 int coordiSys, int valType);
-//Make the position (x,y,z) periodic
-__device__ void periodic_grid_position(real &x,real &y,real &z,dom_struct *dom);
-
-
-//Make the index (i,j,k) periodic
-__device__ void periodic_grid_index(int &ic,int &jc,int &kc,dom_struct *dom, int coordiSys);
-
-/*
-Gaussian kernel with object position index (ic,jc,kc) and Gaussian center position (xp,yp,zp), basically calculate their distance substitute into Gaussian kernel. 
-	dx~dz are grid cell size, xs~zs are start position of the whole fluid domain
-	coordiSys =0 indicate cell-center; coordiSys =1,2,3 indicate x,y,z-face-center;
-*/
-//__device__ real lpt_integrate_mol(int ic,int jc,int kc,real xp,real yp,real zp, real dx,real dy,real dz,real xs,real ys,real zs, int coordiSys);
-__device__ real lpt_integrate_mol(int ic,int jc,int kc,real xp,real yp,real zp, dom_struct *dom, int coordiSys);
 
 //initialize the the velocity ug~wg and stress of fluid lpt_stress_u~w, which will be interpreted at the point particle position. All arrays will be initialized to 0
 __global__ void point_interp_init(int npoints,point_struct *points,real *ug,real *vg,real *wg,real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg);

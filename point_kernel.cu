@@ -1,12 +1,3 @@
-/*
-extern "C"
-{
-#include "bluebottle.h"
-#include "stdio.h"
-#include "cuda.h"
-//#include "cuda_scalar.h"
-}
-*/
 #include "cuda_scalar.h"
 #include "cuda_point.h"
 
@@ -22,74 +13,113 @@ if(pp<n) A[pp]=a;
 
 __device__ void periodic_grid_position(real &x,real &y,real &z,dom_struct *dom)
 {
-if(x<dom->xs||x>dom->xe)  x=fmodf(x,dom->xl);
-if(y<dom->ys||y>dom->ye)  y=fmodf(y,dom->yl);
-if(z<dom->zs||z>dom->ze)  z=fmodf(z,dom->zl);
+real xl=dom->xl;real yl=dom->yl;real zl=dom->zl;
+real xs=dom->xs;real ys=dom->ys;real zs=dom->zs;
+real xe=dom->xe;real ye=dom->ye;real ze=dom->ze;
 
-  if(x < dom->xs ) x = x + dom->xl;
-  if(y < dom->ys ) y = y + dom->yl;
-  if(z < dom->zs ) z = z + dom->zl;
+real xr=x-xs;real yr=y-ys;real zr=z-zs;
+
+if(x<xs||x>xe)  xr=xr-floor(xr/xl)*xl;
+if(y<ys||y>ye)  yr=yr-floor(yr/yl)*yl;
+if(z<zs||z>ze)  zr=zr-floor(zr/zl)*zl;
+
+x=xs+xr;
+y=ys+yr;
+z=zs+zr;
+
 }
 
+//Eg: for Gfx system, if i> Gfx.ie-1, then we change it
 __device__ void periodic_grid_index(int &ic,int &jc,int &kc,dom_struct *dom, int coordiSys)
 {
-//int tag=0;
+int is,js,ks;
+int ie,je,ke;
+int in,jn,kn;
 switch(coordiSys)
 {
 case 0:
-if(ic<dom->Gcc.is||ic > dom->Gcc.ie-1)  ic=(int) fmodf(ic,dom->Gcc.in);
-if(jc<dom->Gcc.js||jc > dom->Gcc.je-1)  jc=(int) fmodf(jc,dom->Gcc.jn);
-if(kc<dom->Gcc.ks||kc > dom->Gcc.ke-1)  kc=(int) fmodf(kc,dom->Gcc.kn);
-//after fmod, the value could still be negative
-  if(ic < dom->Gcc.is) ic = ic +dom->Gcc.in;
-  if(jc < dom->Gcc.js) jc = jc +dom->Gcc.jn;
-  if(kc < dom->Gcc.ks) kc = kc +dom->Gcc.kn;
- break;
+is=dom->Gcc.is;
+js=dom->Gcc.js;
+ks=dom->Gcc.ks;
+
+ie=dom->Gcc.ie;
+je=dom->Gcc.je;
+ke=dom->Gcc.ke;
+
+in=dom->Gcc.in;
+jn=dom->Gcc.jn;
+kn=dom->Gcc.kn;
+break;
 case 1:
-if(ic<dom->Gfx.is||ic > dom->Gfx.ie-2)  ic=(int) fmodf(ic,dom->Gfx.in-1);
-if(jc<dom->Gfx.js||jc > dom->Gfx.je-1)  jc=(int) fmodf(jc,dom->Gfx.jn);
-if(kc<dom->Gfx.ks||kc > dom->Gfx.ke-1)  kc=(int) fmodf(kc,dom->Gfx.kn);
-  if(ic < dom->Gfx.is) ic = ic+(dom->Gfx.in-1);
-  if(jc < dom->Gfx.js) jc = jc+dom->Gfx.jn;
-  if(kc < dom->Gfx.ks) kc = kc+dom->Gfx.kn;
+is=dom->Gfx.is;
+js=dom->Gfx.js;
+ks=dom->Gfx.ks;
+
+ie=dom->Gfx.ie;
+je=dom->Gfx.je;
+ke=dom->Gfx.ke;
+
+in=dom->Gfx.in-1;
+jn=dom->Gfx.jn;
+kn=dom->Gfx.kn;
 break;
 case 2:
-if(ic<dom->Gfy.is||ic > dom->Gfy.ie-1)  ic=(int) fmodf(ic,dom->Gfy.in);
-if(jc<dom->Gfy.js||jc > dom->Gfy.je-2)  jc=(int) fmodf(jc,dom->Gfy.jn-1);
-if(kc<dom->Gfy.ks||kc > dom->Gfy.ke-1)  kc=(int) fmodf(kc,dom->Gfy.kn);
-  if(ic < dom->Gfy.is) ic = ic+dom->Gfy.in;
-  if(jc < dom->Gfy.js) jc = jc+(dom->Gfy.jn-1);
-  if(kc < dom->Gfy.ks) kc = kc+dom->Gfy.kn;
+is=dom->Gfy.is;
+js=dom->Gfy.js;
+ks=dom->Gfy.ks;
+
+ie=dom->Gfy.ie;
+je=dom->Gfy.je;
+ke=dom->Gfy.ke;
+
+in=dom->Gfy.in;
+jn=dom->Gfy.jn-1;
+kn=dom->Gfy.kn;
 break;
 case 3:
-if(ic<dom->Gfz.is||ic > dom->Gfz.ie-1)  ic=(int) fmodf(ic,dom->Gfz.in);
-if(jc<dom->Gfz.js||jc > dom->Gfz.je-1)  jc=(int) fmodf(jc,dom->Gfz.jn);
-if(kc<dom->Gfz.ks||kc > dom->Gfz.ke-2)  kc=(int) fmodf(kc,dom->Gfz.kn-1);
-  if(ic < dom->Gfz.is) ic = ic+dom->Gfz.in;
-  if(jc < dom->Gfz.js) jc = jc+dom->Gfz.jn;
-  if(kc < dom->Gfz.ks) kc = kc+(dom->Gfz.kn-1);
+is=dom->Gfz.is;
+js=dom->Gfz.js;
+ks=dom->Gfz.ks;
+
+ie=dom->Gfz.ie;
+je=dom->Gfz.je;
+ke=dom->Gfz.ke;
+
+in=dom->Gfz.in;
+jn=dom->Gfz.jn;
+kn=dom->Gfz.kn-1;
 break;
-default:
-break;
+default:break;
 }
+
+//ic=-65;jc=129;
+int ir=ic-is;
+int jr=jc-js;
+int kr=kc-ks;
+
+if(ic<is||ic > ie-1)  ir= ir -floor(ir/(in*1.f))*in;
+if(jc<js||jc > je-1)  jr= jr -floor(jr/(jn*1.f))*jn;
+if(kc<ks||kc > ke-1)  kr= kr -floor(kr/(kn*1.f))*kn;
+
+ic=ir+is;
+jc=jr+js;
+kc=kr+ks;
+//if(kc==33) printf("\nic %d %d %d %d %d\n",ic,jc,in,jn,coordiSys);
 }
 
 //calculate which grid the particle is in, won't make the grid index periodic
+//Passing the dom and points pointer won't take time!!
 __device__ void calcGridPos(point_struct *points,dom_struct *dom,int pp,int coordiSys)
 {
-
 real xs=dom->xs;
 real ys=dom->ys;
 real zs=dom->zs;
-
 real ddx=1.f/dom->dx;
 real ddy=1.f/dom->dy;
 real ddz=1.f/dom->dz;
-
 real  xp =  points[pp].x;
 real  yp =  points[pp].y;
 real  zp =  points[pp].z;
-
 int ip,jp,kp;
 switch(coordiSys)
 {
@@ -119,6 +149,8 @@ points[pp].i=ip;
 points[pp].j=jp;
 points[pp].k=kp;
 }
+
+
 
 
 __device__ void dom_startEnd_index(int &is, int &js,int &ks,int &ie, int &je,int &ke,dom_struct *dom,int coordiSys,int incGhost)
@@ -238,17 +270,13 @@ int pp =  threadIdx.x + blockIdx.x*blockDim.x;
 
 if(pp>=npoints) return;
 
-//The cell-center or face-center index to locate the particle 
+//The cell-center or face-center index to locate the particle, i.e get points[pp].i,points[pp].j,points[pp].k 
   calcGridPos(points,dom,pp,coordiSys);
-
-//ic~kc could be beyond domain boundary
-int ic =  points[pp].i;
-int jc =  points[pp].j;
-int kc =  points[pp].k;
+ 
+    // calculate grid index where the particle lives in
+int hash=calcGridHash(points[pp].i,points[pp].j,points[pp].k,dom,coordiSys);
 
     // store grid hash and particle pp
-int hash=calcGridHash(ic,jc,kc,dom,coordiSys);
-
     gridParticleHash[pp] = hash;
     gridParticleIndex[pp] = pp;
 //printf("\ncalcHash %d %d %d %d %d\n",ic,jc,kc,hash,pp);
@@ -346,8 +374,7 @@ Ap=-points[pp].Fz;
 break;
 default:
 break;
-			}		
-
+}
 return Ap/cellVol;
 }
 
@@ -357,47 +384,44 @@ __device__ real lpt_integrate_mol(int ic,int jc,int kc,real xp,real yp,real zp, 
 {
 real xs=dom->xs;real ys=dom->ys;real zs=dom->zs;
 real dx=dom->dx;real dy=dom->dy;real dz=dom->dz;
-real xm,ym,zm;
+real xr,yr,zr;
 real x,y,z,r2;
 switch(coordiSys)
 {
 case 0:
-xm = (ic-DOM_BUF+0.5) * dx + xs;
-ym = (jc-DOM_BUF+0.5) * dy + ys;
-zm = (kc-DOM_BUF+0.5) * dz + zs;
-r2 = (xp-xm)*(xp-xm)+(yp-ym)*(yp-ym)+(zp-zm)*(zp-zm);
+x = (ic-DOM_BUF+0.5) * dx + xs;
+y = (jc-DOM_BUF+0.5) * dy + ys;
+z = (kc-DOM_BUF+0.5) * dz + zs;
 break;
 case 1:
 x =  (ic-DOM_BUF) * dx + xs;
-ym = (jc-DOM_BUF+0.5) * dy + ys;
-zm = (kc-DOM_BUF+0.5) * dz + zs;
-r2 = (xp-x)*(xp-x)+(yp-ym)*(yp-ym)+(zp-zm)*(zp-zm);
+y = (jc-DOM_BUF+0.5) * dy + ys;
+z = (kc-DOM_BUF+0.5) * dz + zs;
 break;
 case 2:
-xm = (ic-DOM_BUF+0.5) * dx + xs;
+x = (ic-DOM_BUF+0.5) * dx + xs;
 y = (jc-DOM_BUF) * dy + ys;
-zm = (kc-DOM_BUF+0.5) * dz + zs;
-r2 = (xp-xm)*(xp-xm)+(yp-y)*(yp-y)+(zp-zm)*(zp-zm);
+z = (kc-DOM_BUF+0.5) * dz + zs;
 break;
 case 3:
-xm = (ic-DOM_BUF+0.5) * dx + xs;
-ym = (jc-DOM_BUF+0.5) * dy + ys;
+x = (ic-DOM_BUF+0.5) * dx + xs;
+y = (jc-DOM_BUF+0.5) * dy + ys;
 z = (kc-DOM_BUF) * dz + zs;
-r2 = (xp-xm)*(xp-xm)+(yp-ym)*(yp-ym)+(zp-z)*(zp-z);
 break;
 default:break;
 }
 
+xr=xp-x;
+yr=yp-y;
+zr=zp-z;
+r2=xr*xr+yr*yr+zr*zr;
 //TODO make this as defined value avaible from host and device!!!
 real min_meshsize=min(min(dx,dy),dz);
-real sig= KERNEL_WIDTH *min_meshsize/(2.0f*sqrt(2.0f*log(2.0f)));
-
+//2.0f*sqrt(2.0f*log(2.0f))=2.3548;
+real sig= KERNEL_WIDTH *min_meshsize/2.3548f;
 real val = exp(-r2/(2.0f*sig*sig));
-val=val/powf(sqrt(2*PI)*sig,3);
-
 return val;
 }
-
 
 
 
@@ -412,7 +436,7 @@ __device__ real sum_ksi_cell( int ic,int jc,int kc,
 		   int coordiSys,int valType)
 {
 
-        int began=- round((STENCIL-1)/2.0f);//equal to -1 if STENCIL=3
+        int began=- floor((STENCIL-1)/2.0f);//equal to -1 if STENCIL=3
         int end=1+ ceil((STENCIL-1)/2.0f);//equal to 2 if STENCIL=3
 	int is,js,ks;
         int ip,jp,kp;//index of particle cell
@@ -474,6 +498,13 @@ if(index>=npoints) return;
 int pp=gridParticleIndex[index];
 ////printf("\nindex pp %d %d\n",index,pp);
 
+/*
+real xs=dom->xs;real ys=dom->ys;real zs=dom->zs;
+real dx=dom->dx;real dy=dom->dy;real dz=dom->dz;
+*/
+
+
+
 //Define the STENCIL of the Gausian filter, the slpt_mopread length of Gaussian kernel
 real ksi[STENCIL][STENCIL][STENCIL];
 
@@ -495,7 +526,7 @@ jp =  points[pp].j;
 kp =  points[pp].k;
 
 real buf=0;
-int began=-round((STENCIL-1)/2.0f);//equal to -1,-1 if STENCIL=3,4 
+int began=-floor((STENCIL-1)/2.0f);//equal to -1,-1 if STENCIL=3,4 
 int end=1+ceil((STENCIL-1)/2.0f);//equal to 2,3 if STENCIL=3,4
 
 //printf("\ni~j %d %d %d %f %f %f\n",ip,jp,kp,xp,yp,zp);
@@ -509,6 +540,7 @@ is=di-began;js=dj-began;ks=dk-began;
 ic=ip+di;jc=jp+dj;kc=kp+dk;
 //ip~kp could be beyond domain boundary
 ksi[is][js][ks]=lpt_integrate_mol(ic,jc,kc,xp,yp,zp,dom,coordiSys);
+//ksi[is][js][ks]=lpt_integrate_mol(ic,jc,kc,xp,yp,zp,coordiSys,xs,ys,zs,dx,dy,dz);
 buf+=ksi[is][js][ks];
 }
 
