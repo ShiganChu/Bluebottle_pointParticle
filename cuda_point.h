@@ -31,11 +31,11 @@ __global__ void lpt_sum_ksi(int npoints, real *A, point_struct *points, dom_stru
 
 
 //Make the position (x,y,z) periodic
-__device__ void periodic_grid_position(real x,real y,real z,dom_struct *dom);
+__device__ void periodic_grid_position(real &x,real &y,real &z,dom_struct *dom);
 
 
 //Make the index (i,j,k) periodic
-__device__ void periodic_grid_index(int ic,int jc,int kc,dom_struct *dom, int dirc);
+__device__ void periodic_grid_index(int &ic,int &jc,int &kc,dom_struct *dom, int dirc);
 
 /*
 Gaussian kernel with object position index (ic,jc,kc) and Gaussian center position (xp,yp,zp), basically calculate their distance substitute into Gaussian kernel. 
