@@ -253,7 +253,7 @@ void sortParticles(int *dgridParticleHash, int *dgridParticleIndex, int numParti
     }
 
 
-//The difference in mollify is the direction and mollified data, and they have different Ksi and gridParticleHash
+//The difference in mollify is the direction and mollified data, and they have different Ksi and gridParticleHash. Note that scSrc has length of Gxx.s3b
 extern "C"
 void lpt_mollify_scH(int coordiSys,int valType,int dev,real *scSrc)
 {
@@ -274,10 +274,10 @@ block_thread_point(dimBlocks_p,numBlocks_st,npoints*STENCIL3);
 int lenCell;
 switch(coordiSys)
 {
-case 0:lenCell=dom[dev].Gcc.s3;break;
-case 1:lenCell=dom[dev].Gfx.s3;break;
-case 2:lenCell=dom[dev].Gfy.s3;break;
-case 3:lenCell=dom[dev].Gfz.s3;break;
+case 0:lenCell=dom[dev].Gcc.s3b;break;
+case 1:lenCell=dom[dev].Gfx.s3b;break;
+case 2:lenCell=dom[dev].Gfy.s3b;break;
+case 3:lenCell=dom[dev].Gfz.s3b;break;
 default: break;
 }
 
@@ -459,6 +459,33 @@ void cuda_point_malloc(void)
   _flag_w = (int**) malloc(nsubdom * sizeof(int*));
   cpumem += nsubdom * sizeof(int*);
 
+
+cuda_malloc_array_real(ug,npoints);
+cuda_malloc_array_real(vg,npoints);
+cuda_malloc_array_real(wg,npoints);
+
+cuda_malloc_array_real(lpt_stress_u,npoints);
+cuda_malloc_array_real(lpt_stress_v,npoints);
+cuda_malloc_array_real(lpt_stress_w,npoints);
+
+cuda_malloc_array_real(scg,npoints);
+cuda_malloc_array_real(Ksi,npoints*STENCIL3);
+
+cuda_malloc_array_int(gridParticleIndex,npoints);
+cuda_malloc_array_int(gridParticleHash,npoints);
+
+//calculate the maximum length of coordinate system
+int lenCell=dom[0].Gcc.s3b;
+int len1=dom[0].Gfx.s3b;
+int len2=dom[0].Gfy.s3b;
+int len3=dom[0].Gfz.s3b;
+if(lenCell<len1) lenCell=len1;
+if(len2<len3) len2=len3;
+if(lenCell<len2) lenCell=len2;
+
+cuda_malloc_array_int(cellStart,lenCell);
+cuda_malloc_array_int(cellEnd,lenCell);
+
   // allocate device memory on device
   #pragma omp parallel num_threads(nsubdom)
   {
@@ -479,33 +506,13 @@ void cuda_point_malloc(void)
       sizeof(int) * dom[dev].Gfz.s3b));
     gpumem += sizeof(int) * dom[dev].Gfz.s3b;
 
+//Initialize those two arrays since they will be initialized with smaller length later in lpt_mollify_scH
+checkCudaErrors(cudaMemset(cellStart[dev],-1,lenCell*sizeof(int)));
+checkCudaErrors(cudaMemset(cellEnd[dev],-1,lenCell*sizeof(int)));
   }
 
-cuda_malloc_array_real(ug,npoints);
-cuda_malloc_array_real(vg,npoints);
-cuda_malloc_array_real(wg,npoints);
 
-cuda_malloc_array_real(lpt_stress_u,npoints);
-cuda_malloc_array_real(lpt_stress_v,npoints);
-cuda_malloc_array_real(lpt_stress_w,npoints);
 
-cuda_malloc_array_real(scg,npoints);
-cuda_malloc_array_real(Ksi,npoints*STENCIL3);
-
-cuda_malloc_array_int(gridParticleIndex,npoints);
-cuda_malloc_array_int(gridParticleHash,npoints);
-
-//calculate the maximum length of coordinate system
-int len0=dom[0].Gcc.s3b;
-int len1=dom[0].Gfx.s3b;
-int len2=dom[0].Gfy.s3b;
-int len3=dom[0].Gfz.s3b;
-if(len0<len1) len0=len1;
-if(len2<len3) len2=len3;
-if(len0<len2) len0=len2;
-
-cuda_malloc_array_int(cellStart,len0);
-cuda_malloc_array_int(cellEnd,len0);
 
 }
 

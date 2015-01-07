@@ -611,8 +611,6 @@ void cuda_scalar_advance(void)
 //Locate the point particle in each grid cell, store the grid cell number in points.i~points.k
     lpt_localize<<<numBlocks, dimBlocks>>>(npoints,_points[dev], _dom[dev],bc);
 
-//The result shows that Lagragian interpolation is more reasonable!!
-
 //initialize flow field array to 0 on device, the array length is Nx*Ny*Nz
 //include scalar source and particle volume fraction divided by cell volume
     lpt_scalar_source_init<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev],_epsp[dev], _dom[dev]);

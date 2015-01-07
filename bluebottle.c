@@ -430,31 +430,8 @@ fflush(stdout);
         scalar_show_config();
       #endif
 
-      #ifdef TEST // run test code
-        // ** note that some of these work only for DEV RANGE 0 0 **
-        // test CUDA functionality
-        printf("\n=====TEST");
-        fflush(stdout);
-        rec_flow_field_stepnum_out = -1;
-        rec_paraview_stepnum_out = -1;
-        rec_point_particle_stepnum_out = -1;
-        rec_scalar_stepnum_out = -1;
 
-        //rec_restart_stepnum_out = -1;
-        rec_precursor_stepnum_out = -1;
-        cuda_point_pull();
-	cuda_scalar_pull();
-        //cuda_BC_test();
-        //cuda_U_star_test_exp();
-        //cuda_U_star_test_cos();
-        //cuda_project_test();
-        //cuda_quad_interp_test();
-        cuda_lamb_test();
-        printf("========================================");
-        printf("========================================\n\n");
-        fflush(stdout);
-
-      #else // run simulation
+       // run simulation
         // get initial dt; this is an extra check for the SHEAR initialization
         dt = cuda_find_dt();
         dt_sc = cuda_find_dt_sc(dt);
@@ -705,7 +682,6 @@ while(dt_done<dt)
         }
 
            fflush(stdout);
-      #endif
 
       // clean up devices
       cuda_dom_free();

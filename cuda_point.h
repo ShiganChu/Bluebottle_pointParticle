@@ -50,13 +50,14 @@ void lpt_mollify_scH(int coordiSys,int valType,int dev,real *scSrc);
 
 
 __device__ void calcGridPos(point_struct *points,dom_struct *dom,int pp,int coordiSys);
-__device__ int calcGridHash(int &ic, int &jc,int &kc,dom_struct *dom,int coordiSys);
+//__device__ int calcGridHash(int &ic, int &jc,int &kc,dom_struct *dom,int coordiSys);
+__device__ int calcGridHash(int ic, int jc,int kc,dom_struct *dom,int coordiSys);
 
 
 __device__ void dom_startEnd_index(int &is, int &js,int &ks,int &ie, int &je,int &ke,dom_struct *dom,int coordiSys,int incGhost);
 __device__ real lpt_mol_typeVal(point_struct *points,dom_struct *dom,int pp,int coordiSys,int valType);
 
-__device__ real Sum_Ksi_Cell( int ic,int jc,int kc,
+__device__ real sum_ksi_cell( int ic,int jc,int kc,
                    point_struct *points,
                    dom_struct *dom,
 		   real *Ksi,

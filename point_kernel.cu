@@ -74,6 +74,7 @@ break;
 }
 }
 
+//calculate which grid the particle is in, won't make the grid index periodic
 __device__ void calcGridPos(point_struct *points,dom_struct *dom,int pp,int coordiSys)
 {
 
@@ -112,8 +113,7 @@ case 3:
   jp = floor((yp - ys) * ddy) + DOM_BUF;	   //for y[i]
   kp = floor((zp - zs) * ddz+ 0.5) + DOM_BUF;  //for zm[i+1]
   break;
-default:
-  printf("Wrong direction in lpt_mollify");
+default:break;
 }
 points[pp].i=ip;
 points[pp].j=jp;
@@ -205,11 +205,10 @@ default: break;}
 	
 }
 
-
-__device__ int calcGridHash(int &ic, int &jc,int &kc,dom_struct *dom,int coordiSys)
+//calculate the grid index, won't change the ic~kc of the input
+__device__ int calcGridHash(int ic, int jc,int kc,dom_struct *dom,int coordiSys)
 {
 int hash;
-
 periodic_grid_index(ic,jc,kc,dom,coordiSys);
 
 switch(coordiSys)
@@ -239,6 +238,10 @@ int pp =  threadIdx.x + blockIdx.x*blockDim.x;
 
 if(pp>=npoints) return;
 
+//The cell-center or face-center index to locate the particle 
+  calcGridPos(points,dom,pp,coordiSys);
+
+//ic~kc could be beyond domain boundary
 int ic =  points[pp].i;
 int jc =  points[pp].j;
 int kc =  points[pp].k;
@@ -292,18 +295,18 @@ int ti=threadIdx.x;
         if (pp == 0 || hash != sharedHash[ti])
         {
             cellStart[hash] = pp;
-//	printf("\nstart %d %d\n",hash,pp);
+	//printf("\nstart %d %d\n",hash,pp);
             if (pp > 0)
               {
         cellEnd[sharedHash[ti]] = pp;
-//	printf("\nend %d %d\n",sharedHash[ti],pp);
+	//printf("\nend %d %d\n",sharedHash[ti],pp);
 }
         }
 
         if (pp == npoints - 1)
         {
             cellEnd[hash] = pp + 1;
-//	    printf("\nend %d %d\n",hash,pp+1);
+	    //printf("\nend %d %d\n",hash,pp+1);
         }
 }
  
@@ -382,8 +385,7 @@ ym = (jc-DOM_BUF+0.5) * dy + ys;
 z = (kc-DOM_BUF) * dz + zs;
 r2 = (xp-xm)*(xp-xm)+(yp-ym)*(yp-ym)+(zp-z)*(zp-z);
 break;
-default:
-printf("Wrong coordiSys in lpt_integrate_mol");
+default:break;
 }
 
 //TODO make this as defined value avaible from host and device!!!
@@ -400,7 +402,7 @@ return val;
 
 
 // collide a particle against all other particles in a given cell
-__device__ real Sum_Ksi_Cell( int ic,int jc,int kc,
+__device__ real sum_ksi_cell( int ic,int jc,int kc,
                    point_struct *points,
                    dom_struct *dom,
 		   real *Ksi,
@@ -445,8 +447,8 @@ is=di-began;js=dj-began;ks=dk-began;
             //Add gausssian weight between cell center and partisle position to object
                 force += Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3]*Ap;
 
-//printf("\nstartEndIndex %d %d %d %d %d\n",startIndex,endIndex,index,gridHash,pp);
-//printf("\nKsi Ap %f %f %d %d %d %d\n",Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3],Ap,ip,jp,kp,pp);
+////printf("\nstartEndIndex %d %d %d %d %d\n",startIndex,endIndex,index,gridHash,pp);
+////printf("\nKsi Ap %f %f %d %d %d %d\n",Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3],Ap,ip,jp,kp,pp);
 
        }
     }
@@ -470,7 +472,7 @@ __global__ void lpt_point_ksi(point_struct *points, dom_struct *dom,real *Ksi,in
 int index =  threadIdx.x + blockIdx.x*blockDim.x;
 if(index>=npoints) return;
 int pp=gridParticleIndex[index];
-//printf("\nindex pp %d %d\n",index,pp);
+////printf("\nindex pp %d %d\n",index,pp);
 
 //Define the STENCIL of the Gausian filter, the slpt_mopread length of Gaussian kernel
 real ksi[STENCIL][STENCIL][STENCIL];
@@ -487,8 +489,6 @@ real  zp =  points[pp].z;
   int ip,jp,kp;//index of particle cell
   int ic,jc,kc;//index of object cell
   int is,js,ks;
-//The cell-center or face-center index to locate the particle 
-  calcGridPos(points,dom,pp,coordiSys);
 
 ip =  points[pp].i;
 jp =  points[pp].j;
@@ -507,6 +507,7 @@ for(int di=began;di<end;di++)
 {
 is=di-began;js=dj-began;ks=dk-began;
 ic=ip+di;jc=jp+dj;kc=kp+dk;
+//ip~kp could be beyond domain boundary
 ksi[is][js][ks]=lpt_integrate_mol(ic,jc,kc,xp,yp,zp,dom,coordiSys);
 buf+=ksi[is][js][ks];
 }
@@ -523,7 +524,7 @@ for(int di=began;di<end;di++)
 is=di-began;js=dj-began;ks=dk-began;
 ksi[is][js][ks]=ksi[is][js][ks]/buf;
 Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3]=ksi[is][js][ks];
-//printf("\nKsi  %f %d %d %d %d\n",Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3],is,js,ks,pp);
+////printf("\nKsi  %f %d %d %d %d\n",Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3],is,js,ks,pp);
 			}
 		}
 }
@@ -546,7 +547,7 @@ void lpt_mollify_scD( point_struct *points,
 int is,js,ks,ie,je,ke;
 
 //get domain start and end index
-int incGhost=0;
+int incGhost=1;
 dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
 
   for(int k = ks; k < ke; k++) {
@@ -560,7 +561,7 @@ if(i<ie&&i>=is && j<je&&j>=js)
 {
     // examine neighbouring cells
  int gridHash=calcGridHash(i,j,k,dom,coordiSys);
- A[gridHash]=Sum_Ksi_Cell(i,j,k,points,dom,Ksi,cellStart,cellEnd,gridParticleIndex,coordiSys,valType);
+ A[gridHash]=sum_ksi_cell(i,j,k,points,dom,Ksi,cellStart,cellEnd,gridParticleIndex,coordiSys,valType);
  }
 }
 
@@ -1202,7 +1203,7 @@ ug[pp]=0;
 vg[pp]=0;
 wg[pp]=0;
 
-if(pp==npoints-1) printf("\nug[pp] %f\n",ug[pp]); 
+if(pp==npoints-1) //printf("\nug[pp] %f\n",ug[pp]); 
 
 lpt_stress_u[pp]=0;
 lpt_stress_v[pp]=0;
@@ -1223,7 +1224,7 @@ real sc_eq,real DIFF)
 {
   int pp = threadIdx.x + blockIdx.x*blockDim.x;
 
-  if(pp < npoints) {
+  if(pp >= npoints) return;
 real up=points[pp].u;
 real vp=points[pp].v;
 real wp=points[pp].w;
@@ -1265,7 +1266,7 @@ int n3=5;
 int n2=1;
 real r=n3*DIFF/PI/2;
 real strength=r/n2;
-if(ur>0.5*strength) printf("\nhh %f %f %f %f\n",hh,Rep,ur,DIFF);
+if(ur>0.5*strength) //printf("\nhh %f %f %f %f\n",hh,Rep,ur,DIFF);
 */
 
 //Modification to stokes theory when Rep>1
@@ -1337,9 +1338,9 @@ dms/dt = pi *dp^2*hp*(rho_s-rho_{sat})   ref eq (20) in Oresta&&Prosperetti(2014
 if(points[pp].ms>0)  points[pp].msdot= PI*dia*dia*hp*(scg[pp]- sc_eq);
 else   points[pp].msdot= 0;
 
-//printf("\nmsdot %f %f %f %f\n",points[pp].msdot,hp,scg[pp],sc_eq);
+////printf("\nmsdot %f %f %f %f\n",points[pp].msdot,hp,scg[pp],sc_eq);
 
-  }
+  
 }
 
 
