@@ -79,29 +79,6 @@ void lpt_point_twoway_forcing();
 //calculate fluid stress du/dt to impose on particles
 void cuda_flow_stress(void);
 
-/*
-void cuda_free_array_int(int** &A);
-void cuda_free_array_real(real**& A);
-void cuda_malloc_array_int(int**& A,int len);
-void cuda_malloc_array_real(real**& A,int len);
-*/
-
-/*
-void cuda_free_array_int((int**&) A);
-void cuda_free_array_real((real**&) A);
-void cuda_malloc_array_int((int**&) A,int len);
-void cuda_malloc_array_real((real**&) A,int len);
-*/
-
-/*
-void cuda_free_array_int((int**) &A);
-void cuda_free_array_real((real **) &A);
-void cuda_malloc_array_int((int **) &A,int len);
-void cuda_malloc_array_real((real **) &A,int len);
-*/
-
-
-
 
 /****d* point_particle/NNODES
  * NAME

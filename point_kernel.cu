@@ -1197,11 +1197,12 @@ __global__ void point_interp_init(int npoints,point_struct *points,real *ug,real
 {
  int pp = threadIdx.x + blockIdx.x*blockDim.x;
   if(pp >= npoints) return;
-
 //real rad=  points[pp].r;
 ug[pp]=0;
 vg[pp]=0;
 wg[pp]=0;
+
+if(pp==npoints-1) printf("\nug[pp] %f\n",ug[pp]); 
 
 lpt_stress_u[pp]=0;
 lpt_stress_v[pp]=0;

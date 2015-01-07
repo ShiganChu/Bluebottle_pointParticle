@@ -523,7 +523,6 @@ void cuda_scalar_free(void)
   }
 
   // free device memory on host
-//add by shigan
   free(_stress_u);
   free(_stress_v);
   free(_stress_w);
@@ -602,7 +601,7 @@ void cuda_scalar_advance(void)
 // Add the point particle source to scalar equation
     int threads = MAX_THREADS_1D;
     int blocks = (int)ceil((real) npoints / (real) threads);
-    int blocks_st = blocks*STENCIL3;
+    //int blocks_st = blocks*STENCIL3;
 
     dim3 dimBlocks(threads);
     dim3 numBlocks(blocks);
@@ -614,51 +613,29 @@ void cuda_scalar_advance(void)
 
 //The result shows that Lagragian interpolation is more reasonable!!
 
-//initialize particle property array on device, the array length is npoints
-//include volume of point particle and source contributed by point particle
-//    lpt_point_source_init<<<numBlocks, dimBlocks>>>(npoints,_points[dev], _dom[dev],volPoint,scSrcc);
-
-
 //initialize flow field array to 0 on device, the array length is Nx*Ny*Nz
 //include scalar source and particle volume fraction divided by cell volume
     lpt_scalar_source_init<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
 
 
-//Mollify volume fraction on device, don't need too much thread source
-//    lpt_mollify_sc1<<<numBlocks, dimBlocks>>>(npoints,_epsp[dev],_points[dev], _dom[dev],volPoint);
 
 
 int coordiSys=0;
 int valType=1;
+//Mollify volume fraction on device, don't need too much thread source
 lpt_mollify_scH(coordiSys,valType,dev,_epsp[dev]);
 
-/*
-   lpt_mollify_sc<<<numBlocks, dimBlocks>>>(npoints,_epsp[dev],_points[dev], _dom[dev],Ksi,0,1);
-fflush(stdout);  
-    lpt_sum_ksi<<<numBlocks, dimBlocks>>>(npoints,_epsp[dev],_points[dev], _dom[dev],Ksi,0,1);
-fflush(stdout);  
-*/
+
     lpt_epsp_clip<<<numBlocks_x, dimBlocks_x>>>(_epsp[dev],_dom[dev]);
 
 
 
 //Mollify source of scalar on device
 if(sc_twoway>0) 
-//   lpt_mollify_sc<<<numBlocks, dimBlocks>>>(npoints,_epsp[dev],_scSrc[dev],_points[dev], _dom[dev],scSrcc);
   {   
-/*
- lpt_mollify_sc<<<numBlocks, dimBlocks>>>(npoints,_scSrc[dev],_points[dev], _dom[dev],Ksi,0,0);
-fflush(stdout);  
-         lpt_sum_ksi<<<numBlocks, dimBlocks>>>(npoints,_scSrc[dev],_points[dev], _dom[dev],Ksi,0,0);
-fflush(stdout);  
-*/
 valType=0;
 lpt_mollify_scH(coordiSys,valType,dev,_scSrc[dev]);
 }
-
-
-//    lpt_source_scalar_serial<<<numBlocks, dimBlocks>>>(npoints,epsp,_scSrc[dev],_points[dev], _dom[dev]);
-//    interpolate_source_scalar_Lag2<<<numBlocks, dimBlocks>>>(npoints, epsp,_scSrc[dev],_points[dev], _dom[dev],sc_bc);
 fflush(stdout);
 
 

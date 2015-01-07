@@ -20,8 +20,6 @@ extern "C"
 #include "thrust/iterator/zip_iterator.h"
 #include "thrust/sort.h"
 
-
-
 void cuda_free_array_int(int** &A);
 void cuda_free_array_real(real**& A);
 void cuda_malloc_array_int(int**& A,int len);

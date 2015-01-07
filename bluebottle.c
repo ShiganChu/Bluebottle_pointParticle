@@ -570,18 +570,10 @@ while(dt_done<dt)
           printf("SCLAR and Particle: Time = %e of %e (dt = %e).\n", ttime_done, duration, dt_try);
           fflush(stdout);
 
-printf("\ndone0\n");
-  fflush(stdout);
 	//move points explicitly at every sub-timestep
             if(npoints>0)   cuda_move_points();
-printf("\ndone1\n");
-  fflush(stdout);
             compute_scalar_BC();
-printf("\ndone2\n");
-  fflush(stdout);
             cuda_scalar_advance();
-printf("\ndone3\n");
-  fflush(stdout);
             cuda_scalar_BC();
     
 	    cuda_store_scalar();
@@ -591,7 +583,6 @@ printf("\ndone3\n");
 
 	// Increment
         dt_done = dt_done+dt_try;
-printf("\ndone4\n");
 
   }      
 
