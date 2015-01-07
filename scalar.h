@@ -28,6 +28,9 @@
 #include "vtk.h"
 
 
+#define MAX_THREADS_DIM3 10
+
+
 //used in and lpt_integrate_mol and lpt_source_scalar_serial
 #define KERNEL_WIDTH 7
 #define STENCIL KERNEL_WIDTH*3

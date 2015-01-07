@@ -115,6 +115,9 @@ __global__ void point_interp_init(int npoints,point_struct *points,real *ug,real
 //About Swap, and reference, coordiSys is the system direction, valType is the plane direction, incGhost is whether include ghost boundary or not
 void block_thread_cell(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordiSys,int valType);
 
+//About Swap, and reference, dirc is the system direction, get 3d blocks and threads
+void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordiSys);
+
 //Allocate block and thread for npoints
 void block_thread_point(dim3 &dimBlocks,dim3 &numBlocks,int npoints);
 

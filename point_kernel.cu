@@ -323,8 +323,8 @@ case 0:
     switch(valType)
    { case 0:   
 //Exchange rate of soluble mass from particles. All the following source should divide cellVol to ensure conservation law
- //    Ap=-points[pp].msdot;break;
-     Ap=1;break;
+    Ap=-points[pp].msdot;break;
+//     Ap=1;break;
      case 1:
 {//Particle volume filter
      real rad=points[pp].r;
@@ -447,8 +447,8 @@ is=di-began;js=dj-began;ks=dk-began;
             //Add gausssian weight between cell center and partisle position to object
                 force += Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3]*Ap;
 
-////printf("\nstartEndIndex %d %d %d %d %d\n",startIndex,endIndex,index,gridHash,pp);
-////printf("\nKsi Ap %f %f %d %d %d %d\n",Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3],Ap,ip,jp,kp,pp);
+//printf("\nstartEndIndex %d %d %d %d %d\n",startIndex,endIndex,index,gridHash,pp);
+//printf("\nKsi Ap %f %f %d %d %d %d\n",Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3],Ap,ip,jp,kp,pp);
 
        }
     }
@@ -531,7 +531,7 @@ Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3]=ksi[is][js][ks];
 
 
 
-
+/*
 __global__
 void lpt_mollify_scD( point_struct *points,
               dom_struct *dom,
@@ -555,8 +555,6 @@ dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
     int i = blockIdx.x*blockDim.x + threadIdx.x ;
     int j = blockIdx.y*blockDim.y + threadIdx.y ;
 
-//    if (i >=ie||j>=je||i<is||j<js) return;
-
 if(i<ie&&i>=is && j<je&&j>=js)
 {
     // examine neighbouring cells
@@ -568,6 +566,41 @@ if(i<ie&&i>=is && j<je&&j>=js)
 }
 
 
+*/
+
+__global__
+void lpt_mollify_scD( point_struct *points,
+              dom_struct *dom,
+              real *A,
+              real *Ksi,
+              int   *cellStart,
+              int   *cellEnd,
+              int   *gridParticleIndex,
+              int    npoints,
+              int coordiSys,int valType)
+{
+
+int is,js,ks,ie,je,ke;
+
+//get domain start and end index
+int incGhost=1;
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+
+    // subdomain indices
+    int i = blockIdx.x*blockDim.x + threadIdx.x ;
+    int j = blockIdx.y*blockDim.y + threadIdx.y ;
+    int k = blockIdx.z*blockDim.z + threadIdx.z ;
+
+if(i<ie&&i>=is && j<je&&j>=js&&k<ke&&k>=ks)
+{
+//if(i==ie-1&&j==je-1&&k==ke-1) printf("\nlpt_mollify_scD_3d ie %d\n",ie);
+    // examine neighbouring cells
+ int gridHash=calcGridHash(i,j,k,dom,coordiSys);
+ A[gridHash]=sum_ksi_cell(i,j,k,points,dom,Ksi,cellStart,cellEnd,gridParticleIndex,coordiSys,valType);
+ }
+
+}
+   
 
 __global__ void print_kernel_array_int(int *cell,int lenCell)
 {
