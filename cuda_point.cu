@@ -293,37 +293,50 @@ checkCudaErrors(cudaMemset(cellEnd[dev],-1,lenCell*sizeof(int)));
 
 
 
-
-
-
 cudaEvent_t start, stop;
 cudaEventCreate(&start);
 cudaEventCreate(&stop);
 float milliseconds = 0;
 
 
+//printf("\ngridDim_p %d %d %d\n",numBlocks_p.x,dimBlocks_p.x,npoints);
+//printf("\ngridDim_3d %d %d %d %d\n",numBlocks_3d.x,numBlocks_3d.y,numBlocks_3d.z,lenCell);
 
 array_init<<<numBlocks_st, dimBlocks_p>>>(Ksi[dev],_dom[dev],npoints*STENCIL3, 0.);
 
 
-
+milliseconds = 0;
+cudaEventRecord(start);
 calcHashD<<<numBlocks_p,dimBlocks_p>>>(gridParticleHash[dev],gridParticleIndex[dev],_points[dev],_dom[dev],npoints,coordiSys);
 
-fflush(stdout);
-
-sortParticles(gridParticleHash[dev],gridParticleIndex[dev],npoints);
-
-
-cudaEventRecord(start);
-findCellStartD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],cellEnd[dev],gridParticleHash[dev],gridParticleIndex[dev],npoints);
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime1 %f\n",milliseconds);
+printf("\ntime_calcHash %f\n",milliseconds);
+fflush(stdout);
+
+milliseconds = 0;
+cudaEventRecord(start);
+sortParticles(gridParticleHash[dev],gridParticleIndex[dev],npoints);
+
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+cudaEventElapsedTime(&milliseconds, start, stop);
+printf("\ntime_sort %f\n",milliseconds);
+fflush(stdout);
+
+milliseconds = 0;
+cudaEventRecord(start);
+findCellStartD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],cellEnd[dev],gridParticleHash[dev],gridParticleIndex[dev],npoints);
+fflush(stdout);
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+cudaEventElapsedTime(&milliseconds, start, stop);
+printf("\ntime_cellStart %f\n",milliseconds);
 fflush(stdout);
 
 
-
+milliseconds = 0;
 cudaEventRecord(start);
 //particle volume fraction 1 or other cell-centerred parameter 0
 lpt_point_ksi<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],Ksi[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
@@ -337,17 +350,9 @@ fflush(stdout);
 
 //lpt_mollify_scD<<<numBlocks_u,dimBlocks_u>>>(_points[dev],_dom[dev],scSrc,Ksi[dev],cellStart[dev],cellEnd[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 
-/*
-int dimSize=dimBlocks_3d.x*dimBlocks_3d.y*dimBlocks_3d.z;
-int numSize=numBlocks_3d.x*numBlocks_3d.y*numBlocks_3d.z;
-printf("\nblockDim %d %d %d\n",dimBlocks_3d.x,dimBlocks_3d.y,dimBlocks_3d.z);
-printf("\ngridDim %d %d %d\n",numBlocks_3d.x,numBlocks_3d.y,numBlocks_3d.z);
-printf("\nthread ratio %f\n",dimSize*numSize*1.0f/(1.0f*lenCell));
-fflush(stdout);
-*/
 
+milliseconds = 0;
 cudaEventRecord(start);
-
 lpt_mollify_scD<<<numBlocks_3d,dimBlocks_3d>>>(_points[dev],_dom[dev],scSrc,Ksi[dev],cellStart[dev],cellEnd[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 fflush(stdout);
 
@@ -422,8 +427,66 @@ default: break;
 
 }
 
+//About Swap, and reference, dirc is the system direction, get 3d blocks and threads
+void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int dirc)
+{
+
+    int threads_x = 0;
+    int threads_y = 0;
+    int threads_z = 0;
+    int blocks_x = 0;
+    int blocks_y = 0;
+    int blocks_z = 0;
+
+    int lenX=0;
+    int lenY=0;
+    int lenZ=0;
+
+grid_info G;
+switch(dirc)
+{
+case 0:G=dom.Gcc;break;
+case 1:G=dom.Gfx;break;
+case 2:G=dom.Gfy;break;
+case 3:G=dom.Gfz;break;
+default: break;
+}
+
+		lenX=G._inb;
+		lenY=G._jnb;
+		lenZ=G._knb;
 
 
+    if(lenX < MAX_THREADS_DIM)
+      threads_x = lenX;
+    else
+      threads_x = MAX_THREADS_DIM;
+
+    if(lenY < MAX_THREADS_DIM)
+      threads_y = lenY;
+    else
+      threads_y = MAX_THREADS_DIM;
+
+    int MAX_THREADS_Z=(int) 1024/(1.0f*MAX_THREADS_DIM*MAX_THREADS_DIM);
+    if(lenZ < MAX_THREADS_Z)
+      threads_z = lenZ;
+    else
+      threads_z = MAX_THREADS_Z;
+
+    blocks_x = (int)ceil((real) lenX / (real) (threads_x));
+    blocks_y = (int)ceil((real) lenY / (real) (threads_y));
+    blocks_z = (int)ceil((real) lenZ / (real) (threads_z));
+
+    dimBlocks.x=threads_x;
+    dimBlocks.y=threads_y;
+    dimBlocks.z=threads_z;
+
+    numBlocks.x=blocks_x;
+    numBlocks.y=blocks_y;
+    numBlocks.z=blocks_z;
+}
+
+/*
 //About Swap, and reference, dirc is the system direction, get 3d blocks and threads
 void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int dirc)
 {
@@ -468,13 +531,7 @@ default: break;
       threads_z = lenZ;
     else
       threads_z = MAX_THREADS_DIM3;
-/*
-int MAX_THREADS_Z=(int) MAX_THREADS_DIM3*1.0f/(1.0f*MAX_THREADS_DIM*MAX_THREADS_DIM);
-    if(lenZ < MAX_THREADS_Z)
-      threads_z = lenZ;
-    else
-      threads_z = MAX_THREADS_Z;
-*/
+
     blocks_x = (int)ceil((real) lenX / (real) (threads_x));
     blocks_y = (int)ceil((real) lenY / (real) (threads_y));
     blocks_z = (int)ceil((real) lenZ / (real) (threads_z));
@@ -487,7 +544,7 @@ int MAX_THREADS_Z=(int) MAX_THREADS_DIM3*1.0f/(1.0f*MAX_THREADS_DIM*MAX_THREADS_
     numBlocks.y=blocks_y;
     numBlocks.z=blocks_z;
 }
-
+*/
 
 void block_thread_point(dim3 &dimBlocks,dim3 &numBlocks,int npoints)
 {

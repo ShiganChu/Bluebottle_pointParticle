@@ -16,7 +16,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
+//For nvvp profiler
+#include <cuda_runtime.h>
 #ifdef DOUBLE
   typedef double real;
 #else

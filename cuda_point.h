@@ -53,9 +53,12 @@ __device__ void calcGridPos(point_struct *points,dom_struct *dom,int pp,int coor
 //__device__ int calcGridHash(int &ic, int &jc,int &kc,dom_struct *dom,int coordiSys);
 __device__ int calcGridHash(int ic, int jc,int kc,dom_struct *dom,int coordiSys);
 
+__device__ int mod_int(int x,int N);
 
 __device__ void dom_startEnd_index(int &is, int &js,int &ks,int &ie, int &je,int &ke,dom_struct *dom,int coordiSys,int incGhost);
 __device__ real lpt_mol_typeVal(point_struct *points,dom_struct *dom,int pp,int coordiSys,int valType);
+
+
 
 //Make the position (x,y,z) periodic
 __device__ void periodic_grid_position(real &x,real &y,real &z,dom_struct *dom);
@@ -72,6 +75,12 @@ Gaussian kernel with object position index (ic,jc,kc) and Gaussian center positi
 //__device__ real lpt_integrate_mol(int ic,int jc,int kc,real xp,real yp,real zp,int coordiSys,real xs,real ys,real zs,real dx,real dy,real dz);
 __device__ real lpt_integrate_mol(int ic,int jc,int kc,real xp,real yp,real zp, dom_struct *dom, int coordiSys);
 
+__device__ real point_cell_ksi(int gridHash,
+                   int is, int js, int ks,
+                   real *Ksi,
+                   int   *cellStart,
+                   int   *cellEnd,
+                   int   *gridParticleIndex);
 
 __device__ real sum_ksi_cell( int ic,int jc,int kc,
                    point_struct *points,

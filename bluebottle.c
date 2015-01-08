@@ -475,6 +475,9 @@ fflush(stdout);
           }
         }
 
+//For nvvp profiler
+  cudaProfilerStart();
+
        printf("\nBegan iteration...\n");
         /******************************************************************/
         /** Begin the main timestepping loop in the experimental domain. **/
@@ -692,9 +695,16 @@ while(dt_done<dt)
       points_clean();
       domain_clean();
       scalar_clean();
+
+ cudaProfilerStop();
     }
   }
   MPI_Finalize();
+
+
+//For nvvp profiler to work
+  cudaDeviceReset();
+
   if(restart_stop) return EXIT_FAILURE;
   else return EXIT_SUCCESS;
 

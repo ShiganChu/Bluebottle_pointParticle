@@ -601,10 +601,11 @@ void cuda_scalar_advance(void)
 // Add the point particle source to scalar equation
     int threads = MAX_THREADS_1D;
     int blocks = (int)ceil((real) npoints / (real) threads);
-    //int blocks_st = blocks*STENCIL3;
+    int blocks_st = blocks*STENCIL3;
 
     dim3 dimBlocks(threads);
     dim3 numBlocks(blocks);
+    dim3 numBlocks_st(blocks_st);
 
 
 
@@ -621,6 +622,7 @@ void cuda_scalar_advance(void)
 int coordiSys=0;
 int valType=1;
 //Mollify volume fraction on device, don't need too much thread source
+//array_init<<<numBlocks_st, dimBlocks>>>(Ksi[dev],_dom[dev],STENCIL3*npoints,0);
 lpt_mollify_scH(coordiSys,valType,dev,_epsp[dev]);
 
 
@@ -636,8 +638,13 @@ lpt_mollify_scH(coordiSys,valType,dev,_scSrc[dev]);
 }
 fflush(stdout);
 
+cudaEvent_t start, stop;
+cudaEventCreate(&start);
+cudaEventCreate(&stop);
+float milliseconds = 0;
 
-//advance scalar TODO add boundary condition to sc in the kernel!!!!!!!!!!!!
+cudaEventRecord(start);
+//advance scalar TODO add boundary condition to sc in the kernel!,  takes 2.6 ms compared to 5 ms by u_star_2
 if(dt0 > 0.) {
 advance_sc<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],
   _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
@@ -652,7 +659,11 @@ fflush(stdout);
 }
 //boundary condition of scalar
  
-
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+cudaEventElapsedTime(&milliseconds, start, stop);
+printf("\ntime_sc %f\n",milliseconds);
+fflush(stdout);
 
  }
 }

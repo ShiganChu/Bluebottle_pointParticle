@@ -100,11 +100,26 @@ int kr=kc-ks;
 if(ic<is||ic > ie-1)  ir= ir -floor(ir/(in*1.f))*in;
 if(jc<js||jc > je-1)  jr= jr -floor(jr/(jn*1.f))*jn;
 if(kc<ks||kc > ke-1)  kr= kr -floor(kr/(kn*1.f))*kn;
-
 ic=ir+is;
 jc=jr+js;
 kc=kr+ks;
-//if(kc==33) printf("\nic %d %d %d %d %d\n",ic,jc,in,jn,coordiSys);
+
+/*
+ir=-1;jr=65;
+if(ic<is||ic > ie-1) ir=mod_int(ir,in);
+if(jc<js||jc > je-1) jr=mod_int(jr,in);
+if(kc<ks||kc > ke-1) kr=mod_int(kr,in);
+ic=ir+is;
+jc=jr+js;
+kc=kr+ks;
+if(kr==33) printf("\nic %d %d %d %d %d\n",ic,jc,in,jn,coordiSys);
+*/
+}
+
+__device__ int mod_int(int x,int N)
+{
+int r=x%N;
+return ((r < 0) ? (r + N) : r) ;
 }
 
 //calculate which grid the particle is in, won't make the grid index periodic
@@ -291,11 +306,12 @@ __global__ void findCellStartD(   int   *cellStart,        // output: cell start
                                   int   *gridParticleIndex,   // input: sorted particle indices
                                   int    npoints)
 {
-__shared__ int sharedHash[MAX_THREADS_DIM+1]; // blockSize + 1 elements
+__shared__ int sharedHash[MAX_THREADS_1D+1]; // blockSize + 1 elements
 
 int pp =  threadIdx.x + blockIdx.x*blockDim.x;
-int ti=threadIdx.x;
+int ti =  threadIdx.x;
 
+// printf("\n0wong ti pp %d %d \n",ti,pp);
 
     // handle case when no. of particles not multiple of block size
 	if(pp>=npoints) return;
@@ -305,7 +321,6 @@ int ti=threadIdx.x;
         // at neighboring particle's hash value without loading
         // two hash values per thread
         sharedHash[ti+1] = hash;
-
         if (pp > 0 && ti == 0)
         {
             // first thread in block must load neighbor particle hash
@@ -320,6 +335,7 @@ int ti=threadIdx.x;
         // As it isn't the first particle, it must also be the cell end of
         // the previous particle's cell
 
+
         if (pp == 0 || hash != sharedHash[ti])
         {
             cellStart[hash] = pp;
@@ -328,13 +344,13 @@ int ti=threadIdx.x;
               {
         cellEnd[sharedHash[ti]] = pp;
 	//printf("\nend %d %d\n",sharedHash[ti],pp);
-}
+		}
         }
 
         if (pp == npoints - 1)
         {
             cellEnd[hash] = pp + 1;
-	    //printf("\nend %d %d\n",hash,pp+1);
+	//  printf("\nend %d %d\n",hash,pp+1);
         }
 }
  
@@ -442,46 +458,62 @@ __device__ real sum_ksi_cell( int ic,int jc,int kc,
         int ip,jp,kp;//index of particle cell
 	//int ic,jc,kc;//index of object cell
 	real force=0.f;
+//	force =force+1.1f;//takes 1 ms
 
 for(int dk=began;dk<end;dk++)
 for(int dj=began;dj<end;dj++)
 for(int di=began;di<end;di++)
 {
-//ip=ic+di;jp=jc+dj;kp=kc+dk;
-ip=ic-di;jp=jc-dj;kp=kc-dk;
-is=di-began;js=dj-began;ks=dk-began;
-     // store grid hash and partisle pp
-    int gridHash=calcGridHash(ip,jp,kp,dom,coordiSys);
+ //   int gHash=calcGridHash(ic,jc,kc,dom,coordiSys);
+ //   if(gHash<STENCIL3) int test=Ksi[gHash];//these two line takes 1 ms
 
-    // get start of bucket for this cell
-    int startIndex = cellStart[gridHash];
-    int endIndex   = cellEnd[gridHash];
+		ip=ic-di;jp=jc-dj;kp=kc-dk;
+		// store grid hash and partisle pp
+		int gridHash=calcGridHash(ip,jp,kp,dom,coordiSys);
+		is=di-began;js=dj-began;ks=dk-began;
+		//The above are cheap, takes 1 ms or so.  The following has significant thread divergence
+		// Any operation inside will be expensive
+		force+= point_cell_ksi(gridHash,is,js,ks,Ksi,cellStart,cellEnd,gridParticleIndex);
 
-
-    if ((startIndex != 0xffffffff)&&(endIndex != 0xffffffff)&&(startIndex<endIndex))          // cell is not empty
-    {
-        // iterate over partisles in this cell
-	// loop over partisle index
-        for (int index=startIndex; index<endIndex; index++)
-        {
-	int pp;
-	real Ap;
-		pp=gridParticleIndex[index];
-		Ap=lpt_mol_typeVal(points,dom,pp,coordiSys,valType);
-            //Add gausssian weight between cell center and partisle position to object
-                force += Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3]*Ap;
-
-//printf("\nstartEndIndex %d %d %d %d %d\n",startIndex,endIndex,index,gridHash,pp);
-//printf("\nKsi Ap %f %f %d %d %d %d\n",Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3],Ap,ip,jp,kp,pp);
-
-       }
-    }
-
+		//force +=forceCell;//takes no time;
   }
    return force;
 
 }
 
+__device__ real point_cell_ksi(int gridHash,
+		   int is, int js, int ks,
+		   real *Ksi,
+                   int   *cellStart,
+                   int   *cellEnd,
+                   int   *gridParticleIndex)
+{
+real forceCell = 0.f;
+
+// get start of bucket for this cell
+// gridHash changes for every cell, thus makes this for loop very expensive, since warp coalesence is very poor
+int startIndex=cellStart[gridHash];
+if(startIndex>=0) // cell is not empty
+{
+int endIndex   = cellEnd[gridHash];
+       // iterate over particles in this cell, loop over particle index, the loop itself really takes time(about 50 ms)!
+  for (int index=startIndex; index<endIndex; index++)
+        {
+		int pp=gridParticleIndex[index]; //this line is cheap. Read global integers are much cheaper than real numbers
+		//Try to avoid bank conflicts here, if we have shared memory
+		// Reading the global Ksi is very expensive , takes about 50 ms. Add forceCell every time takes 1000 ms
+		// Reading the global Ksi outside this device kernel is cheap , takes about 1 ms. 
+		// Calculate the index of Ksi is really cheap, takes less than 1 ms.
+		forceCell += Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3];//calc index for Ksi takes no timea.
+
+		//printf("\nstartEndIndex %d %d %d %d %d\n",startIndex,endIndex,index,gridHash,pp);
+		//	forceCell += 1.1f; //takes 1000 ms, takes no time if outside the if(startIndex>=0) loop
+	}
+
+}
+return forceCell;
+
+}
 
 
 
@@ -497,12 +529,6 @@ int index =  threadIdx.x + blockIdx.x*blockDim.x;
 if(index>=npoints) return;
 int pp=gridParticleIndex[index];
 ////printf("\nindex pp %d %d\n",index,pp);
-
-/*
-real xs=dom->xs;real ys=dom->ys;real zs=dom->zs;
-real dx=dom->dx;real dy=dom->dy;real dz=dom->dz;
-*/
-
 
 
 //Define the STENCIL of the Gausian filter, the slpt_mopread length of Gaussian kernel
@@ -546,6 +572,9 @@ buf+=ksi[is][js][ks];
 
 //TODO add mask infomation as in lpt_mollify_sc in lpt_interpolator.f90
 
+//This calculation is cheap, takes about 1 ms 
+real Ap=lpt_mol_typeVal(points,dom,pp,coordiSys,valType);
+
 // Normalize  ksi = ksi/buf
 if(buf>0)
 		{
@@ -553,9 +582,10 @@ for(int dk=began;dk<end;dk++)
 for(int dj=began;dj<end;dj++)
 for(int di=began;di<end;di++)
 			{
-is=di-began;js=dj-began;ks=dk-began;
-ksi[is][js][ks]=ksi[is][js][ks]/buf;
-Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3]=ksi[is][js][ks];
+		is=di-began;js=dj-began;ks=dk-began;
+		ksi[is][js][ks]=ksi[is][js][ks]/buf;
+                //Add gausssian weight between cell center and partisle position to object
+		Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3]=ksi[is][js][ks]*Ap;
 ////printf("\nKsi  %f %d %d %d %d\n",Ksi[is+js*STENCIL+ks*STENCIL2+pp*STENCIL3],is,js,ks,pp);
 			}
 		}
@@ -600,6 +630,7 @@ if(i<ie&&i>=is && j<je&&j>=js)
 
 */
 
+
 __global__
 void lpt_mollify_scD( point_struct *points,
               dom_struct *dom,
@@ -618,19 +649,23 @@ int is,js,ks,ie,je,ke;
 int incGhost=1;
 dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
 
+
     // subdomain indices
     int i = blockIdx.x*blockDim.x + threadIdx.x ;
     int j = blockIdx.y*blockDim.y + threadIdx.y ;
     int k = blockIdx.z*blockDim.z + threadIdx.z ;
+
+__syncthreads();
 
 if(i<ie&&i>=is && j<je&&j>=js&&k<ke&&k>=ks)
 {
 //if(i==ie-1&&j==je-1&&k==ke-1) printf("\nlpt_mollify_scD_3d ie %d\n",ie);
     // examine neighbouring cells
  int gridHash=calcGridHash(i,j,k,dom,coordiSys);
+//if(gridHash<npoints*STENCIL3) real test=Ksi[gridHash];//takes 58 ms
+//Make the sum_ksi_cell a device kernel will save half time of the calculation
  A[gridHash]=sum_ksi_cell(i,j,k,points,dom,Ksi,cellStart,cellEnd,gridParticleIndex,coordiSys,valType);
  }
-
 }
    
 

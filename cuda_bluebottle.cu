@@ -2770,6 +2770,11 @@ void cuda_U_star_2(void)
     dim3 dimBlocks_u(threads_y, threads_z);
     dim3 numBlocks_u(blocks_y, blocks_z);
 
+cudaEvent_t start, stop;
+cudaEventCreate(&start);
+cudaEventCreate(&stop);
+float milliseconds = 0;
+cudaEventRecord(start);
     if(dt0 > 0.) {
       u_star_2<<<numBlocks_u, dimBlocks_u>>>(rho_f, nu,
         _u0[dev], _v0[dev], _w0[dev], _f_x[dev],
@@ -2782,6 +2787,11 @@ void cuda_U_star_2(void)
         _diff0_u[dev], _conv0_u[dev], _diff_u[dev], _conv_u[dev],
         _u_star[dev], _dom[dev], dt);
     }
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+cudaEventElapsedTime(&milliseconds, start, stop);
+printf("\ntime_u %f\n",milliseconds);
+fflush(stdout);
 
     // v-component
     if(dom[dev].Gfy.knb < MAX_THREADS_DIM)
