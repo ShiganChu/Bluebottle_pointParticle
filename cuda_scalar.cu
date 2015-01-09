@@ -626,30 +626,35 @@ void cuda_scalar_advance(void)
     lpt_scalar_source_init<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
 
 
-/* 
+  
 cudaEvent_t start, stop;
 cudaEventCreate(&start);
 cudaEventCreate(&stop);
 cudaEventRecord(start);
-*/
+ 
 
 //Mollify volume fraction on device, don't need too much thread source
 //    lpt_mollify_sc1<<<numBlocks, dimBlocks>>>(npoints,_epsp[dev],_points[dev], _dom[dev],volPoint);
    lpt_mollify_sc<<<numBlocks, dimBlocks>>>(npoints,_epsp[dev],_points[dev], _dom[dev],Ksi,0,1);
 fflush(stdout);  
 
-/*
+ 
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 float milliseconds = 0;
 cudaEventElapsedTime(&milliseconds, start, stop);
 printf("\ntime1 %f\n",milliseconds);
-*/
-
+ 
+cudaEventRecord(start);
      lpt_sum_ksi<<<numBlocks, dimBlocks>>>(npoints,_epsp[dev],_points[dev], _dom[dev],Ksi,0,1);
 fflush(stdout);  
 
-
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+milliseconds = 0;
+cudaEventElapsedTime(&milliseconds, start, stop);
+printf("\ntime2 %f\n",milliseconds);
+ 
 
     lpt_epsp_clip<<<numBlocks_x, dimBlocks_x>>>(_epsp[dev],_dom[dev]);
 
