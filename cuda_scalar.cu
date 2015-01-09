@@ -638,12 +638,13 @@ lpt_mollify_scH(coordiSys,valType,dev,_scSrc[dev]);
 }
 fflush(stdout);
 
+/*
 cudaEvent_t start, stop;
 cudaEventCreate(&start);
 cudaEventCreate(&stop);
 float milliseconds = 0;
-
 cudaEventRecord(start);
+*/
 //advance scalar TODO add boundary condition to sc in the kernel!,  takes 2.6 ms compared to 5 ms by u_star_2
 if(dt0 > 0.) {
 advance_sc<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],
@@ -658,13 +659,14 @@ advance_sc_init<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _
 fflush(stdout);
 }
 //boundary condition of scalar
- 
+
+ /*
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
 printf("\ntime_sc %f\n",milliseconds);
 fflush(stdout);
-
+*/
  }
 }
 

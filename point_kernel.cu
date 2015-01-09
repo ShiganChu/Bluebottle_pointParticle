@@ -442,6 +442,7 @@ return val;
 
 
 // collide a particle against all other particles in a given cell
+// Increasing the STENCIL size will lower the efficiency significantly!!
 __device__ real sum_ksi_cell( int ic,int jc,int kc,
                    point_struct *points,
                    dom_struct *dom,
@@ -491,7 +492,7 @@ __device__ real point_cell_ksi(int gridHash,
 real forceCell = 0.f;
 
 // get start of bucket for this cell
-// gridHash changes for every cell, thus makes this for loop very expensive, since warp coalesence is very poor
+// gridHash changes for every cell, thus makes the for-loop very expensive, since warp coalesence is very poor
 int startIndex=cellStart[gridHash];
 if(startIndex>=0) // cell is not empty
 {
@@ -630,7 +631,7 @@ if(i<ie&&i>=is && j<je&&j>=js)
 
 */
 
-
+//This method will work with higher efficiency for thousands of particles
 __global__
 void lpt_mollify_scD( point_struct *points,
               dom_struct *dom,

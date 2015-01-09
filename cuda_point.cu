@@ -292,12 +292,12 @@ checkCudaErrors(cudaMemset(cellStart[dev],-1,lenCell*sizeof(int)));
 checkCudaErrors(cudaMemset(cellEnd[dev],-1,lenCell*sizeof(int)));
 
 
-
+/*
 cudaEvent_t start, stop;
 cudaEventCreate(&start);
 cudaEventCreate(&stop);
 float milliseconds = 0;
-
+*/
 
 //printf("\ngridDim_p %d %d %d\n",numBlocks_p.x,dimBlocks_p.x,npoints);
 //printf("\ngridDim_3d %d %d %d %d\n",numBlocks_3d.x,numBlocks_3d.y,numBlocks_3d.z,lenCell);
@@ -305,63 +305,42 @@ float milliseconds = 0;
 array_init<<<numBlocks_st, dimBlocks_p>>>(Ksi[dev],_dom[dev],npoints*STENCIL3, 0.);
 
 
-milliseconds = 0;
-cudaEventRecord(start);
 calcHashD<<<numBlocks_p,dimBlocks_p>>>(gridParticleHash[dev],gridParticleIndex[dev],_points[dev],_dom[dev],npoints,coordiSys);
 
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_calcHash %f\n",milliseconds);
-fflush(stdout);
 
-milliseconds = 0;
-cudaEventRecord(start);
 sortParticles(gridParticleHash[dev],gridParticleIndex[dev],npoints);
 
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_sort %f\n",milliseconds);
-fflush(stdout);
 
-milliseconds = 0;
-cudaEventRecord(start);
 findCellStartD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],cellEnd[dev],gridParticleHash[dev],gridParticleIndex[dev],npoints);
-fflush(stdout);
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_cellStart %f\n",milliseconds);
-fflush(stdout);
 
 
+/*
 milliseconds = 0;
 cudaEventRecord(start);
+*/
 //particle volume fraction 1 or other cell-centerred parameter 0
 lpt_point_ksi<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],Ksi[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 fflush(stdout);
 
+/*
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime2 %f\n",milliseconds);
+printf("\ntime_ksi %f\n",milliseconds);
 fflush(stdout);
-
-//lpt_mollify_scD<<<numBlocks_u,dimBlocks_u>>>(_points[dev],_dom[dev],scSrc,Ksi[dev],cellStart[dev],cellEnd[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
-
 
 milliseconds = 0;
 cudaEventRecord(start);
+*/
 lpt_mollify_scD<<<numBlocks_3d,dimBlocks_3d>>>(_points[dev],_dom[dev],scSrc,Ksi[dev],cellStart[dev],cellEnd[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 fflush(stdout);
-
+/*
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime3 %f\n",milliseconds);
+printf("\ntime_mollify %f\n",milliseconds);
 fflush(stdout);
-
+*/
 
 //print_kernel_array_int<<<numBlocks_print,dimBlocks_print>>>(cellEnd[dev],lenCell);
 }
@@ -427,6 +406,7 @@ default: break;
 
 }
 
+/*
 //About Swap, and reference, dirc is the system direction, get 3d blocks and threads
 void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int dirc)
 {
@@ -486,8 +466,11 @@ default: break;
     numBlocks.z=blocks_z;
 }
 
-/*
+*/
+
+
 //About Swap, and reference, dirc is the system direction, get 3d blocks and threads
+//This method is faster than blockDim=16*16*4 by 10%
 void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int dirc)
 {
 
@@ -544,7 +527,6 @@ default: break;
     numBlocks.y=blocks_y;
     numBlocks.z=blocks_z;
 }
-*/
 
 void block_thread_point(dim3 &dimBlocks,dim3 &numBlocks,int npoints)
 {
