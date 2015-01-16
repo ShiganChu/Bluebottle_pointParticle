@@ -17,11 +17,19 @@ real **_stress_u;
 real **_stress_v;
 real **_stress_w;
 
+float *GaussianKernel; //Gaussian kernel weight contributed by each point particle 
+int *_DomInfo;
 
 //Temp array for particle integration
 real **ug,**vg,**wg;//device pointer of the fluid velocity at the particle position
+real **posX,**posY,**posZ;//device pointer of the particle position
+real **posXold,**posYold,**posZold;//device pointer of the particle position
+real **lptSourceVal; //Source from each point particle 
+real **lptSourceValOld; //Source from each point particle 
+
 real **lpt_stress_u,**lpt_stress_v,**lpt_stress_w;//device pointer of the fluid velocity at the particle position
 real **scg;//device pointer of the fluid scalar at the particle position
+real **Weight; //Gaussian kernel weight contributed by each point particle 
 real **Ksi; //Gaussian kernel weight contributed by each point particle 
 int  **cellStart;
 int  **cellEnd;
@@ -475,8 +483,6 @@ fflush(stdout);
           }
         }
 
-//For nvvp profiler
-  cudaProfilerStart();
 
        printf("\nBegan iteration...\n");
         /******************************************************************/
@@ -534,6 +540,9 @@ if(npoints>0&&lpt_twoway>0)    	   lpt_point_twoway_forcing();
   
             cuda_dom_BC();
 
+//For nvvp profiler
+  cudaProfilerStart();
+
 	//Calculate fluid stress on particles at time t_n
             if(npoints>0)  cuda_flow_stress();
 
@@ -566,6 +575,8 @@ while(dt_done<dt)
 
   }      
 
+//For nvvp profiler
+ cudaProfilerStop();
       // store u, conv, and coeffs for use in next timestep
             cuda_store_u();
         
@@ -696,7 +707,6 @@ while(dt_done<dt)
       domain_clean();
       scalar_clean();
 
- cudaProfilerStop();
     }
   }
   MPI_Finalize();

@@ -20,10 +20,19 @@ extern "C"
 #include "thrust/iterator/zip_iterator.h"
 #include "thrust/sort.h"
 
+extern texture<float,1,cudaReadModeElementType> texRefGaussian;
+extern texture<int,1,cudaReadModeElementType> texRefDomInfo;
+
 void cuda_free_array_int(int** &A);
 void cuda_free_array_real(real**& A);
 void cuda_malloc_array_int(int**& A,int len);
 void cuda_malloc_array_real(real**& A,int len);
+
+
+void lpt_point_source_mollify_init();
+void gaussian_array_initH();
+void domInfo_array_initH();
+void lpt_point_source_mollify_final();
 
 
 
@@ -31,7 +40,7 @@ void cuda_malloc_array_real(real**& A,int len);
 __global__ void array_init(real *A,dom_struct *dom, int n, real C);
 
 __global__ void print_kernel_array_int(int *cell,int lenCell);
-__global__ void print_kernel_array_real(int *cell,int lenCell);
+__global__ void print_kernel_array_real(real *cell,int lenCell);
 
 void sortParticles(int *dGridParticleHash, int *dGridParticleIndex, int npoints);
 
@@ -47,6 +56,106 @@ The following two subroutines are for mollifying point source with a Gaussian ke
 
 extern "C"
 void lpt_mollify_scH(int coordiSys,int valType,int dev,real *scSrc);
+
+extern "C"
+void lpt_mollify_sc_optH(int coordiSys,int valType,int dev,real *scSrc);
+
+extern "C"
+void lpt_mollify_delta_scH(int coordiSys,int valType,int dev,real *scSrc);
+
+__device__ void calcGridPos_opt(int &ip,int &jp,int &kp,real xp,real yp,real zp,dom_struct *dom,int coordiSys);
+
+//Use texture memory to fetch it!!!
+//Gausian kernel to calculate weight coefficient of the filter
+__device__ real lpt_integrate_mol_opt(int ic,int jc,int kc,real xp,real yp,real zp, dom_struct *dom, int coordiSys);
+
+
+__global__ void gaussian_array_initD(float * GaussianKernel,real dg2_sig2,real dg,real norm);
+
+__global__ void lpt_point_position(point_struct *points,real *posX,real *posY,real *posZ, int npoints);
+
+
+__global__ void lpt_delta_point_position(point_struct *points,
+dom_struct *dom,
+real *posX,real *posY,real *posZ,
+real *lptSourceVal, 
+int npoints, int coordiSys,int valType);
+
+
+__global__ void findCellStart_deltaD(int   *cellStart,        // output: cell start pp
+                                  int   *cellEnd,          // output: cell end pp
+                                  int   *gridParticleHash, // input: sorted grid hashes
+                                  int   *gridParticleIndex,   // input: sorted particle indices
+				  real *lptSourceVal,
+				  real *lptSourceValOld,
+                                  int    npoints);
+
+
+__global__
+void lpt_mollify_delta_scD(dom_struct *dom,
+              real *A,
+	      real *lptSourceVal,
+              int   *cellStart,
+              int   *cellEnd,
+              int    npoints,
+	      int    coordiSys);
+
+
+__global__
+void lpt_mollify_sc_ksi_optD(dom_struct *dom,
+              real *A,
+	      real *posX,
+	      real *posY,
+	      real *posZ,
+	      real *Ksi,
+              int   *cellStart,
+              int   *cellEnd,
+              int   *gridParticleIndex,
+              int    npoints,
+              int coordiSys,int valType);
+//This method will work with higher efficiency for thousands of particles
+__global__
+void lpt_mollify_sc_optD(dom_struct *dom,
+              real *A,
+	      real *posX,
+	      real *posY,
+	      real *posZ,
+	      real *Weight,
+              int   *cellStart,
+              int   *cellEnd,
+              int   *gridParticleIndex,
+              int    npoints,
+              int coordiSys,int valType);
+
+__global__ void calcHash_optD(int   *gridParticleHash,  // output
+               int   *gridParticleIndex, // output
+               dom_struct *dom,               // input: dom info
+	       real *posX,real *posY,real *posZ,
+               int    npoints,
+	       int coordiSys);
+
+__global__ void lpt_point_weight(point_struct *points,
+				 dom_struct *dom,
+				 real *posX,real *posY,real *posZ, 
+				 real *Weight,
+				 int   *gridParticleIndex,
+				 int npoints,int coordiSys, int valType);
+
+__global__ void findCellStart_optD(   int   *cellStart,        // output: cell start pp
+                                  int   *cellEnd,          // output: cell end pp
+                                  int   *gridParticleHash, // input: sorted grid hashes
+                                  int   *gridParticleIndex,   // input: sorted particle indices
+				  real *posX,real *posY,real *posZ,
+				  real *posXold,real *posYold,real *posZold,
+                                  int    npoints);
+
+
+__global__ void lpt_point_ksi_opt(point_struct *points,
+                                 dom_struct *dom,
+                                 real *posX,real *posY,real *posZ,
+                                 real *Ksi,
+                                 int   *gridParticleIndex,
+                                 int npoints,int coordiSys, int valType);
 
 //__device__ void calcGridPos(int &ip,int &jp,int &kp,real xp,real yp,real zp,int coordiSys,real xs,real ys,real zs,real ddx,real ddy,real ddz);
 __device__ void calcGridPos(point_struct *points,dom_struct *dom,int pp,int coordiSys);

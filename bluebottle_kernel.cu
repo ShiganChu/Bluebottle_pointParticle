@@ -2297,7 +2297,7 @@ real U0=DIFF*L/dia/dia/n2;
       fx[i + tj*dom->Gfx._s1b + tk*dom->Gfx._s2b] = U0*
 cos(q*x)*
 (r*cos(r*t)*cos(q*y)+
-q*sin(r*t)*(2*q*cos(q*y)-sin(r*t)*sin(q*x)));
+q*sin(r*t)*(2*DIFF*q*cos(q*y)-U0*sin(r*t)*sin(q*x)));
     }
   }
 
@@ -2314,8 +2314,8 @@ __syncthreads();
   real x = ((ti-0.5) * dom->dx) + dom->xs;
   real y = ((j-1) * dom->dy) + dom->ys;
       fy[ti + j*dom->Gfy._s1b + tk*dom->Gfy._s2b] = U0*
-sin(q*y)*(-q*cos(q*x)*cos(q*x)*sin(r*t)*sin(r*t)*cos(q*y)
-+sin(q*x)*(r*cos(r*t)+q*sin(r*t)*(2*q+cos(q*y)*sin(r*t)*sin(q*x)))
+sin(q*y)*(q*U0*cos(q*x)*cos(q*x)*sin(r*t)*sin(r*t)*cos(q*y)
++sin(q*x)*(r*cos(r*t)+q*sin(r*t)*(2*DIFF*q+U0*cos(q*y)*sin(r*t)*sin(q*x)))
  );
     }
   }

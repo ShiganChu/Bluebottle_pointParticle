@@ -601,11 +601,11 @@ void cuda_scalar_advance(void)
 // Add the point particle source to scalar equation
     int threads = MAX_THREADS_1D;
     int blocks = (int)ceil((real) npoints / (real) threads);
-    int blocks_st = blocks*STENCIL3;
+ //   int blocks_st = blocks*STENCIL3;
 
     dim3 dimBlocks(threads);
     dim3 numBlocks(blocks);
-    dim3 numBlocks_st(blocks_st);
+ //   dim3 numBlocks_st(blocks_st);
 
 
 
@@ -618,15 +618,24 @@ void cuda_scalar_advance(void)
 
 
 
-
 int coordiSys=0;
 int valType=1;
 //Mollify volume fraction on device, don't need too much thread source
-//array_init<<<numBlocks_st, dimBlocks>>>(Ksi[dev],_dom[dev],STENCIL3*npoints,0);
-lpt_mollify_scH(coordiSys,valType,dev,_epsp[dev]);
 
+//lpt_mollify_sc_optH(coordiSys,valType,dev,_epsp[dev]);
+lpt_mollify_delta_scH(coordiSys,valType,dev,_epsp[dev]);
 
-    lpt_epsp_clip<<<numBlocks_x, dimBlocks_x>>>(_epsp[dev],_dom[dev]);
+/*
+    int lenSrc=dom[dev].Gcc.s3b;
+    dim3 dimBlocks_s,numBlocks_s;
+    block_thread_point(dimBlocks_s,numBlocks_s,lenSrc);
+    print_kernel_array_real<<<numBlocks_s,dimBlocks_s>>>(_epsp[dev],lenSrc);
+ */
+
+ 
+  
+
+lpt_epsp_clip<<<numBlocks_x, dimBlocks_x>>>(_epsp[dev],_dom[dev]);
 
 
 
@@ -634,7 +643,8 @@ lpt_mollify_scH(coordiSys,valType,dev,_epsp[dev]);
 if(sc_twoway>0) 
   {   
 valType=0;
-lpt_mollify_scH(coordiSys,valType,dev,_scSrc[dev]);
+//lpt_mollify_sc_optH(coordiSys,valType,dev,_scSrc[dev]);
+lpt_mollify_delta_scH(coordiSys,valType,dev,_scSrc[dev]);
 }
 fflush(stdout);
 
@@ -696,7 +706,6 @@ real cuda_find_dt_sc(real dt)
     dts[dev] += (v_max + 2 * DIFF / dom[dev].dy) / dom[dev].dy + v_max*v_max/2/DIFF;
     dts[dev] += (w_max + 2 * DIFF / dom[dev].dz) / dom[dev].dz + w_max*w_max/2/DIFF;
     dts[dev] = CFL / dts[dev];
-//    dts[dev] = dts[dev]/10;
   }
 
   // find max of all devices

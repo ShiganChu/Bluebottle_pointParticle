@@ -53,10 +53,19 @@ extern real **_omega_y;
 extern real **_omega_z;
 
 
+extern float *GaussianKernel; //Gaussian kernel weight contributed by each point particle 
+extern int *_DomInfo; //Gaussian kernel weight contributed by each point particle 
+
 //Temp array for particle integration
 extern real **ug,**vg,**wg;//device pointer of the fluid velocity at the particle position
+extern real **posX,**posY,**posZ;//device pointer of the particle position
+extern real **posXold,**posYold,**posZold;//device pointer of the particle position
+extern real **lptSourceVal; //Source from each point particle 
+extern real **lptSourceValOld; //Source from each point particle 
+
 extern real **lpt_stress_u,**lpt_stress_v,**lpt_stress_w;//device pointer of the fluid velocity at the particle position
 extern real **scg;//device pointer of the fluid scalar at the particle position
+extern real **Weight; //Gaussian kernel weight contributed by each point particle 
 extern real **Ksi; //Gaussian kernel weight contributed by each point particle 
 extern int  **cellStart;
 extern int  **cellEnd;
@@ -612,4 +621,60 @@ void cuda_move_points(void);
  *  Calculate new point_particle velocities and positions.
  ******
  */
+
+
+
+/*
+typedef struct grid_info {
+0  int is;
+1  int ie;
+2  int in;
+3  int isb;
+4  int ieb;
+5  int inb;
+6  int js;
+7  int je;
+8  int jn;
+9  int jsb;
+10  int jeb;
+11  int jnb;
+12  int ks;
+13  int ke;
+14  int kn;
+15  int ksb;
+16  int keb;
+17  int knb;
+18  int s1;
+19  int s2;
+20  int s3;
+21  int s1b;
+22  int s2b;
+23  int s3b;
+
+4  int _is;
+  int _ie;
+  int _in;
+  int _isb;
+  int _ieb;
+  int _inb;
+5  int _js;
+  int _je;
+  int _jn;
+  int _jsb;
+  int _jeb;
+  int _jnb;
+6  int _ks;
+  int _ke;
+  int _kn;
+  int _ksb;
+  int _keb;
+  int _knb;
+7  int _s1;
+  int _s1b;
+  int _s2;
+  int _s2b;
+  int _s3;
+  int _s3b;
+} grid_info;
+*/
 #endif

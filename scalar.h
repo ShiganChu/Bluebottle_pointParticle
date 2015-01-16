@@ -32,7 +32,8 @@
 
 
 //used in and lpt_integrate_mol and lpt_source_scalar_serial
-#define KERNEL_WIDTH 7
+#define LEN_GAUSSIAN_ARRAY 5000
+#define KERNEL_WIDTH 1
 #define STENCIL KERNEL_WIDTH*3
 #define STENCIL2 STENCIL*STENCIL
 #define STENCIL3 STENCIL2*STENCIL

@@ -241,9 +241,13 @@ __global__ void BC_sc_T_D(real *sc, dom_struct *dom, real bc)
 
 
 
-__global__ void advance_sc(real DIFF, real *u, real *v, real *w,real *f,real *epsp,
-  real *diff0, real *conv0, real *diff, real *conv, real *sc,real *sc0,
-  dom_struct *dom, real dt0, real dt)
+__global__ void advance_sc(	real DIFF, 
+				real *u, real *v, real *w,
+				real *f,real *epsp,
+				real *diff0, real *conv0, 
+				real *diff, real *conv, 
+				real *sc,real *sc0,
+				dom_struct *dom, real dt0, real dt)
 {
   // create shared memory
   // no reason to load pressure into shared memory, but leaving it in global
@@ -369,6 +373,8 @@ real sc_diff= ab * s_d[ti + tj*blockDim.x]-ab0*s_d0[ti + tj*blockDim.x];
 real rhs=sc_diff+s_f[ti + tj*blockDim.x];
 //real rhs=s_f[ti + tj*blockDim.x];
 sc_c[ti + tj*blockDim.x] +=(sc_conv+rhs)*dt;
+
+//if(i==30&&j==30&&k==30) printf("\nsc_diff %f %f %f %f\n",sc_diff,sc_conv,s_f[ti + tj*blockDim.x],dt);
 }
 
 // copy shared memory back to global, without copying boundary ghost values
@@ -446,8 +452,10 @@ sc_b[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b];
 sc_t[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k+1)*dom->Gcc._s2b];
 
  p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
-/*
+
 s_f[ti + tj*blockDim.x]=    f[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+
+/*
 s_c0[ti + tj*blockDim.x]=conv0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
 s_d0[ti + tj*blockDim.x]=diff0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
 */
@@ -531,6 +539,9 @@ real ddsdzz=(sc_b[ti + tj*blockDim.x]+sc_t[ti + tj*blockDim.x]-2*sc_c[ti + tj*bl
 real rhs=s_d[ti + tj*blockDim.x]+s_f[ti + tj*blockDim.x];
 //real rhs=s_f[ti + tj*blockDim.x];
 sc_c[ti + tj*blockDim.x] +=(s_c[ti + tj*blockDim.x]+rhs)*dt;
+
+//if(i==30&&j==30&&k>30&&k<31) printf("\nsc_diff0 %f %f %f %d\n",s_d[ti + tj*blockDim.x],s_c[ti + tj*blockDim.x],s_f[ti + tj*blockDim.x],k);
+
 }
 
     __syncthreads();
@@ -558,6 +569,7 @@ sc_c[ti + tj*blockDim.x] +=(s_c[ti + tj*blockDim.x]+rhs)*dt;
 
   int s1b = dom->Gcc._s1b;
   int s2b = dom->Gcc._s2b;
+
 if(tj < dom->Gcc._jeb && tk < dom->Gcc._keb) {
     for(int i = dom->Gcc._isb; i < dom->Gcc._ieb; i++) 
 	{
