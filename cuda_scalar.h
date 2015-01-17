@@ -15,6 +15,10 @@ extern "C"
 #include "point.h"
 }
 
+extern texture<float,1,cudaReadModeElementType> texRefGaussian;
+extern texture<int,1,cudaReadModeElementType> texRefDomInfo;
+
+
 /****f* cuda_bluebottle_kernel/BC_sc_W_P<<<>>>()
  * NAME
  *  BC_sc_W_P<<<>>>()
@@ -327,6 +331,16 @@ __global__ void advance_sc(real DIFF, real *u, real *v, real *w,real *f,real *ep
 __global__ void advance_sc_init(real DIFF, real *u, real *v, real *w,real *f,real *epsp,
   real *diff0, real *conv0, real *diff, real *conv,real *sc,real *sc0,
   dom_struct *dom, real dt0, real dt);
+
+//Advance scalar using MacCormack scheme.
+__global__ void advance_sc_macCormack(	real DIFF, 
+				real *u, real *v, real *w,
+				real *f,real *epsp,
+				real *diff, real *conv, 
+				real *sc,real *sc0,
+				dom_struct *dom, real dt);
+
+
 
 //initialize flow field array to be 0 on device, include scalar source and particle volume fraction, array length is dom->s3b
 __global__ void lpt_scalar_source_init(real *A, real *B,dom_struct *dom);

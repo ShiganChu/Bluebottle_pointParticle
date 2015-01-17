@@ -240,7 +240,159 @@ __global__ void BC_sc_T_D(real *sc, dom_struct *dom, real bc)
 }
 
 
+//MacCormac scheme 
+__global__ void advance_sc_macCormack(	real DIFF, 
+				real *u, real *v, real *w,
+				real *f,real *epsp,
+				real *diff, real *conv, 
+				real *sc,real *sc0,
+				dom_struct *dom, real dt)
+{
+  // create shared memory
+  // no reason to load pressure into shared memory, but leaving it in global
+  // will require additional if statements, so keep it in shared
+  __shared__ real s_w0[MAX_THREADS_DIM * MAX_THREADS_DIM];      // w back
+  __shared__ real s_w1[MAX_THREADS_DIM * MAX_THREADS_DIM];      // w center
+  __shared__ real s_u[MAX_THREADS_DIM * MAX_THREADS_DIM];       // u
+  __shared__ real s_v[MAX_THREADS_DIM * MAX_THREADS_DIM];       // v
+//store scalar related values such as convective and diffusive term.
+  __shared__ real s_d[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
+  __shared__ real s_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // conv
+  __shared__ real s_f[MAX_THREADS_DIM * MAX_THREADS_DIM];       // source term
 
+
+//store scalar value of difference direction at cell center
+  __shared__ real sc_b[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at bottom center
+  __shared__ real sc_t[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at top	 center
+  __shared__ real sc_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at  	 center
+
+//store point volume percentage in each grid cell
+  __shared__ real p_epsp[MAX_THREADS_DIM * MAX_THREADS_DIM];       
+ 
+
+
+  real ddx = 1. / dom->dx;     // to limit the number of divisions needed
+  real ddy = 1. / dom->dy;     // to limit the number of divisions needed
+  real ddz = 1. / dom->dz;     // to limit the number of divisions needed
+
+ 
+  int C;
+
+  // loop over z-planes
+//  for(int k = dom->Gcc._ksb; k < dom->Gcc._keb; k++) {
+  for(int k = dom->Gcc._ks; k < dom->Gcc._ke; k++) {
+    // subdomain indices
+    // the extra 2*blockIdx.X terms implement the necessary overlapping of
+    // shared memory blocks in the subdomain
+    int i = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+    int j = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+
+    // shared memory indices
+    int ti = threadIdx.x;
+    int tj = threadIdx.y;
+
+    // load shared memory
+    // TODO: look into the effect of removing these if statements and simply
+    // allowing memory overruns for threads that don't matter for particular
+    // discretizations
+
+    if((j >= dom->Gcc._jsb && j < dom->Gcc._jeb)&& (i >= dom->Gcc._isb && i < dom->Gcc._ieb)) {
+sc_c[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+sc_b[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b];
+sc_t[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k+1)*dom->Gcc._s2b];
+
+ s_f[ti + tj*blockDim.x]=    f[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+
+p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+}
+
+   // make sure all threads complete shared memory copy
+    __syncthreads();
+
+    if((j >= dom->Gfz._js && j < dom->Gfz._je)
+      && (i >= dom->Gfz._is && i < dom->Gfz._ie)) {
+      s_w0[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b];
+      s_w1[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + (k+1)*dom->Gfz._s2b];
+    }
+    if((j >= dom->Gfx._js && j < dom->Gfx._je)
+      && (i >= dom->Gfx._is && i < dom->Gfx._ie)) {
+      s_u[ti + tj*blockDim.x] = u[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b];
+    }
+    if((j >= dom->Gfy._js && j < dom->Gfy._je)
+      && (i >= dom->Gfy._is && i < dom->Gfy._ie)) {
+      s_v[ti + tj*blockDim.x] = v[i + j*dom->Gfy._s1b + k*dom->Gfy._s2b];
+    }
+
+  
+    // make sure all threads complete shared memory copy
+    __syncthreads();
+
+    // compute convective term
+    // if off the shared memory block boundary
+    if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1)) {
+//scalar at face center
+real sc_uw=(sc_c[ti + tj*blockDim.x]+sc_c[ti-1 + tj*blockDim.x])/2.0f;
+real sc_ue=(sc_c[ti + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x])/2.0f;
+
+real sc_vs=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj-1)*blockDim.x])/2.0f;
+real sc_vn=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x])/2.0f;
+
+real sc_wb=(sc_b[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
+real sc_wt=(sc_t[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
+
+//convective term of scalar at cell center
+real dsudx=(s_u[(ti+1) + tj*blockDim.x]*sc_ue - s_u[ti + tj*blockDim.x]*sc_uw) * ddx;
+real dsvdy=(s_v[ti + (tj+1)*blockDim.x]*sc_vn - s_v[ti + tj*blockDim.x]*sc_vs) * ddy;
+real dswdz=(s_w1[ti + tj*blockDim.x]   *sc_wt - s_w0[ti + tj*blockDim.x]*sc_wb) * ddz;
+
+
+//velocity  at cell center
+real u_c=(s_u[(ti+1) + tj*blockDim.x] + s_u[ti + tj*blockDim.x])/2.0f;
+real v_c=(s_v[ti + (tj+1)*blockDim.x]+s_v[ti + tj*blockDim.x])/2.0f;
+real w_c=(s_w1[ti + tj*blockDim.x]+s_w0[ti + tj*blockDim.x])/2.0f;
+
+
+//diffusive term of scalar at cell center
+real ddsdxx=(sc_c[ti-1 + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddx* ddx;
+real ddsdyy=(sc_c[ti + (tj-1)*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddy* ddy;
+real ddsdzz=(sc_b[ti + tj*blockDim.x]+sc_t[ti + tj*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddz* ddz;
+
+     //move convective term to right hand side 
+      s_c[ti + tj*blockDim.x]=-(dsudx+dsvdy+dswdz);
+     //Diffusion term
+      s_d[ti + tj*blockDim.x]= ddsdxx*(DIFF+u_c*u_c*dt/2.f)+ddsdyy*(DIFF+v_c*v_c*dt/2.f)+ddsdzz*(DIFF+w_c*w_c*dt/2.f);
+
+
+real sc_conv= s_c[ti + tj*blockDim.x];
+real sc_diff= s_d[ti + tj*blockDim.x];
+
+//TODO should we have s_f at t+1/2 step as well? 
+//advance scalar. Take the particle volume fraction into consideration
+//real rhs=(sc_diff+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
+real rhs=sc_diff+s_f[ti + tj*blockDim.x];
+//real rhs=s_f[ti + tj*blockDim.x];
+sc_c[ti + tj*blockDim.x] +=(sc_conv+rhs)*dt;
+
+//if(i==30&&j==30&&k==30) printf("\nsc_diff %f %f %f %f\n",sc_diff,sc_conv,s_f[ti + tj*blockDim.x],dt);
+}
+
+// copy shared memory back to global, without copying boundary ghost values
+//sc stores n+1 timestep, conv and diff are n timestep!!
+    if((j >= dom->Gcc._js && j < dom->Gcc._je)
+     && (i >= dom->Gcc._is && i < dom->Gcc._ie)
+      && (ti > 0 && ti < (blockDim.x-1))
+      && (tj > 0 && tj < (blockDim.y-1))) {
+      C = i + j*dom->Gcc._s1b + k*dom->Gcc._s2b;
+      sc[C] = sc_c[ti + tj*blockDim.x];
+      conv[C] = s_c[ti + tj*blockDim.x];
+      diff[C] = s_d[ti + tj*blockDim.x];
+    }
+  }
+}
+
+
+
+//Using central difference scheme in space, and adam-bashforth scheme in time.
 __global__ void advance_sc(	real DIFF, 
 				real *u, real *v, real *w,
 				real *f,real *epsp,
@@ -339,14 +491,14 @@ p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
     // if off the shared memory block boundary
     if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1)) {
 //scalar at face center
-real sc_uw=(sc_c[ti + tj*blockDim.x]+sc_c[ti-1 + tj*blockDim.x])/2.0;
-real sc_ue=(sc_c[ti + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x])/2.0;
+real sc_uw=(sc_c[ti + tj*blockDim.x]+sc_c[ti-1 + tj*blockDim.x])/2.0f;
+real sc_ue=(sc_c[ti + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x])/2.0f;
 
-real sc_vs=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj-1)*blockDim.x])/2.0;
-real sc_vn=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x])/2.0;
+real sc_vs=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj-1)*blockDim.x])/2.0f;
+real sc_vn=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x])/2.0f;
 
-real sc_wb=(sc_b[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0;
-real sc_wt=(sc_t[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0;
+real sc_wb=(sc_b[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
+real sc_wt=(sc_t[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
 
 //convective term of scalar at cell center
 real dsudx=(s_u[(ti+1) + tj*blockDim.x]*sc_ue - s_u[ti + tj*blockDim.x]*sc_uw) * ddx;
@@ -451,14 +603,9 @@ sc_c[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
 sc_b[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b];
 sc_t[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k+1)*dom->Gcc._s2b];
 
- p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
 
 s_f[ti + tj*blockDim.x]=    f[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
-
-/*
-s_c0[ti + tj*blockDim.x]=conv0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
-s_d0[ti + tj*blockDim.x]=diff0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
-*/
 }
 
   // make sure all threads complete shared memory copy
@@ -508,14 +655,14 @@ s_d0[ti + tj*blockDim.x]=diff0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
     // if off the shared memory block boundary
     if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1)) {
 //scalar on the west and east u face
-real sc_uw=(sc_c[ti + tj*blockDim.x]+sc_c[ti-1 + tj*blockDim.x])/2.0;
-real sc_ue=(sc_c[ti + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x])/2.0;
+real sc_uw=(sc_c[ti + tj*blockDim.x]+sc_c[ti-1 + tj*blockDim.x])/2.0f;
+real sc_ue=(sc_c[ti + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x])/2.0f;
 
-real sc_vs=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj-1)*blockDim.x])/2.0;
-real sc_vn=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x])/2.0;
+real sc_vs=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj-1)*blockDim.x])/2.0f;
+real sc_vn=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x])/2.0f;
 
-real sc_wb=(sc_b[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0;
-real sc_wt=(sc_t[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0;
+real sc_wb=(sc_b[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
+real sc_wt=(sc_t[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
 
 //convective term of scalar at cell center
 real dsudx=(s_u[(ti+1) + tj*blockDim.x]*sc_ue - s_u[ti + tj*blockDim.x]*sc_uw) * ddx;
@@ -564,17 +711,30 @@ sc_c[ti + tj*blockDim.x] +=(s_c[ti + tj*blockDim.x]+rhs)*dt;
 
  __global__ void lpt_scalar_source_init(real *A, real *B,dom_struct *dom)
 {
-  int tj = blockDim.x*blockIdx.x + threadIdx.x- 2*blockIdx.x;
-  int tk = blockDim.y*blockIdx.y + threadIdx.y- 2*blockIdx.y;
-
+  int tj = blockDim.x*blockIdx.x + threadIdx.x;
+  int tk = blockDim.y*blockIdx.y + threadIdx.y;
+  int ti = blockDim.z*blockIdx.z + threadIdx.z;
+/*
   int s1b = dom->Gcc._s1b;
   int s2b = dom->Gcc._s2b;
+*/
+int s1b=tex1Dfetch(texRefDomInfo,21);
+int s2b=tex1Dfetch(texRefDomInfo,22);
 
+int ieb=tex1Dfetch(texRefDomInfo,4);
+int jeb=tex1Dfetch(texRefDomInfo,10);
+int keb=tex1Dfetch(texRefDomInfo,16);
+
+
+/*
 if(tj < dom->Gcc._jeb && tk < dom->Gcc._keb) {
     for(int i = dom->Gcc._isb; i < dom->Gcc._ieb; i++) 
+*/
+
+if(ti<ieb &&tj < jeb && tk < keb) {
 	{
-	A[i+tj*s1b+tk*s2b]=0.f;
-	B[i+tj*s1b+tk*s2b]=0.f;
+	A[ti+tj*s1b+tk*s2b]=0.f;
+	B[ti+tj*s1b+tk*s2b]=0.f;
 	}
  }
 

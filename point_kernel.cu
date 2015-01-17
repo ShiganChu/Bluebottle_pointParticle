@@ -391,10 +391,8 @@ __shared__ int cell_end[MAX_THREADS_DIM * MAX_THREADS_DIM];
 
  
     // subdomain indices
-    // the extra 2*blockIdx.X terms implement the necessary overlapping of
-    // shared memory blocks in the subdomain
-    int i = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    int i = blockIdx.x*blockDim.x + threadIdx.x ;
+    int j = blockIdx.y*blockDim.y + threadIdx.y ;
 
     // shared memory indices
     int ti = threadIdx.x;
@@ -424,11 +422,9 @@ cell_end[ti+tj*blockDim.x]=cellEnd[gridHash];
 	real forceCell = 0.f;
 	int start_index,end_index;
 
-if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1))
+    if((j >= js && j < je)
+     && (i >= is && i < ie))
 		{
-//if(gridHash<npoints*STENCIL3) real test=Ksi[gridHash];//takes 58 ms
-//Make the sum_ksi_cell a device kernel will save half time of the calculation
-		//kp=k-dk;
 		// store grid hash and partisle pp
 		start_index=cell_start[ti+tj*blockDim.x];
 	

@@ -295,12 +295,12 @@ checkCudaErrors(cudaMemset(gridParticleIndex[dev],-1,npoints*sizeof(int)));
 checkCudaErrors(cudaMemset(cellStart[dev],-1,lenCell*sizeof(int)));
 checkCudaErrors(cudaMemset(cellEnd[dev],-1,lenCell*sizeof(int)));
 
-
+/*
 cudaEvent_t start, stop;
 cudaEventCreate(&start);
 cudaEventCreate(&stop);
 float milliseconds = 0;
-
+*/
 //printf("\ngridDim_p %d %d %d\n",numBlocks_p.x,dimBlocks_p.x,npoints);
 //printf("\ngridDim_3d %d %d %d %d\n",numBlocks_3d.x,numBlocks_3d.y,numBlocks_3d.z,lenCell);
 
@@ -318,8 +318,10 @@ calcHash_optD<<<numBlocks_p,dimBlocks_p>>>(gridParticleHash[dev],
 
 sortParticles(gridParticleHash[dev],gridParticleIndex[dev],npoints);
 
+/*
 milliseconds = 0;
 cudaEventRecord(start);
+*/
 findCellStart_deltaD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 						cellEnd[dev],
 						gridParticleHash[dev],
@@ -327,7 +329,7 @@ findCellStart_deltaD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 						lptSourceVal[dev],
 						lptSourceValOld[dev],
 						npoints);
-
+/*
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
@@ -335,10 +337,7 @@ printf("\ntime_reoder %f\n",milliseconds);
 fflush(stdout);
 milliseconds = 0;
 cudaEventRecord(start);
-//particle volume fraction 1 or other cell-centerred parameter 0
-//lpt_point_weight<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],posX[dev],posY[dev],posZ[dev],Weight[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 
-//lpt_point_ksi_opt<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],posX[dev],posY[dev],posZ[dev],Ksi[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 fflush(stdout);
 
 cudaEventRecord(stop);
@@ -349,18 +348,18 @@ fflush(stdout);
 
 milliseconds = 0;
 cudaEventRecord(start);
-
+*/
 
 lpt_mollify_delta_scD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,lptSourceVal[dev],cellStart[dev],cellEnd[dev],npoints,coordiSys);
 
-
+/*
 fflush(stdout);
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
 printf("\ntime_mollify %f\n",milliseconds);
 fflush(stdout);
-
+*/
 //print_kernel_array_int<<<numBlocks_print,dimBlocks_print>>>(cellEnd[dev],lenCell);
 }
 
