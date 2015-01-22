@@ -6,6 +6,37 @@
 
 //#include "bluebottle.h"
 #include "cuda_point.h"
+#include "entrySearch.h"
+
+
+
+extern "C"
+real cuda_find_dt_points(real dt)
+{
+  // results from all devices
+  real *pdt;
+ 
+  checkCudaErrors(cudaMalloc((void**) &(pdt),sizeof(real) * npoints));
+  dim3 dimBlocks_p,numBlocks_p;
+  block_thread_point(dimBlocks_p,numBlocks_p,npoints);
+
+  copy_points_dt<<<numBlocks_p,dimBlocks_p>>>(pdt,_points[0],npoints);
+  real min;
+  min = find_min(npoints, pdt);
+
+  // clean up
+  cudaFree(pdt);
+//printf("\npoints_dt %f %f\n",min,dt);
+  if(min>dt||min<EPSILON) min=dt; 
+
+//printf("\npoints_dt2 %f %f\n",min,dt);
+  return min;
+}
+
+
+
+
+
 
 extern "C"
 void cuda_flow_stress()
@@ -174,7 +205,7 @@ interpolate_point_vel_Lag2<<<numBlocks_p, dimBlocks_p>>>(_stress_u[dev],_stress_
 							 lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],
 							 _points[dev],_dom[dev],bc);
 
-
+/*
 drag_points<<<numBlocks_p, dimBlocks_p>>>(_points[dev],npoints,
 ug[dev],vg[dev],wg[dev],
 lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],scg[dev],
@@ -194,6 +225,14 @@ sc_eq,DIFF);
 fflush(stdout);
 
       move_points_b<<<numBlocks_p, dimBlocks_p>>>(_dom[dev], _points[dev], npoints,dt_try);
+*/
+
+drag_move_points<<<numBlocks_p, dimBlocks_p>>>(_points[dev],_dom[dev],npoints,
+ug[dev],vg[dev],wg[dev],
+lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],scg[dev],
+rho_f,mu,g,gradP,
+C_add, C_stress,C_drag,
+sc_eq,DIFF,dt_try);
 
 fflush(stdout);
 

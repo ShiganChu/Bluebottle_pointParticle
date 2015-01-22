@@ -3171,6 +3171,8 @@ real cuda_find_dt(void)
     dts[dev] += (v_max + 2 * nu / dom[dev].dy) / dom[dev].dy;
     dts[dev] += (w_max + 2 * nu / dom[dev].dz) / dom[dev].dz;
     dts[dev] = CFL / dts[dev];
+
+ //   dts[dev] = dts[dev]/100.f;
   }
 
   // find max of all devices
@@ -3295,8 +3297,14 @@ void cuda_compute_forcing(void)
     dim3 dimBlocks(threads_x+1, threads_y+1);
     dim3 numBlocks(blocks_x+1, blocks_y+1);
 
-//  forcing_test_taylor<<<numBlocks, dimBlocks>>>(_f_x[dev],_f_y[dev], _dom[dev],ttime,DIFF,_points[dev],n2,n3);
+//using scalar diffusivity
+ // forcing_test_taylor<<<numBlocks, dimBlocks>>>(_f_x[dev],_f_y[dev], _dom[dev],ttime,DIFF,_points[dev],n2,n3);
+
+//using fluid viscosity
+forcing_test_taylor_sc_ConvDiff<<<numBlocks, dimBlocks>>>(_f_x[dev],_f_y[dev], _dom[dev],ttime,nu,_points[dev]);
 fflush(stdout);
+
+
   // linearly accelerate pressure gradient from zero
 //add by shigan 10_1_2014
 if(init_cond == OSCILLATORY)

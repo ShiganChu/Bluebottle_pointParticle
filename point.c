@@ -173,6 +173,7 @@ int points_init(void)
     points[i].z0 =points[i].z;
     points[i].ms0 =points[i].ms ;
     points[i].msdot =0;
+    points[i].hp =0;
 
     //point id
     points[i].id = i+1;
@@ -183,7 +184,7 @@ int points_init(void)
     points[i].k = 0;
  
     //point iteration sub-timestep
-    points[i].dt = 0.;
+    points[i].dt = points[i].rho *2.f*points[i].r*points[i].r/(9.0f*mu);
 
   }
 

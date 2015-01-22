@@ -385,6 +385,7 @@ int main(int argc, char *argv[]) {
 
       // allocate device memory
       cuda_dom_malloc();
+
       cuda_point_malloc();
       cuda_scalar_malloc();
 fflush(stdout);
@@ -443,7 +444,12 @@ fflush(stdout);
         // get initial dt; this is an extra check for the SHEAR initialization
         dt = cuda_find_dt();
         dt_sc = cuda_find_dt_sc(dt);
-
+//printf("\n0 %f\n",dt_sc);
+//	real dt_point;
+//        dt_sc = cuda_find_dt_points(dt_sc);
+//	dt_sc=dt_point;
+//printf("\n1 %f %f\n",dt_sc,dt_point);
+//printf("\n2 %f\n",cuda_find_dt_points(dt_sc));
         // share this with the precursor domain
         //expd_compare_dt(np, status);
 
@@ -550,6 +556,7 @@ if(npoints>0&&lpt_twoway>0)    	   lpt_point_twoway_forcing();
       // update point_particle position in substep
 	     if(dt0<0)     cuda_scalar_BC();
 dt_done=0.0;
+	printf("\n");
 while(dt_done<dt)
 {
 	if(dt_sc<dt-dt_done) dt_try=dt_sc;
@@ -584,6 +591,7 @@ while(dt_done<dt)
             dt0 = dt;
             dt = cuda_find_dt();
             dt_sc = cuda_find_dt_sc(dt);
+      //      dt_sc = cuda_find_dt_points(dt_sc);
 
             // compare this timestep size to that in the precursor and
             // and synchronize the result

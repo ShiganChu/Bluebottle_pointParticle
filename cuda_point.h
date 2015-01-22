@@ -34,13 +34,16 @@ void gaussian_array_initH();
 void domInfo_array_initH();
 void lpt_point_source_mollify_final();
 
-
+//extern "C"
+//real cuda_find_dt_points(real dt);
 
 //initialize array A with length n, initialize the array to be a constant C 
 __global__ void array_init(real *A,dom_struct *dom, int n, real C);
 
 __global__ void print_kernel_array_int(int *cell,int lenCell);
 __global__ void print_kernel_array_real(real *cell,int lenCell);
+
+__global__ void copy_points_dt(real *pdt,point_struct *points,int npoints);
 
 void sortParticles(int *dGridParticleHash, int *dGridParticleIndex, int npoints);
 
@@ -292,6 +295,14 @@ real sc_eq,real DIFF);
 //advance particle position based on Euler prediction correction, it can be divided into 2 steps. See "Predictor–corrector method" in wiki for ref
 __global__ void move_points_a(point_struct *points, int npoints, real dt);
 __global__ void move_points_b(dom_struct *dom,point_struct *points, int npoints, real dt);
+
+
+__global__ void drag_move_points(point_struct *points,dom_struct *dom, int npoints,
+real *ug,real *vg,real *wg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg,
+real rho_f,real mu, g_struct g,gradP_struct gradP,
+real C_add,real C_stress,real C_drag,
+real sc_eq,real DIFF,real dt);
 
 
 //Locate the grid cell index (i,j,k) of each particle

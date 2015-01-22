@@ -750,6 +750,7 @@ void cgns_point_particles(real dtout)
 
 
     real *msdot = malloc(npoints * sizeof(real));
+    real *hp = malloc(npoints * sizeof(real));
     // cpumem += npoints * sizeof(real);
     real *ms = malloc(npoints * sizeof(real));
     real *den = malloc(npoints * sizeof(real));
@@ -807,6 +808,7 @@ void cgns_point_particles(real dtout)
       oz[i] = points[i].oz;
 
 	msdot[i]=points[i].msdot;
+	hp[i]=points[i].hp;
 	ms[i]=points[i].ms;
 	den[i]=points[i].rho;
 
@@ -857,6 +859,7 @@ void cgns_point_particles(real dtout)
     
 //add by shigan 10_30_2014
     cg_field_write(fn, bn, zn, sn, RealDouble, "SolvableMassAcc", msdot, &fnr);
+    cg_field_write(fn, bn, zn, sn, RealDouble, "SolvableMassHp", hp, &fnr);
     cg_field_write(fn, bn, zn, sn, RealDouble, "SolvableMass", ms, &fnr);
     cg_field_write(fn, bn, zn, sn, RealDouble, "Density", den, &fnr);
  
@@ -917,6 +920,7 @@ void cgns_point_particles(real dtout)
     
     free(ms);
     free(msdot);
+    free(hp);
     free(den);
     free(pdt);
     free(ii);

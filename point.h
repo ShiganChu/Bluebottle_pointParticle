@@ -88,6 +88,7 @@ void lpt_point_twoway_forcing();
 //calculate fluid stress du/dt to impose on particles
 void cuda_flow_stress(void);
 
+real cuda_find_dt_points(real dt);
 
 /****d* point_particle/NNODES
  * NAME
@@ -248,7 +249,7 @@ typedef struct point_struct {
  msdot= hp*4*PI*r^2*(sc-sc_sat)
 */
   real msdot;
-
+  real hp;
   real rs;
 /*
   real spring_k;

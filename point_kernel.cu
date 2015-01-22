@@ -11,6 +11,14 @@ if(pp<n) A[pp]=a;
 
 
 __global__
+void copy_points_dt(real *pdt,point_struct *points,int npoints)
+{
+int pp = blockIdx.x*blockDim.x + threadIdx.x;
+if(pp>=npoints) return;
+pdt[pp]=points[pp].dt;
+}
+
+__global__
 void gaussian_array_initD(float * GaussianKernel,real dg2_sig2,real dg2,real norm)
 {
 int k = blockIdx.x*blockDim.x + threadIdx.x;
@@ -521,7 +529,7 @@ clock_t time2 = clock();
 //Use Shared memory just read the particles around it 
 //Determin int the future, if we need 3D blocks and threads
 
-	real xp,yp,zp;
+//	real xp,yp,zp;
 	int it,jt,kt;
         int ip,jp,kp;//index of particle cell
 	int tip,tjp;
@@ -854,7 +862,7 @@ posY[pp]=points[pp].y;
 posZ[pp]=points[pp].z;
 
 lptSourceVal[pp]=lpt_mol_typeVal(points,dom,pp,coordiSys,valType);
-//printf("\npoint_position %f %f %d\n",posX[pp],points[pp].x,pp);
+//if(isnan(lptSourceVal[pp])) printf("\npoint_position %f %f %d %d %d\n",posX[pp],points[pp].x,pp,coordiSys,valType);
 }
 
 
@@ -1350,6 +1358,8 @@ in -=(coordiSys==1);
 jn -=(coordiSys==2);
 kn -=(coordiSys==3);
 
+/*
+//This is not enough for ic~kc, they could be still out of bounds after operation
 ic=ic+in*(ic<is);
 ic=ic-in*(ic>ie-1);
 
@@ -1358,6 +1368,8 @@ jc=jc-jn*(jc>je-1);
 
 kc=kc+kn*(kc<ks);
 kc=kc-kn*(kc>ke-1);
+*/
+
 
 /*
 if(ic<is||ic > ie-1)  ir= ir -floorf(__fdiv_rd(ir,in))*in;
@@ -1445,7 +1457,6 @@ int dt12=(int) (time13-time12);
 printf("\ninner periodic_grid: %d %d %d %d %d %d\n",dt10,dt11,dt12,in1-in,jn1-jn,kn1-kn);
 */
 
-/*
 //ic=-65;jc=129;
 int ir=ic-is;
 int jr=jc-js;
@@ -1455,7 +1466,6 @@ int kr=kc-ks;
 if(ic<is||ic > ie-1)  ir= ir -floorf(__fdiv_rd(ir,in))*in;
 if(jc<js||jc > je-1)  jr= jr -floorf(__fdiv_rd(jr,jn))*jn;
 if(kc<ks||kc > ke-1)  kr= kr -floorf(__fdiv_rd(kr,kn))*kn;
-*/
 //clock_t time14 = clock();	 
 /*
 if(ic>jc) ;
@@ -1482,11 +1492,9 @@ int dt17=(int) (time18-time17);
 int dt18=(int) (time19-time18);
 printf("\nbasic operations: %d %d %d %d %d\n",dt14,dt15,dt16,dt17,dt18);
 */
-/*
 ic=ir+is;
 jc=jr+js;
 kc=kr+ks;
-*/
 }
 
 
@@ -1749,7 +1757,7 @@ __global__ void stress_u(real rho_f, real nu, real *u0,real *p,real *p0,real *st
   __shared__ real s_d[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
   
   __shared__ real grad_P[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
-  __shared__ real grad_P0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
+//  __shared__ real grad_P0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
  
 // working constants
 
@@ -1757,13 +1765,13 @@ __global__ void stress_u(real rho_f, real nu, real *u0,real *p,real *p0,real *st
   real a = (0.5 * dt) / (0.5 * dt0 + 0.5 * dt); //why in time??
   real ab0= 0.5 * a ;
   real ab=1. + ab0 ;
-  */
 
 //Weight for Adam-Bashforth interpolation
   real a = dt0/dt;
   a = (a + 2.)/(a + 1.);
   real ab0= a-1.0 ;
   real ab=a;
+  */
 
   real ddx = 1. / dom->dx;     // to limit the number of divisions needed
   real ddy = 1. / dom->dy;     // to limit the number of divisions needed
@@ -1824,16 +1832,16 @@ __global__ void stress_u(real rho_f, real nu, real *u0,real *p,real *p0,real *st
       real ddudzz = (dud1 - dud0) * ddz;
 
       s_d[tj + tk*blockDim.x] = nu * (ddudxx + ddudyy + ddudzz);
-/*
       grad_P[tj + tk*blockDim.x]=abs(flag_u[i + tj*dom->Gfx._s1b
         + tk*dom->Gfx._s2b])
         * ddx * (p[i + tj*dom->Gcc._s1b + tk*dom->Gcc._s2b]
         - p[(i-1) + tj*dom->Gcc._s1b + tk*dom->Gcc._s2b]);
-  */    
+/*
       grad_P0[tj + tk*blockDim.x]=abs(flag_u[i + tj*dom->Gfx._s1b
         + tk*dom->Gfx._s2b])
         * ddx * (p0[i + tj*dom->Gcc._s1b + tk*dom->Gcc._s2b]
         - p0[(i-1) + tj*dom->Gcc._s1b + tk*dom->Gcc._s2b]);
+  */    
 
     }
    // make sure all threads complete computations
@@ -1845,8 +1853,8 @@ __global__ void stress_u(real rho_f, real nu, real *u0,real *p,real *p0,real *st
       && (tj > 0 && tj < (blockDim.x-1))
       && (tk > 0 && tk < (blockDim.y-1))) { 
 //     stress[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b] =rho_f* s_d[tj + tk*blockDim.x]-ab*grad_P[tj + tk*blockDim.x]+ab0*grad_P0[tj + tk*blockDim.x]-gradP_x;
-     stress[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b] =rho_f* s_d[tj + tk*blockDim.x]-ab*grad_P[tj + tk*blockDim.x]+ab0*grad_P0[tj + tk*blockDim.x];
-// stress[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b] =rho_f* s_d[tj + tk*blockDim.x]-grad_P[tj + tk*blockDim.x];
+//     stress[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b] =rho_f* s_d[tj + tk*blockDim.x]-ab*grad_P[tj + tk*blockDim.x]+ab0*grad_P0[tj + tk*blockDim.x];
+	 stress[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b] =rho_f* s_d[tj + tk*blockDim.x]-grad_P[tj + tk*blockDim.x];
     }
   }
 } 
@@ -1864,17 +1872,17 @@ __global__ void stress_v(real rho_f, real nu, real *v0,real *p,real *p0,real *st
   __shared__ real s_d[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
 
   __shared__ real grad_P[MAX_THREADS_DIM * MAX_THREADS_DIM];       // y-force
- __shared__ real grad_P0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
+// __shared__ real grad_P0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
  
 // working constants
 /*  real a = (0.5 * dt) / (0.5 * dt0 + 0.5 * dt); //why in time??
   real ab0= 0.5 * a ;
   real ab=1. + ab0 ;
-  */
  real a = dt0/dt;
   a = (a + 2.)/(a + 1.);
   real ab0= a-1.0 ;
   real ab=a;
+  */
 
   // working constants
  
@@ -1936,17 +1944,17 @@ __global__ void stress_v(real rho_f, real nu, real *v0,real *p,real *p0,real *st
       real ddvdzz = (dvd1 - dvd0) * ddz;
 
       s_d[tk + ti*blockDim.x] = nu * (ddvdxx + ddvdyy + ddvdzz);
-/* 
      grad_P[tk + ti*blockDim.x]=abs(flag_v[ti + j*dom->Gfy._s1b
         + tk*dom->Gfy._s2b])
         * ddy * (p[ti + j*dom->Gcc._s1b + tk*dom->Gcc._s2b]
         - p[ti + (j-1)*dom->Gcc._s1b + tk*dom->Gcc._s2b]);
-*/
+/* 
       grad_P0[tk + ti*blockDim.x]=abs(flag_v[ti + j*dom->Gfy._s1b
         + tk*dom->Gfy._s2b])
         * ddy * (p0[ti + j*dom->Gcc._s1b + tk*dom->Gcc._s2b]
         - p0[ti + (j-1)*dom->Gcc._s1b + tk*dom->Gcc._s2b]);
 
+*/
      
 	}
 
@@ -1959,8 +1967,8 @@ __global__ void stress_v(real rho_f, real nu, real *v0,real *p,real *p0,real *st
       && (tk > 0 && tk < (blockDim.x-1))
       && (ti > 0 && ti < (blockDim.y-1))) {
   //    stress[i + j*dom->Gfy._s1b + k*dom->Gfy._s2b] = rho_f*s_d[tk + ti*blockDim.x]-ab*grad_P[tk + ti*blockDim.x]+ab0*grad_P0[tk + ti*blockDim.x]-gradP_y;
-//     stress[i + j*dom->Gfy._s1b + k*dom->Gfy._s2b] = rho_f*s_d[tk + ti*blockDim.x]-grad_P[tk + ti*blockDim.x];
-    stress[i + j*dom->Gfy._s1b + k*dom->Gfy._s2b] = rho_f*s_d[tk + ti*blockDim.x]-ab*grad_P[tk + ti*blockDim.x]+ab0*grad_P0[tk + ti*blockDim.x];
+     stress[i + j*dom->Gfy._s1b + k*dom->Gfy._s2b] = rho_f*s_d[tk + ti*blockDim.x]-grad_P[tk + ti*blockDim.x];
+//    stress[i + j*dom->Gfy._s1b + k*dom->Gfy._s2b] = rho_f*s_d[tk + ti*blockDim.x]-ab*grad_P[tk + ti*blockDim.x]+ab0*grad_P0[tk + ti*blockDim.x];
       }
   }
 }
@@ -1977,18 +1985,18 @@ __global__ void stress_w(real rho_f, real nu, real *w0,real *p,real *p0,real *st
   __shared__ real s_d[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff0
   
   __shared__ real grad_P[MAX_THREADS_DIM * MAX_THREADS_DIM];  // pressure gradient
-  __shared__ real grad_P0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
+//  __shared__ real grad_P0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
  
 // working constants
 /*  real a = (0.5 * dt) / (0.5 * dt0 + 0.5 * dt); //why in time??
   real ab0= 0.5 * a ;
   real ab=1. + ab0 ;
-  */
   real a = dt0/dt;
   a = (a + 2.)/(a + 1.);
   real ab0= a-1.0 ;
   real ab=a;
 
+  */
   // working constants
   real ddx = 1. / dom->dx;     // to limit the number of divisions needed
   real ddy = 1. / dom->dy;     // to limit the number of divisions needed
@@ -2048,17 +2056,17 @@ __global__ void stress_w(real rho_f, real nu, real *w0,real *p,real *p0,real *st
       real ddwdzz = (dwd1 - dwd0) * ddz;
 
       s_d[ti + tj*blockDim.x] = nu * (ddwdxx + ddwdyy + ddwdzz);
-/*
       grad_P[ti + tj*blockDim.x] = abs(flag_w[ti + tj*dom->Gfz._s1b
         + k*dom->Gfz._s2b])
         * ddz * (p[ti + tj*dom->Gcc._s1b + k*dom->Gcc._s2b]
         - p[ti + tj*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b]);
-*/	
+/*
       grad_P0[ti + tj*blockDim.x] = abs(flag_w[ti + tj*dom->Gfz._s1b
         + k*dom->Gfz._s2b])
         * ddz * (p0[ti + tj*dom->Gcc._s1b + k*dom->Gcc._s2b]
         - p0[ti + tj*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b]);
 
+*/	
  
     }
 
@@ -2071,9 +2079,9 @@ __global__ void stress_w(real rho_f, real nu, real *w0,real *p,real *p0,real *st
       && (ti > 0 && ti < (blockDim.x-1))
       && (tj > 0 && tj < (blockDim.y-1))) {
 //      stress[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b]= rho_f* s_d[ti + tj*blockDim.x]-ab*grad_P[ti + tj*blockDim.x]+ab0*grad_P0[ti + tj*blockDim.x]-gradP_z;
-//stress[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b]= rho_f* s_d[ti + tj*blockDim.x]-grad_P[ti + tj*blockDim.x];
+stress[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b]= rho_f* s_d[ti + tj*blockDim.x]-grad_P[ti + tj*blockDim.x];
       
-stress[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b]= rho_f* s_d[ti + tj*blockDim.x]-ab*grad_P[ti + tj*blockDim.x]+ab0*grad_P0[ti + tj*blockDim.x];
+//stress[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b]= rho_f* s_d[ti + tj*blockDim.x]-ab*grad_P[ti + tj*blockDim.x]+ab0*grad_P0[ti + tj*blockDim.x];
     }
   }
 }
@@ -2097,7 +2105,6 @@ real  z =  points[pp].z;
 //real Ap=points[pp].mdot;
  
 //TODO threat BC in the future
-//periodic_grid_position(x,y,z,dom);
 
  __syncthreads();
 int i,j,k;   
@@ -2110,7 +2117,6 @@ real weight[2][2][2];
   j = floor((y - dom->ys) * ddy- 0.5f) + DOM_BUF;//for ym[j]
   k = floor((z - dom->zs) * ddz- 0.5f) + DOM_BUF;//for zm[k]
 
-//periodic_grid_index(i,j,k,dom,0);
 
   x1 = (i-0.5f) * dom->dx + dom->xs;
   x2 = (i+0.5f) * dom->dx + dom->xs;
@@ -2155,6 +2161,8 @@ Ag[pp]=0;
   ic=i+ii;jc=j+jj;kc=k+kk;
 periodic_grid_index(ic,jc,kc,dom,0);
   Ag[pp]+=weight[ii][jj][kk]*A[ic +jc*dom->Gcc.s1b + kc*dom->Gcc.s2b];
+
+//if(pp==1) printf("\nweight %f %f %d %d %d\n",weight[ii][jj][kk],A[ic +jc*dom->Gcc.s1b + kc*dom->Gcc.s2b],ic,jc,kc);
  }
 
 //TODO add mask infomation as in lpt_mollify_sc in lpt_interpolator.f90
@@ -2194,6 +2202,7 @@ real weight[2][2][2];
   i = floor((x - dom->xs) * ddx) + DOM_BUF; 	//for x[i]
   j = floor((y - dom->ys) * ddy- 0.5f) + DOM_BUF;//for ym[j]
   k = floor((z - dom->zs) * ddz- 0.5f) + DOM_BUF;//for zm[k]
+
 //periodic_grid_index(ic,jc,kc,dom,1);
 
   x1 = (i-DOM_BUF) * dom->dx + dom->xs;
@@ -2223,7 +2232,10 @@ jc=j+jj;
 kc=k+kk;
 periodic_grid_index(ic,jc,kc,dom,1);
 	ug[pp]+=weight[ii][jj][kk]*u[ic +jc*dom->Gfx.s1b + kc*dom->Gfx.s2b];
+//if(isnan(ug[pp])) printf("\ninterp_u %f %f %d %d %d\n",weight[ii][jj][kk],u[ic +jc*dom->Gfx.s1b + kc*dom->Gfx.s2b],ic,jc,kc);
 	}
+
+//if(isnan(ug[pp])) printf("\nposition %f %f %f %f %f %f %f %f %f\n",x2,x1,y2,y1,z2,z1,dom->dx,dom->dy,dom->dz);
 
   // interpolate V-velocity
   i = floor((x - dom->xs) * ddx- 0.5f) + DOM_BUF;
@@ -2348,10 +2360,6 @@ real uf=ug[pp];
 real vf=vg[pp];
 real wf=wg[pp];
 
-//Fluid stress at the particle position
-real stress_x=lpt_stress_u[pp];
-real stress_y=lpt_stress_v[pp];
-real stress_z=lpt_stress_w[pp];
 
 
 //realative velocity between point_particle and fluid
@@ -2364,6 +2372,8 @@ real Rep=ur*dia/nu+EPSILON;
 
 //Based on hp*dp/D=2+0.6Re_p^0.5 Sc^{1/3}, ref eq (22) in Oresta&&Prosperetti(2014)
 real Nu =2+0.6*sqrt(Rep)*powf(nu/DIFF,1.0/3.0);
+
+points[pp].hp=Nu;
 
 //Nu=2;
 real hp =Nu*DIFF/dia;
@@ -2382,6 +2392,7 @@ real F = 1.0f+0.15f*powf(Rep,0.687f);
 real taud = rhod*dia*dia/(18.0f*mu);
 real itau=F/taud;
 
+
 real volume=1./6. * PI * dia*dia*dia;
 
 //Including soluble part:rhod*volume  and insoluble part: ms
@@ -2396,17 +2407,23 @@ real drag_x=(uf-up)*itau*mp;
 real drag_y=(vf-vp)*itau*mp;
 real drag_z=(wf-wp)*itau*mp;
 
+//Fluid stress at the particle position
+real stress_x=lpt_stress_u[pp];
+real stress_y=lpt_stress_v[pp];
+real stress_z=lpt_stress_w[pp];
 
 //Total add mass,  -gradP.x~z are the body force on fluid apart from gravity
 real add_x=(stress_x/rho_f-gradP.x)*mf;
 real add_y=(stress_y/rho_f-gradP.y)*mf;
 real add_z=(stress_z/rho_f-gradP.z)*mf;
 
+
 //Store the fluid force on particle including add mass, drag, fluid force and gravity
 //default C_add=0.5; C_stress=1; C_drag=1;
 real Fx=(C_add*add_x+C_stress*stress_x*volume+C_drag*drag_x)+(mp-mf)*g.x;
 real Fy=(C_add*add_y+C_stress*stress_y*volume+C_drag*drag_y)+(mp-mf)*g.y;
 real Fz=(C_add*add_z+C_stress*stress_z*volume+C_drag*drag_z)+(mp-mf)*g.z;
+
 
 //Store the temp particle acceleration, also including the particle soluble mass change  in the last term!
 real udot =(Fx+ iFx -up*msdot)/mp;
@@ -2428,6 +2445,9 @@ if(fabs(C_add-0.5f)<EPSILON)
       points[pp].vdot = vdot;
       points[pp].wdot = wdot;
 
+//if(pp==1) printf("\nitau %f %f %f %f\n",Rep,F,taud,itau);
+//if(pp==1) printf("\ndrag %f %f %f %f %f %f %f\n",drag_z,itau,mp-mf,wp,wf,wdot,Fz);
+//if(pp==1) printf("\n%f %f %f %f %f %f %f %f %f\n",add_x,stress_x,drag_x,itau,mp-mf,up,uf,udot,Fx);
 
 /*
 Store the fluid force on particle including add mass, drag, fluid force and gravity
@@ -2448,9 +2468,6 @@ dms/dt = pi *dp^2*hp*(rho_s-rho_{sat})   ref eq (20) in Oresta&&Prosperetti(2014
 
 if(points[pp].ms>0)  points[pp].msdot= PI*dia*dia*hp*(scg[pp]- sc_eq);
 else   points[pp].msdot= 0;
-
-
-  
 }
 
 
@@ -2506,6 +2523,10 @@ __global__ void move_points_b(dom_struct *dom,point_struct *points, int npoints,
       points[pp].ms = points[pp].ms0 + points[pp].msdot * dt;
   
 
+     // update particle time step
+      points[pp].dt =  dt;
+
+
 //TODO periodic BC for particles, may need to change in future
 periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
 
@@ -2522,7 +2543,187 @@ periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
   }
 }
 
+//Note for this method, C_drag has to be greater than 0!!
+__global__ void drag_move_points(point_struct *points,dom_struct *dom, int npoints,
+real *ug,real *vg,real *wg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg,
+real rho_f,real mu, g_struct g,gradP_struct gradP,
+real C_add,real C_stress,real C_drag,
+real sc_eq,real DIFF,real dt)
+//gradP serve as bodyforce for the time being
+{
+  int pp = threadIdx.x + blockIdx.x*blockDim.x;
 
+  if(pp >= npoints) return;
+
+real up=points[pp].u;
+real vp=points[pp].v;
+real wp=points[pp].w;
+real dia=2*points[pp].r;
+real rhod=points[pp].rho;//rhod is the particle density
+
+//particle interaction force
+real iFx=points[pp].iFx;
+real iFy=points[pp].iFy;
+real iFz=points[pp].iFz;
+
+//fluid velocity at the particle position
+real uf=ug[pp];
+real vf=vg[pp];
+real wf=wg[pp];
+
+//realative velocity between point_particle and fluid
+real ur=sqrt((up-uf)*(up-uf)+(vp-vf)*(vp-vf)+(wp-wf)*(wp-wf));
+real nu=mu/rho_f;
+
+//Particle Reynolds number
+real Rep=ur*dia/nu+EPSILON;
+
+//Based on hp*dp/D=2+0.6Re_p^0.5 Sc^{1/3}, ref eq (22) in Oresta&&Prosperetti(2014)
+real Nu =2+0.6*sqrt(Rep)*powf(nu/DIFF,1.0/3.0);
+points[pp].hp=Nu;
+
+//Nu=2;
+real hp =Nu*DIFF/dia;
+
+//Modification to stokes theory when Rep>1
+real F = 1.0f+0.15f*powf(Rep,0.687f); 
+//real F = 1.0f; 
+real taud = rhod*dia*dia/(18.0f*mu);
+real itau=F/taud;
+
+//if(pp==1) printf("\nitau %f %f %f %f\n",Rep,F,taud,itau);
+
+real volume=1./6. * PI * dia*dia*dia;
+
+//Including soluble part:rhod*volume  and insoluble part: ms
+real mp =  rhod *volume + points[pp].ms;
+//fluid mass in particle volume
+real mf =  rho_f *volume;
+real msdot=points[pp].msdot;
+real gammar=mp/mf;
+
+//drag force on particle
+real drag_x=(uf-up)*itau*mp;
+real drag_y=(vf-vp)*itau*mp;
+real drag_z=(wf-wp)*itau*mp;
+
+//Fluid stress at the particle position
+real stress_x=lpt_stress_u[pp];
+real stress_y=lpt_stress_v[pp];
+real stress_z=lpt_stress_w[pp];
+
+//Total add mass,  -gradP.x~z are the body force on fluid apart from gravity
+real add_x=(stress_x/rho_f-gradP.x)*mf;
+real add_y=(stress_y/rho_f-gradP.y)*mf;
+real add_z=(stress_z/rho_f-gradP.z)*mf;
+
+//Store the fluid force on particle including add mass, drag, fluid force and gravity
+//default C_add=0.5; C_stress=1; C_drag=1;
+real Fx=(C_add*add_x+C_stress*stress_x*volume+C_drag*drag_x)+(mp-mf)*g.x;
+real Fy=(C_add*add_y+C_stress*stress_y*volume+C_drag*drag_y)+(mp-mf)*g.y;
+real Fz=(C_add*add_z+C_stress*stress_z*volume+C_drag*drag_z)+(mp-mf)*g.z;
+
+real rhs_x=Fx+ C_drag*up*itau*mp;
+real rhs_y=Fy+ C_drag*vp*itau*mp;
+real rhs_z=Fz+ C_drag*wp*itau*mp;
+
+
+//Store the temp particle acceleration, also including the particle soluble mass change  in the last term!
+real udot =(Fx+ iFx -up*msdot)/mp;
+real vdot =(Fy+ iFy -vp*msdot)/mp;
+real wdot =(Fz+ iFz -wp*msdot)/mp;
+
+//if(isnan(Rep)) printf("\nitau %f %f %f %f %d\n",Rep,F,taud,itau,pp);
+//if(isnan(wf)) printf("\ndrag %f %f %f %f %f %f\n",drag_z,mp-mf,wp,wf,wdot,Fz);
+//printf("\nFx iFx up msdot,C_add,gammar %f %f %f %f %f %f\n",Fx,iFx,up,msdot,C_add,gammar);
+
+//acount for added mass effect since it appears also on the left handside of particle governing equation
+if(fabs(C_add-0.5f)<EPSILON)
+{
+      udot = udot/(1+C_add/gammar);
+      vdot = vdot/(1+C_add/gammar);
+      wdot = wdot/(1+C_add/gammar);
+}
+
+
+/*
+Store the fluid force on particle including add mass, drag, fluid force and gravity
+added mass effect on particle-fluid force interaction
+gravity is not implemented on fluid, but we need to add -mf*g to reaction force
+F=d(mp*u)/dt -mp*g, according to eq 6 from dropDiffusionForceImpleBlue.pdf
+*/
+points[pp].Fx=Fx-C_add*udot*mf-mp*g.x;
+points[pp].Fy=Fy-C_add*vdot*mf-mp*g.y;
+points[pp].Fz=Fz-C_add*wdot*mf-mp*g.z;
+
+//if(isnan(points[pp].Fx)) printf("\nFx %f %f %f %f %d\n",Fx,udot,mf,mp,pp);
+//if(isnan(points[pp].Fx)) printf("\nu~w %f %f %f\n",uf,vf,wf);
+
+/*
+Exchange rate of soluble mass into scalar field
+dms/dt = pi *dp^2*hp*(rho_s-rho_{sat})   ref eq (20) in Oresta&&Prosperetti(2014)
+*/
+//if(isnan(msdot)||isnan(hp)) printf("\nmsdot %f %f %f %f %d\n",points[pp].msdot,hp,scg[pp],sc_eq,pp);
+
+if(points[pp].ms>0)  points[pp].msdot= PI*dia*dia*hp*(scg[pp]- sc_eq);
+else   points[pp].msdot= 0;
+
+
+     //Treat taup as very small and integrate directly!!
+      real acc_m=msdot+C_drag*mp*itau;
+      real total_m=mp+C_add*mf; 
+      real ratio=dt*acc_m/total_m;
+//if(isnan(acc_m)||isnan(total_m)) printf("\nacc_m %f %f %f %f %d\n",points[pp].msdot,hp,scg[pp],sc_eq,pp);
+
+     // update linear velocities
+      points[pp].u = exp(-ratio)*(points[pp].u0 -rhs_x/acc_m) + rhs_x/acc_m;
+      points[pp].v = exp(-ratio)*(points[pp].v0 -rhs_y/acc_m) + rhs_y/acc_m;
+      points[pp].w = exp(-ratio)*(points[pp].w0 -rhs_z/acc_m) + rhs_z/acc_m;
+
+//if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nrhs %f %f %f\n",rhs_x,total_m,acc_m);
+//if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nu0~w0 %f %f %f %f\n",rhs_x/total_m,rhs_x/acc_m,points[pp].u0,dt);
+
+
+  
+
+    // update position 
+      points[pp].x = points[pp].x0 + points[pp].u * dt;
+      points[pp].y = points[pp].y0 + points[pp].v * dt;
+      points[pp].z = points[pp].z0 + points[pp].w * dt;
+
+/*
+      real dt0=points[pp].dt;
+  // working constants
+  real ab0 = 0.5 * dt / dt0;  // for Adams-Bashforth stepping
+  real ab = 1 + ab0;          // for Adams-Bashforth stepping
+    // update position using adam-bashforth time stepping
+      points[pp].x = points[pp].x0 + (ab*points[pp].u-ab0*points[pp].u0) * dt;
+      points[pp].y = points[pp].y0 + (ab*points[pp].v-ab0*points[pp].v0) * dt;
+      points[pp].z = points[pp].z0 + (ab*points[pp].w-ab0*points[pp].w0) * dt;
+*/
+     // update soluble mass
+      points[pp].ms = points[pp].ms0 + points[pp].msdot * dt;
+  
+     // update particle time step
+      points[pp].dt =  dt;
+
+
+//TODO periodic BC for particles, may need to change in future
+periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
+
+//update old values
+      points[pp].x0 = points[pp].x;
+      points[pp].y0 = points[pp].y;
+      points[pp].z0 = points[pp].z;
+
+      points[pp].u0 = points[pp].u;
+      points[pp].v0 = points[pp].v;
+      points[pp].w0 = points[pp].w;
+
+      points[pp].ms0 = points[pp].ms;
+
+}
 
 
 

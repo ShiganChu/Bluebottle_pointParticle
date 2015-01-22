@@ -1663,6 +1663,9 @@ __global__ void w_star_2_init(real rho_f, real nu,
 //Testing of the force subroutine   u=cos(qx)cos(qy)sin(rt); v=sin(qx)sin(qy)sin(rt)
 __global__ void forcing_test_taylor(real *fx,real *fy, dom_struct *dom,real t,real DIFF,point_struct *points,real n2,real n3);
 
+//combined with scalar diffusion, to test scalar schemes
+__global__ void forcing_test_taylor_sc_ConvDiff(real *fx, real *fy, dom_struct *dom,real t,real nu,point_struct *points);
+
 
 
 

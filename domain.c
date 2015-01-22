@@ -2359,6 +2359,7 @@ void in_restart(void)
     fret = fscanf(infile, "%le ", &points[i].ms);
     fret = fscanf(infile, "%le ", &points[i].ms0);
     fret = fscanf(infile, "%le ", &points[i].msdot);
+    fret = fscanf(infile, "%le ", &points[i].hp);
     fret = fscanf(infile, "%le ", &points[i].dt);
  
 
@@ -2438,6 +2439,7 @@ void in_restart(void)
     fret = fscanf(infile, "%e ", &points[i].ms);
     fret = fscanf(infile, "%e ", &points[i].ms0);
     fret = fscanf(infile, "%e ", &points[i].msdot);
+    fret = fscanf(infile, "%e ", &points[i].hp);
     fret = fscanf(infile, "%e ", &points[i].dt);
  
 

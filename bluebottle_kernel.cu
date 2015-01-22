@@ -2275,20 +2275,16 @@ __global__ void forcing_test_taylor(real *fx, real *fy, dom_struct *dom,real t,r
 
 //real n3=2;
 //real n2=1;
-
+ 
 real q=1;
 real dia=2*points[0].r;
 real L=2*PI;
 real T=n3*dia*dia/DIFF;
 real r=2*PI/T;
 real U0=DIFF*L/dia/dia/n2;
-
+ 
   int tj = blockIdx.x * blockDim.x + threadIdx.x;
   int tk = blockIdx.y * blockDim.y + threadIdx.y;
-
-//if(tj==0&&tk==0)  printf("\nU0 %f %f %f %f %f\n",U0,DIFF,dia,n2,n3);
-
-//if(tk==dom->Gfx._knb-1&&tj== dom->Gfy._jnb-1) printf("\ntest1 %d %d \n",tj,tk);
 
   for(int i = dom->Gfx._isb; i < dom->Gfx._ieb; i++) {
     if(tj < dom->Gfx._jnb && tk < dom->Gfx._knb) {
@@ -2315,8 +2311,48 @@ __syncthreads();
   real y = ((j-1) * dom->dy) + dom->ys;
       fy[ti + j*dom->Gfy._s1b + tk*dom->Gfy._s2b] = U0*
 sin(q*y)*(q*U0*cos(q*x)*cos(q*x)*sin(r*t)*sin(r*t)*cos(q*y)
-+sin(q*x)*(r*cos(r*t)+q*sin(r*t)*(2*DIFF*q+U0*cos(q*y)*sin(r*t)*sin(q*x)))
- );
++sin(q*x)*(r*cos(r*t)+q*sin(r*t)*(2*DIFF*q+U0*cos(q*y)*sin(r*t)*sin(q*x))));
+    }
+  }
+}
+
+
+//u=cos(qx)cos(qy)sin(rt); v=sin(qx)sin(qy)sin(rt)
+__global__ void forcing_test_taylor_sc_ConvDiff(real *fx, real *fy, dom_struct *dom,real t,real nu,point_struct *points)
+{
+ real q=6;
+ real r=10*2*PI;
+ real U0=20;
+
+  int tj = blockIdx.x * blockDim.x + threadIdx.x;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y;
+
+  for(int i = dom->Gfx._isb; i < dom->Gfx._ieb; i++) {
+    if(tj < dom->Gfx._jnb && tk < dom->Gfx._knb) {
+  real x = ((i-1) * dom->dx) + dom->xs;
+  real y = ((tj-0.5) * dom->dy) + dom->ys;
+      fx[i + tj*dom->Gfx._s1b + tk*dom->Gfx._s2b] = U0*
+cos(q*x)*
+(r*cos(r*t)*cos(q*y)+
+q*sin(r*t)*(2*nu*q*cos(q*y)-U0*sin(r*t)*sin(q*x)));
+    }
+  }
+
+__syncthreads();
+
+       tk = blockIdx.x * blockDim.x + threadIdx.x;
+   int ti = blockIdx.y * blockDim.y + threadIdx.y;
+
+//if(tk==dom->Gfy._knb-1&&ti== dom->Gfy._inb-1) printf("\ntest2 %d %d \n",ti,tk);
+
+
+  for(int j = dom->Gfy._jsb; j < dom->Gfy._jeb; j++) {
+    if(tk < dom->Gfy._knb && ti < dom->Gfy._inb) {
+  real x = ((ti-0.5) * dom->dx) + dom->xs;
+  real y = ((j-1) * dom->dy) + dom->ys;
+      fy[ti + j*dom->Gfy._s1b + tk*dom->Gfy._s2b] = U0*
+sin(q*y)*(q*U0*cos(q*x)*cos(q*x)*sin(r*t)*sin(r*t)*cos(q*y)
++sin(q*x)*(r*cos(r*t)+q*sin(r*t)*(2*nu*q+U0*cos(q*y)*sin(r*t)*sin(q*x))));
     }
   }
 }

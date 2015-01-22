@@ -614,9 +614,11 @@ void cuda_scalar_advance(void)
 
 //initialize flow field array to 0 on device, the array length is Nx*Ny*Nz
 //include scalar source and particle volume fraction divided by cell volume
-//    lpt_scalar_source_init<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
-    lpt_scalar_source_init<<<numBlocks_3d, dimBlocks_3d>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
+////    lpt_scalar_source_init<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
+ //   lpt_scalar_source_init<<<numBlocks_3d, dimBlocks_3d>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
 
+//lpt_scalar_source_init_test<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev], _dom[dev],ttime_done,DIFF);
+lpt_scalar_source_convDiff_test<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev], _dom[dev],ttime_done,DIFF);
 
 
 int coordiSys=0;
@@ -624,6 +626,7 @@ int valType=1;
 //Mollify volume fraction on device, don't need too much thread source
 
 //lpt_mollify_sc_optH(coordiSys,valType,dev,_epsp[dev]);
+
 lpt_mollify_delta_scH(coordiSys,valType,dev,_epsp[dev]);
 
 /*
@@ -645,6 +648,7 @@ if(sc_twoway>0)
   {   
 valType=0;
 //lpt_mollify_sc_optH(coordiSys,valType,dev,_scSrc[dev]);
+
 lpt_mollify_delta_scH(coordiSys,valType,dev,_scSrc[dev]);
 }
 fflush(stdout);
@@ -660,22 +664,30 @@ cudaEventRecord(start);
 /*
 //advance scalar TODO add boundary condition to sc in the kernel!,  takes 2.6 ms compared to 5 ms by u_star_2
 if(dt0 > 0.) {
-advance_sc<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],
-  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
+
+//advance_sc_upwind_1st<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 fflush(stdout);
+
+advance_sc<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 }
 else
 {
-advance_sc_init<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],
-  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
+//advance_sc_upwind_1st_init<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
+
+advance_sc_init<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 fflush(stdout);
 }
 */
 
+/*
 //Using MacCormack scheme to advance scalar
-advance_sc_macCormack<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],
- _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt_try);
+advance_sc_macCormack<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt_try);
 fflush(stdout);
+*/
+
+advance_sc_QUICK<<<numBlocks_x, dimBlocks_x>>>(DIFF, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt_try);
+fflush(stdout);
+
 
 
 
@@ -712,19 +724,29 @@ real cuda_find_dt_sc(real dt)
     real u_max = find_max_mag(dom[dev].Gfx.s3, _u[dev]);
     real v_max = find_max_mag(dom[dev].Gfy.s3, _v[dev]);
     real w_max = find_max_mag(dom[dev].Gfz.s3, _w[dev]);
+
 /*
 //FTCS scheme with Adam-Bashforth method
     dts[dev] = (u_max + 2 * DIFF / dom[dev].dx) / dom[dev].dx  + u_max*u_max/2/DIFF;
     dts[dev] += (v_max + 2 * DIFF / dom[dev].dy) / dom[dev].dy + v_max*v_max/2/DIFF;
     dts[dev] += (w_max + 2 * DIFF / dom[dev].dz) / dom[dev].dz + w_max*w_max/2/DIFF;
     dts[dev] = CFL / dts[dev];
+
+
 */
 
-//MacCormack scheme
+//MacCormack scheme ||QUICK scheme
     dts[dev] =  (u_max + 2 * DIFF / dom[dev].dx) / dom[dev].dx;
     dts[dev] += (v_max + 2 * DIFF / dom[dev].dy) / dom[dev].dy;
     dts[dev] += (w_max + 2 * DIFF / dom[dev].dz) / dom[dev].dz;
     dts[dev] = CFL / dts[dev];
+/*
+//1st upwind scheme
+    dts[dev] =  (u_max + 2 * DIFF / dom[dev].dx) / dom[dev].dx;
+    dts[dev] += (v_max + 2 * DIFF / dom[dev].dy) / dom[dev].dy;
+    dts[dev] += (w_max + 2 * DIFF / dom[dev].dz) / dom[dev].dz;
+    dts[dev] = CFL / dts[dev];
+*/
 
   }
 
