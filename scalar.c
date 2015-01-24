@@ -32,8 +32,10 @@ void scalar_read_input(void)
   fret = fscanf(infile, "PHYSICAL PARAMETERS\n");
 #ifdef DOUBLE
   fret = fscanf(infile, "DIFF %lf\n", &DIFF);
+  fret = fscanf(infile, "DIFF_eq %lf\n", &DIFF_eq);
 #else // single
   fret = fscanf(infile, "DIFF %f\n", &DIFF);
+  fret = fscanf(infile, "DIFF_eq %f\n", &DIFF_eq);
 #endif
   fret = fscanf(infile, "\n");
 
@@ -413,12 +415,12 @@ if(dim==2)
           int C = i+j*Dom.Gcc.s1b+k*Dom.Gcc.s2b;
  real x = ((i-0.5) * Dom.dx) + Dom.xs;
  real y = ((j-0.5) * Dom.dy) + Dom.ys;
- real a=1/4.0/DIFF/t0;
+ real a=1/4.0/DIFF_eq/t0;
 
     sc[C] = a*exp(-(x*x+y*y)*a)/PI;
     sc0[C] = sc[C];
 
-    diff_sc[C]=DIFF*(4*a*a*(x*x+y*y)-4*a)*sc[C];
+    diff_sc[C]=DIFF_eq*(4*a*a*(x*x+y*y)-4*a)*sc[C];
     diff0_sc[C]=diff_sc[C];
     conv0_sc[C]=0.;
     conv_sc[C]=0.;
@@ -436,17 +438,13 @@ else if(dim==3)
  real x = ((i-0.5) * Dom.dx) + Dom.xs;
  real y = ((j-0.5) * Dom.dy) + Dom.ys;
  real z = ((k-0.5) * Dom.dz) + Dom.zs;
- real a=1/4.0/DIFF/t0;
+ real a=1/4.0/DIFF_eq/t0;
     sc[C] = pow(a/PI,1.5)*exp(-(x*x+y*y+z*z)*a);
     sc0[C] = sc[C];
-/*
-    diff_sc[C]=DIFF*(4*a*a*(x*x+y*y)-4*a)*sc[C];
-    diff0_sc[C]=diff_sc[C];
-*/		 }
 		}	
 	       }
 }
-
+}
 
 }
 
@@ -529,15 +527,6 @@ else if(dim==3)
 
   dt_try=dt_sc;
   dt0_try=-1.;
-
-
-
-
-
-
-
-
-
 
 
   // initialize some variables

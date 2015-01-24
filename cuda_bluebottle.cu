@@ -3298,7 +3298,7 @@ void cuda_compute_forcing(void)
     dim3 numBlocks(blocks_x+1, blocks_y+1);
 
 //using scalar diffusivity
- // forcing_test_taylor<<<numBlocks, dimBlocks>>>(_f_x[dev],_f_y[dev], _dom[dev],ttime,DIFF,_points[dev],n2,n3);
+ // forcing_test_taylor<<<numBlocks, dimBlocks>>>(_f_x[dev],_f_y[dev], _dom[dev],ttime,DIFF_eq,_points[dev],n2,n3);
 
 //using fluid viscosity
 //forcing_test_taylor_sc_ConvDiff<<<numBlocks, dimBlocks>>>(_f_x[dev],_f_y[dev], _dom[dev],ttime,nu,_points[dev]);

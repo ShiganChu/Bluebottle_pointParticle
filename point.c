@@ -137,10 +137,33 @@ void points_scalar_inject(void)
       cuda_point_malloc();
       cuda_point_push();
 
+if(npoints>0) cuda_flow_stress();
+
+//The domain velocity has already been pushed to device
 //Match device point velocity with flow field based on point position, which is copied from host
       match_point_vel_with_flow();
 //pull the new point infomation to host
-      cuda_point_pull();
+          cuda_point_pull();
+//Initialize time again
+	ttime=0.f;
+//write initial field 
+          cuda_dom_pull();
+          if(rec_flow_field_dt > 0) {
+            cgns_grid();
+            cgns_flow_field(rec_flow_field_dt);
+            rec_flow_field_stepnum_out++;
+//printf("\nrec_flow %d\n", rec_flow_field_stepnum_out);
+          }
+          if(rec_point_particle_dt > 0) {
+            cgns_point_particles(rec_point_particle_dt);
+            rec_point_particle_stepnum_out++;
+          }
+      
+         if(rec_scalar_field_dt > 0) {
+            cgns_scalar_field(rec_scalar_field_dt);
+            rec_scalar_stepnum_out++;
+          }
+        
 
 }
 

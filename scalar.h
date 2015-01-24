@@ -67,7 +67,8 @@ extern real *sc_BT;
 extern real **_sc_WE;
 extern real **_sc_SN;
 extern real **_sc_BT;
-extern real DIFF;
+extern real DIFF;//Diffusion coefficient for oil drop-ambient flow mass transfer
+extern real DIFF_eq;//Diffusion coefficient for scalar diffusion equation
 
 //source for scalar diffusion, on host on device
 extern real *scSrc;

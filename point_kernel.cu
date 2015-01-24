@@ -2644,8 +2644,8 @@ real udot =(Fx+ iFx -up*msdot)/mp;
 real vdot =(Fy+ iFy -vp*msdot)/mp;
 real wdot =(Fz+ iFz -wp*msdot)/mp;
 
-//if(isnan(Rep)) printf("\nitau %f %f %f %f %d\n",Rep,F,taud,itau,pp);
-//if(isnan(wf)) printf("\ndrag %f %f %f %f %f %f\n",drag_z,mp-mf,wp,wf,wdot,Fz);
+//if(isnan(Rep)||isinf(Rep)) printf("\nitau %f %f %f %f %d\n",Rep,F,taud,itau,pp);
+//if(isnan(wf)||isinf(wf)) printf("\ndrag %f %f %f %f %f %f\n",drag_z,mp-mf,wp,wf,wdot,Fz);
 //printf("\nFx iFx up msdot,C_add,gammar %f %f %f %f %f %f\n",Fx,iFx,up,msdot,C_add,gammar);
 
 //acount for added mass effect since it appears also on the left handside of particle governing equation
@@ -2674,7 +2674,7 @@ points[pp].Fz=Fz-C_add*wdot*mf-mp*g.z;
 Exchange rate of soluble mass into scalar field
 dms/dt = pi *dp^2*hp*(rho_s-rho_{sat})   ref eq (20) in Oresta&&Prosperetti(2014)
 */
-//if(isnan(msdot)||isnan(hp)) printf("\nmsdot %f %f %f %f %d\n",points[pp].msdot,hp,scg[pp],sc_eq,pp);
+//if(isnan(msdot)||isnan(hp)||isinf(msdot)||isinf(hp)||isnan(scg[pp])||isinf(scg[pp])) printf("\nmsdot %f %f %f %f %d\n",points[pp].msdot,hp,scg[pp],sc_eq,pp);
 
 if(points[pp].ms>0)  points[pp].msdot= PI*dia*dia*hp*(scg[pp]- sc_eq);
 else   points[pp].msdot= 0;
@@ -2736,6 +2736,128 @@ periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
 }
 
 
+//Note for this method, C_drag has to be greater than 0!!
+__global__ void drag_move_points_init(point_struct *points,dom_struct *dom, int npoints,
+real *ug,real *vg,real *wg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,
+real rho_f,real mu, g_struct g,gradP_struct gradP,
+real C_add,real C_stress,real C_drag,
+real sc_eq,real DIFF)
+//gradP serve as bodyforce for the time being
+{
+  int pp = threadIdx.x + blockIdx.x*blockDim.x;
+
+  if(pp >= npoints) return;
+
+real up=points[pp].u;
+real vp=points[pp].v;
+real wp=points[pp].w;
+real dia=2*points[pp].r;
+real rhod=points[pp].rho;//rhod is the particle density
+
+//particle interaction force
+real iFx=points[pp].iFx;
+real iFy=points[pp].iFy;
+real iFz=points[pp].iFz;
+
+//fluid velocity at the particle position
+real uf=ug[pp];
+real vf=vg[pp];
+real wf=wg[pp];
+
+//realative velocity between point_particle and fluid
+real ur=sqrt((up-uf)*(up-uf)+(vp-vf)*(vp-vf)+(wp-wf)*(wp-wf));
+real nu=mu/rho_f;
+
+//Particle Reynolds number
+real Rep=ur*dia/nu+EPSILON;
+
+//Based on hp*dp/D=2+0.6Re_p^0.5 Sc^{1/3}, ref eq (22) in Oresta&&Prosperetti(2014)
+real Nu =2+0.6*sqrt(Rep)*powf(nu/DIFF,1.0/3.0);
+points[pp].hp=Nu;
+
+ 
+//Modification to stokes theory when Rep>1
+real F = 1.0f+0.15f*powf(Rep,0.687f); 
+//real F = 1.0f; 
+real taud = rhod*dia*dia/(18.0f*mu);
+real itau=F/taud;
+
+//if(pp==1) printf("\nitau %f %f %f %f\n",Rep,F,taud,itau);
+
+real volume=1./6. * PI * dia*dia*dia;
+
+//Including soluble part:rhod*volume  and insoluble part: ms
+real mp =  rhod *volume + points[pp].ms;
+//fluid mass in particle volume
+real mf =  rho_f *volume;
+real msdot=points[pp].msdot;
+real gammar=mp/mf;
+
+//drag force on particle
+real drag_x=(uf-up)*itau*mp;
+real drag_y=(vf-vp)*itau*mp;
+real drag_z=(wf-wp)*itau*mp;
+
+//Fluid stress at the particle position
+real stress_x=lpt_stress_u[pp];
+real stress_y=lpt_stress_v[pp];
+real stress_z=lpt_stress_w[pp];
+
+//Total add mass,  -gradP.x~z are the body force on fluid apart from gravity
+real add_x=(stress_x/rho_f-gradP.x)*mf;
+real add_y=(stress_y/rho_f-gradP.y)*mf;
+real add_z=(stress_z/rho_f-gradP.z)*mf;
+
+//Store the fluid force on particle including add mass, drag, fluid force and gravity
+//default C_add=0.5; C_stress=1; C_drag=1;
+real Fx=(C_add*add_x+C_stress*stress_x*volume+C_drag*drag_x)+(mp-mf)*g.x;
+real Fy=(C_add*add_y+C_stress*stress_y*volume+C_drag*drag_y)+(mp-mf)*g.y;
+real Fz=(C_add*add_z+C_stress*stress_z*volume+C_drag*drag_z)+(mp-mf)*g.z;
+
+
+
+//Store the temp particle acceleration, also including the particle soluble mass change  in the last term!
+real udot =(Fx+ iFx -up*msdot)/mp;
+real vdot =(Fy+ iFy -vp*msdot)/mp;
+real wdot =(Fz+ iFz -wp*msdot)/mp;
+
+ 
+//acount for added mass effect since it appears also on the left handside of particle governing equation
+if(fabs(C_add-0.5f)<EPSILON)
+{
+      udot = udot/(1+C_add/gammar);
+      vdot = vdot/(1+C_add/gammar);
+      wdot = wdot/(1+C_add/gammar);
+}
+
+
+ 
+points[pp].Fx=Fx-C_add*udot*mf-mp*g.x;
+points[pp].Fy=Fy-C_add*vdot*mf-mp*g.y;
+points[pp].Fz=Fz-C_add*wdot*mf-mp*g.z;
+
+points[pp].udot=udot;
+points[pp].vdot=vdot;
+points[pp].wdot=wdot;
+
+ 
+
+//TODO periodic BC for particles, may need to change in future
+periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
+
+//update old values
+      points[pp].x0 = points[pp].x;
+      points[pp].y0 = points[pp].y;
+      points[pp].z0 = points[pp].z;
+
+      points[pp].u0 = points[pp].u;
+      points[pp].v0 = points[pp].v;
+      points[pp].w0 = points[pp].w;
+
+      points[pp].ms0 = points[pp].ms;
+
+}
 
 
 

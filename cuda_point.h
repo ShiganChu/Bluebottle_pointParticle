@@ -314,7 +314,12 @@ real sc_eq,real DIFF,real dt);
 __global__ void lpt_localize(int npoints, point_struct *points, dom_struct *dom, BC bc);
 
 
-
+__global__ void drag_move_points_init(point_struct *points,dom_struct *dom, int npoints,
+real *ug,real *vg,real *wg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,
+real rho_f,real mu, g_struct g,gradP_struct gradP,
+real C_add,real C_stress,real C_drag,
+real sc_eq,real DIFF);
 
 
 

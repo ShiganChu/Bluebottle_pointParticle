@@ -2087,6 +2087,7 @@ fprintf(rest, "\n");
      fprintf(rest, "%e ", points[i].ms);
      fprintf(rest, "%e ", points[i].ms0);
      fprintf(rest, "%e ", points[i].msdot);
+     fprintf(rest, "%e ", points[i].hp);
      fprintf(rest, "%e ", points[i].dt);
  
 

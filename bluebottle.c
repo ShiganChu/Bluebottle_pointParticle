@@ -208,6 +208,7 @@ real mu;
 real nu;
 //add by shigan
 real DIFF;
+real DIFF_eq;
 
 BC bc;
 int init_cond;
@@ -247,7 +248,6 @@ int main(int argc, char *argv[]) {
 
 
   if(rank == MASTER) {
-    int turb = 1;
     MPI_Status status; // for MPI communication
 
 

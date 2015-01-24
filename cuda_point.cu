@@ -134,12 +134,34 @@ if(npoints<=0) return;
     dim3 dimBlocks_p,numBlocks_p;
     block_thread_point(dimBlocks_p,numBlocks_p,npoints);
 
+//bc is bc.uTD etc. Make sure which BC this is. 
+	point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
+                                                ug[dev],vg[dev],wg[dev],
+                                                lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],scg[dev]);
+
       interpolate_point_vel_Lag2<<<numBlocks_p, dimBlocks_p>>>(_u[dev],_v[dev],_w[dev],
                                                          npoints,rho_f,nu,
                                                          ug[dev],vg[dev],wg[dev],
                                                         _points[dev],_dom[dev],bc);
 
      point_vel_specify<<<numBlocks_p, dimBlocks_p>>>(ug[dev],vg[dev],wg[dev],_points[dev],npoints);
+
+ 
+
+
+if(C_stress>0||C_add>0)
+interpolate_point_vel_Lag2<<<numBlocks_p, dimBlocks_p>>>(_stress_u[dev],_stress_v[dev],_stress_w[dev],
+                                                         npoints, rho_f, nu,
+                                                         lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],
+                                                         _points[dev],_dom[dev],bc);
+
+	drag_move_points_init<<<numBlocks_p, dimBlocks_p>>>(_points[dev],_dom[dev],npoints,
+ug[dev],vg[dev],wg[dev],
+lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],
+rho_f,mu,g,gradP,
+C_add, C_stress,C_drag,
+sc_eq,DIFF);
+
 	}
 
 }
