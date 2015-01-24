@@ -9,6 +9,16 @@ int pp=indx+indy*gridDim.x*blockDim.x;
 if(pp<n) A[pp]=a;
 }
 
+__global__ void point_vel_specify(real *ug,real *vg,real *wg,point_struct *points,int npoints)
+{
+int pp = blockIdx.x*blockDim.x + threadIdx.x;
+if(pp>=npoints) return;
+
+points[pp].u=ug[pp];
+points[pp].v=vg[pp];
+points[pp].w=wg[pp];
+}
+
 
 __global__
 void copy_points_dt(real *pdt,point_struct *points,int npoints)

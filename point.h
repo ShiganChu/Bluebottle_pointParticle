@@ -482,7 +482,7 @@ extern int rec_point_particle_moment;
  *  points_read_input()
  * USAGE
  */
-void points_read_input(int turb);
+void points_read_input(void);
 /*
  * FUNCTION
  *  Read point_particle specfications from point.input.
@@ -502,6 +502,10 @@ void points_show_config(void);
  *  Write point_particle specifications to screen.
  ******
  */
+
+
+void points_scalar_inject(void);
+void match_point_vel_with_flow(void);
 
 /****f* point_particle/points_init()
  * NAME

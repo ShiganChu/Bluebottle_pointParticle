@@ -28,6 +28,7 @@ void cuda_free_array_real(real**& A);
 void cuda_malloc_array_int(int**& A,int len);
 void cuda_malloc_array_real(real**& A,int len);
 
+//void match_point_vel_with_flow(void);
 
 void lpt_point_source_mollify_init();
 void gaussian_array_initH();
@@ -36,6 +37,10 @@ void lpt_point_source_mollify_final();
 
 //extern "C"
 //real cuda_find_dt_points(real dt);
+
+//mathch point velocity with the flow interpolated velocity at the particle position
+__global__ void point_vel_specify(real *ug,real *vg,real *wg,point_struct *points,int npoints);
+
 
 //initialize array A with length n, initialize the array to be a constant C 
 __global__ void array_init(real *A,dom_struct *dom, int n, real C);

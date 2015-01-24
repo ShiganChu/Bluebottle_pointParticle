@@ -41,6 +41,7 @@ real cuda_find_dt_points(real dt)
 extern "C"
 void cuda_flow_stress()
 {
+if(npoints<=0) return;
   #pragma omp parallel num_threads(nsubdom)
   {
     int dev = omp_get_thread_num();
@@ -119,11 +120,36 @@ fflush(stdout);
 
 }
 
+//extern "C"
+void match_point_vel_with_flow(void)
+{
+
+if(npoints<=0) return;
+ // allocate device memory on device
+  #pragma omp parallel num_threads(nsubdom)
+  {
+    int dev = omp_get_thread_num();
+    checkCudaErrors(cudaSetDevice(dev + dev_start));
+
+    dim3 dimBlocks_p,numBlocks_p;
+    block_thread_point(dimBlocks_p,numBlocks_p,npoints);
+
+      interpolate_point_vel_Lag2<<<numBlocks_p, dimBlocks_p>>>(_u[dev],_v[dev],_w[dev],
+                                                         npoints,rho_f,nu,
+                                                         ug[dev],vg[dev],wg[dev],
+                                                        _points[dev],_dom[dev],bc);
+
+     point_vel_specify<<<numBlocks_p, dimBlocks_p>>>(ug[dev],vg[dev],wg[dev],_points[dev],npoints);
+	}
+
+}
+
+
+
 
 extern "C"
 void cuda_move_points()
 {
-
 
 
    // parallelize over CPU threads
@@ -139,8 +165,7 @@ void cuda_move_points()
     dim3 numBlocks(blocks);
 */
 
-    dim3 dimBlocks_p;
-    dim3 numBlocks_p;
+    dim3 dimBlocks_p,numBlocks_p;
     block_thread_point(dimBlocks_p,numBlocks_p,npoints);
 
     
@@ -236,6 +261,7 @@ sc_eq,DIFF,dt_try);
 
 fflush(stdout);
 
+getLastCudaError("Kernel execution failed.");
 
 
 
@@ -253,6 +279,7 @@ fflush(stdout);
 extern "C"
 void lpt_point_twoway_forcing()
 {
+if(npoints<=0) return;
  // parallelize over CPU threads
   #pragma omp parallel num_threads(nsubdom)
   {
@@ -300,6 +327,8 @@ void sortParticles(int *dgridParticleHash, int *dgridParticleIndex, int numParti
 extern "C"
 void lpt_mollify_delta_scH(int coordiSys,int valType,int dev,real *scSrc)
 {
+if(npoints<=0) return;
+
 //    dim3 dimBlocks_3d,numBlocks_3d;
     dim3 dimBlocks_w,numBlocks_w;
     dim3 dimBlocks_p,numBlocks_p;
@@ -391,6 +420,8 @@ cudaEventRecord(start);
 
 lpt_mollify_delta_scD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,lptSourceVal[dev],cellStart[dev],cellEnd[dev],npoints,coordiSys);
 
+getLastCudaError("Kernel execution failed.");
+
 /*
 fflush(stdout);
 cudaEventRecord(stop);
@@ -406,6 +437,8 @@ fflush(stdout);
 extern "C"
 void lpt_mollify_sc_optH(int coordiSys,int valType,int dev,real *scSrc)
 {
+if(npoints<=0) return;
+
     dim3 dimBlocks_3d,numBlocks_3d;
     dim3 dimBlocks_w,numBlocks_w;
     dim3 dimBlocks_p,numBlocks_p;
@@ -779,6 +812,7 @@ void cuda_free_array_int(int** &A)
 extern "C"
 void cuda_point_malloc(void)
 {
+
   // allocate device memory on host
   _points = (point_struct**) malloc(nsubdom * sizeof(point_struct*));
   cpumem += nsubdom * sizeof(point_struct*);
@@ -850,6 +884,7 @@ void cuda_point_free(void)
 extern "C"
 void cuda_point_push(void)
 {
+if(npoints<=0) return;
   // copy host data to device
   #pragma omp parallel num_threads(nsubdom)
   {
@@ -864,6 +899,7 @@ void cuda_point_push(void)
 extern "C"
 void cuda_point_pull(void)
 {
+if(npoints<=0) return;
   // all devices have the same point_particle data for now, so just copy one of them
   checkCudaErrors(cudaMemcpy(points, _points[0], sizeof(point_struct) * npoints,
     cudaMemcpyDeviceToHost));

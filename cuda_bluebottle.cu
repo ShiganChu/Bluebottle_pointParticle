@@ -3301,7 +3301,7 @@ void cuda_compute_forcing(void)
  // forcing_test_taylor<<<numBlocks, dimBlocks>>>(_f_x[dev],_f_y[dev], _dom[dev],ttime,DIFF,_points[dev],n2,n3);
 
 //using fluid viscosity
-forcing_test_taylor_sc_ConvDiff<<<numBlocks, dimBlocks>>>(_f_x[dev],_f_y[dev], _dom[dev],ttime,nu,_points[dev]);
+//forcing_test_taylor_sc_ConvDiff<<<numBlocks, dimBlocks>>>(_f_x[dev],_f_y[dev], _dom[dev],ttime,nu,_points[dev]);
 fflush(stdout);
 
 

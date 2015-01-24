@@ -1353,6 +1353,7 @@ __global__ void lpt_scalar_source_convDiff_test(real *src,dom_struct *dom,real t
 
   int s1b = dom->Gcc._s1b;
   int s2b = dom->Gcc._s2b;
+/*
  real wt=10*2*PI;
  real wx=6;
  real wy=8;
@@ -1360,6 +1361,16 @@ __global__ void lpt_scalar_source_convDiff_test(real *src,dom_struct *dom,real t
  real q=6;
  real r=wt;
  real U0=20;
+*/
+
+ real wt=10*2*PI;
+ real wx=2;
+ real wy=2;
+
+ real q=2;
+ real r=wt;
+ real U0=10;
+
 
 if(tj < dom->Gcc._jeb && tk < dom->Gcc._keb) {
     for(int i = dom->Gcc._isb; i < dom->Gcc._ieb; i++) 

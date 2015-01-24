@@ -11,7 +11,7 @@ int npoints;
 point_struct *points;
 point_struct **_points;
 
-void points_read_input(int turb)
+void points_read_input(void)
 {
   int i;  // iterator
 
@@ -29,6 +29,7 @@ void points_read_input(int turb)
 
   // read point_point_particle list
   fret = fscanf(infile, "n %d\n", &npoints);
+  if(npoints<=0) return;
 //  if(turb) npoints = 0; // remove point_point_particles from turbulence precursor simulation
   // allocate point_point_particle list
   points = (point_struct*) malloc(npoints * sizeof(point_struct));
@@ -98,6 +99,53 @@ void points_show_config(void)
     printf("    rotating = %d\n", points[i].rotating);
   }
 }
+
+
+//This subroutine delete the old particle&scalar, and inject new particle and scalar into the flow field based on point.config&&scalar.config
+void points_scalar_inject(void)
+{
+
+//free points on device and host
+      cuda_point_free();
+      points_clean();
+//free scalar on device and host
+      cuda_scalar_free();
+      scalar_clean();
+
+//read and initialize points	
+      points_read_input();
+      int points_init_flag = points_init();
+      fflush(stdout);
+      if(points_init_flag == EXIT_FAILURE) {
+        printf("\nThe initial point_particle configuration is not allowed.\n");
+        return EXIT_FAILURE;
+      }
+//read and initialize scalar
+      scalar_read_input();
+    // initialize the scalar 
+      int scalar_init_flag = scalar_init();
+      fflush(stdout);
+      if(scalar_init_flag == EXIT_FAILURE) {
+        printf("\nThe initial scalar configuration is not allowed.\n");
+        return EXIT_FAILURE;
+      }
+
+//malloc device memory of scalar and point, and push host data to device
+      cuda_scalar_malloc();
+      cuda_scalar_push();
+      
+      cuda_point_malloc();
+      cuda_point_push();
+
+//Match device point velocity with flow field based on point position, which is copied from host
+      match_point_vel_with_flow();
+//pull the new point infomation to host
+      cuda_point_pull();
+
+}
+
+
+
 
 int points_init(void)
 {

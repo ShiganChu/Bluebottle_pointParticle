@@ -2320,9 +2320,14 @@ sin(q*y)*(q*U0*cos(q*x)*cos(q*x)*sin(r*t)*sin(r*t)*cos(q*y)
 //u=cos(qx)cos(qy)sin(rt); v=sin(qx)sin(qy)sin(rt)
 __global__ void forcing_test_taylor_sc_ConvDiff(real *fx, real *fy, dom_struct *dom,real t,real nu,point_struct *points)
 {
+/*
  real q=6;
  real r=10*2*PI;
  real U0=20;
+*/
+ real q=2;
+ real r=10*2*PI;
+ real U0=10;
 
   int tj = blockIdx.x * blockDim.x + threadIdx.x;
   int tk = blockIdx.y * blockDim.y + threadIdx.y;

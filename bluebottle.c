@@ -254,6 +254,7 @@ int main(int argc, char *argv[]) {
     int argin;
     int runseeder = 0;
     int runrestart = 0;
+    int runpoint_restart = 0;
     int NP = 0;
     real radius = -1.;
     real density = -1.;
@@ -269,9 +270,14 @@ int main(int argc, char *argv[]) {
           case 'r':
             runrestart = 1;
             break;
+          case 'p':
+	    runpoint_restart = 1;
+	    runrestart=1;
+	    break;
           default:
             runseeder = 2;
             runrestart = 2;
+	    runpoint_restart=2;
             argc = 0;
             break;
         }
@@ -306,7 +312,7 @@ int main(int argc, char *argv[]) {
 
      // domain_read_input();
       turb_read_input();
-      points_read_input(turb);
+      points_read_input();
       scalar_read_input();
 
  /********* Messy hack for taking advantage of CUDA_VISIBLE_DEVICES
@@ -424,6 +430,10 @@ fflush(stdout);
         cuda_dom_push();
         cuda_point_push();
         cuda_scalar_push();
+
+	if(runpoint_restart==1) points_scalar_inject();
+			
+
  	if(ttime >= duration) {
 	 printf("\n...simulation completed.\n");
 	 restart_stop = 1;
