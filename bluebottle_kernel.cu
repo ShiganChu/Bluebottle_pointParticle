@@ -2328,6 +2328,7 @@ __global__ void forcing_test_taylor_sc_ConvDiff(real *fx, real *fy, dom_struct *
  real q=2;
  real r=10*2*PI;
  real U0=10;
+// real U0=0.f;
 
   int tj = blockIdx.x * blockDim.x + threadIdx.x;
   int tk = blockIdx.y * blockDim.y + threadIdx.y;

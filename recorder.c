@@ -374,16 +374,16 @@ void cgns_grid(void)
 void cgns_flow_field(real dtout)
 {
   // create the solution file
-  char fname[FILE_NAME_SIZE];
-  char fname2[FILE_NAME_SIZE];
-  char fnameall[FILE_NAME_SIZE];
-  char fnameall2[FILE_NAME_SIZE];
-  char gname[FILE_NAME_SIZE];
-  char gnameall[FILE_NAME_SIZE];
+  char fname[FILE_NAME_SIZE]="";
+  char fname2[FILE_NAME_SIZE]="";
+  char fnameall[FILE_NAME_SIZE]="";
+  char fnameall2[FILE_NAME_SIZE]="";
+  char gname[FILE_NAME_SIZE]="";
+  char gnameall[FILE_NAME_SIZE]="";
   real tout = ttime; //  = rec_flow_field_stepnum_out * dtout;
-  char format[CHAR_BUF_SIZE];
-  char snodename[CHAR_BUF_SIZE];
-  char snodenameall[CHAR_BUF_SIZE];
+  char format[CHAR_BUF_SIZE]="";
+  char snodename[CHAR_BUF_SIZE]="";
+  char snodenameall[CHAR_BUF_SIZE]="";
   int sigfigs = ceil(log10(1. / dtout));
   if(sigfigs < 1) sigfigs = 1;
   sprintf(format, "%%.%df", sigfigs);
@@ -391,7 +391,7 @@ void cgns_flow_field(real dtout)
   sprintf(fnameall2, "%s/output/flow-%s.cgns", ROOT_DIR, format);
   sprintf(snodename, "Solution-");
   sprintf(snodenameall, "/Base/Zone0/Solution-");
-  sprintf(snodename, "%s%s", snodename, format);
+  sprintf(snodename, "%s%s", snodename, format);//Some problem is with this line??
   sprintf(snodenameall, "%s%s", snodenameall, format);
   sprintf(fname, fname2, tout);
   sprintf(fnameall, fnameall2, tout);
@@ -479,6 +479,8 @@ void cgns_flow_field(real dtout)
         int CC1 = i + (j+1)*Dom.Gfy.s1b + k*Dom.Gfy.s2b;
         vout[C] = 0.5*(v[CC1] + v[CC0]);
         fyout[C] = 0.5*(f_y[CC1] + f_y[CC0]);
+
+//if(isnan(fyout[C])||isinf(fyout[C])) printf("\nfy %d %d %d %f %f\n",i,j,k,f_y[CC1],f_y[CC0]);
       }
     }
   }
@@ -545,16 +547,16 @@ void cgns_flow_field(real dtout)
 void cgns_scalar_field(real dtout)
 {
   // create the solution file
-  char fname[FILE_NAME_SIZE];
-  char fname2[FILE_NAME_SIZE];
-  char fnameall[FILE_NAME_SIZE];
-  char fnameall2[FILE_NAME_SIZE];
-  char gname[FILE_NAME_SIZE];
-  char gnameall[FILE_NAME_SIZE];
+  char fname[FILE_NAME_SIZE]="";
+  char fname2[FILE_NAME_SIZE]="";
+  char fnameall[FILE_NAME_SIZE]="";
+  char fnameall2[FILE_NAME_SIZE]="";
+  char gname[FILE_NAME_SIZE]="";
+  char gnameall[FILE_NAME_SIZE]="";
   real tout = ttime; //  = rec_scalar_field_stepnum_out * dtout;
-  char format[CHAR_BUF_SIZE];
-  char snodename[CHAR_BUF_SIZE];
-  char snodenameall[CHAR_BUF_SIZE];
+  char format[CHAR_BUF_SIZE]="";
+  char snodename[CHAR_BUF_SIZE]="";
+  char snodenameall[CHAR_BUF_SIZE]="";
   int sigfigs = ceil(log10(1. / dtout));
   if(sigfigs < 1) sigfigs = 1;
   sprintf(format, "%%.%df", sigfigs);
@@ -643,12 +645,12 @@ void cgns_point_particles(real dtout)
 {
   if(npoints > 0) {
     // create the solution file
-    char fname[FILE_NAME_SIZE];
-    char fname2[FILE_NAME_SIZE];
-    char fnameall[FILE_NAME_SIZE];
-    char fnameall2[FILE_NAME_SIZE];
+    char fname[FILE_NAME_SIZE]="";
+    char fname2[FILE_NAME_SIZE]="";
+    char fnameall[FILE_NAME_SIZE]="";
+    char fnameall2[FILE_NAME_SIZE]="";
     real tout = ttime; // = rec_point_particle_stepnum_out * dtout;
-    char format[CHAR_BUF_SIZE];
+    char format[CHAR_BUF_SIZE]="";
     int sigfigs = ceil(log10(1. / dtout));
     if(sigfigs < 1) sigfigs = 1;
     sprintf(format, "%%.%df", sigfigs);
@@ -750,7 +752,7 @@ void cgns_point_particles(real dtout)
 
 
     real *msdot = malloc(npoints * sizeof(real));
-    real *hp = malloc(npoints * sizeof(real));
+    real *Nu = malloc(npoints * sizeof(real));
     // cpumem += npoints * sizeof(real);
     real *ms = malloc(npoints * sizeof(real));
     real *den = malloc(npoints * sizeof(real));
@@ -808,7 +810,7 @@ void cgns_point_particles(real dtout)
       oz[i] = points[i].oz;
 
 	msdot[i]=points[i].msdot;
-	hp[i]=points[i].hp;
+	Nu[i]=points[i].Nu;
 	ms[i]=points[i].ms;
 	den[i]=points[i].rho;
 
@@ -859,7 +861,7 @@ void cgns_point_particles(real dtout)
     
 //add by shigan 10_30_2014
     cg_field_write(fn, bn, zn, sn, RealDouble, "SolvableMassAcc", msdot, &fnr);
-    cg_field_write(fn, bn, zn, sn, RealDouble, "SolvableMassHp", hp, &fnr);
+    cg_field_write(fn, bn, zn, sn, RealDouble, "SolvableMassNu", Nu, &fnr);
     cg_field_write(fn, bn, zn, sn, RealDouble, "SolvableMass", ms, &fnr);
     cg_field_write(fn, bn, zn, sn, RealDouble, "Density", den, &fnr);
  
@@ -920,7 +922,7 @@ void cgns_point_particles(real dtout)
     
     free(ms);
     free(msdot);
-    free(hp);
+    free(Nu);
     free(den);
     free(pdt);
     free(ii);

@@ -30,6 +30,9 @@ void scalar_read_input(void)
   // read domain
   fret = fscanf(infile, "n %d\n", &nsubdom);
   fret = fscanf(infile, "PHYSICAL PARAMETERS\n");
+
+//default value for DIFF_eq
+DIFF_eq=1.f;
 #ifdef DOUBLE
   fret = fscanf(infile, "DIFF %lf\n", &DIFF);
   fret = fscanf(infile, "DIFF_eq %lf\n", &DIFF_eq);

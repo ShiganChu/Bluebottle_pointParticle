@@ -112,6 +112,10 @@ int sc_init_cond;
 real sc_eq;
 real sc_init_percent;
 
+real **_lpt_mom_source_x;
+real **_lpt_mom_source_y;
+real **_lpt_mom_source_z;
+
 real *f_x;
 real *f_y;
 real *f_z;
@@ -254,7 +258,10 @@ int main(int argc, char *argv[]) {
     int argin;
     int runseeder = 0;
     int runrestart = 0;
-    int runpoint_restart = 0;
+    int runPointScalar_restart = 0;
+    int runBubbleScalar_restart = 0;
+    int runScalar_restart = 0;
+
     int NP = 0;
     real radius = -1.;
     real density = -1.;
@@ -270,14 +277,27 @@ int main(int argc, char *argv[]) {
           case 'r':
             runrestart = 1;
             break;
+//'p' represents inject particle and scalar simutaneously
           case 'p':
-	    runpoint_restart = 1;
+	    runPointScalar_restart = 1;
+	    runrestart=1;
+	    break;
+//'b' represents inject bubble and scalar simutaneously
+          case 'b':
+	    runBubbleScalar_restart = 1;
+	    runrestart=1;
+	    break;
+//'c' represents inject scalar only
+          case 'c':
+	    runScalar_restart = 1;
 	    runrestart=1;
 	    break;
           default:
             runseeder = 2;
             runrestart = 2;
-	    runpoint_restart=2;
+	    runPointScalar_restart=2;
+	    runBubbleScalar_restart = 2;
+	    runScalar_restart=2;
             argc = 0;
             break;
         }
@@ -348,8 +368,9 @@ int main(int argc, char *argv[]) {
       }
 
 
-      if(runrestart != 1) {
+      if(runrestart != 1||runPointScalar_restart==1||runBubbleScalar_restart==1||runScalar_restart==1) {
         recorder_bicgstab_init("solver_flow.rec");
+        recorder_bicgstab_init("solver_helmholtz_scalar.rec");
       }
 /*
       int domain_init_flag = domain_init();
@@ -431,8 +452,9 @@ fflush(stdout);
         cuda_point_push();
         cuda_scalar_push();
 
-	if(runpoint_restart==1) points_scalar_inject();
-			
+	if(runPointScalar_restart==1) points_scalar_inject();
+	if(runBubbleScalar_restart==1) bubble_scalar_inject();
+	if(runScalar_restart==1) scalar_inject();			
 
  	if(ttime >= duration) {
 	 printf("\n...simulation completed.\n");
@@ -454,12 +476,10 @@ fflush(stdout);
         // get initial dt; this is an extra check for the SHEAR initialization
         dt = cuda_find_dt();
         dt_sc = cuda_find_dt_sc(dt);
-//printf("\n0 %f\n",dt_sc);
-//	real dt_point;
-//        dt_sc = cuda_find_dt_points(dt_sc);
-//	dt_sc=dt_point;
-//printf("\n1 %f %f\n",dt_sc,dt_point);
-//printf("\n2 %f\n",cuda_find_dt_points(dt_sc));
+	real dt_point;
+        dt_point = cuda_find_dt_points(dt_sc);
+	dt_sc=dt_point;
+
         // share this with the precursor domain
         //expd_compare_dt(np, status);
 
@@ -576,8 +596,13 @@ while(dt_done<dt)
           printf("SCLAR and Particle: Time = %e of %e (dt = %e).\n", ttime_done, duration, dt_try);
           fflush(stdout);
 
+//printf("\nrank %d\n",rank);
+//          fflush(stdout);
+
 	//move points explicitly at every sub-timestep
             if(npoints>0)   cuda_move_points();
+	//add particle back reaction in momentum to the flow during the substep, then add it to flow source term
+            if(lpt_twoway>0&&npoints>0)   lpt_point_twoway_momentum();
             compute_scalar_BC();
             cuda_scalar_advance();
             cuda_scalar_BC();
@@ -601,8 +626,8 @@ while(dt_done<dt)
             dt0 = dt;
             dt = cuda_find_dt();
             dt_sc = cuda_find_dt_sc(dt);
-      //      dt_sc = cuda_find_dt_points(dt_sc);
-
+            dt_point = cuda_find_dt_points(dt_sc);
+	    dt_sc=dt_point;
             // compare this timestep size to that in the precursor and
             // and synchronize the result
             //expd_compare_dt(np, status);

@@ -204,6 +204,9 @@ printf("PPSUM_1 = %e\n", ppsum*norm*dt/rho_f);
     else
       recorder_bicgstab("solver_turb.rec", monitor.iteration_count(),
         monitor.residual_norm());
+
+ //     printf("\nThe flow-solver done.              \n");
+
     if(!monitor.converged()) {
       printf("The pressure-Poisson equation did not converge.              \n");
       exit(EXIT_FAILURE);

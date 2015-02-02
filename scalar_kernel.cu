@@ -1,5 +1,510 @@
 #include "cuda_scalar.h"
 //#include "cuda_point.h"
+
+__global__ void copy_sc_noghost(real *sc_noghost, real *sc_ghost, dom_struct *dom)
+{
+  int tj = blockIdx.x * blockDim.x + threadIdx.x;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if(tj < dom->Gcc.je-DOM_BUF && tk < dom->Gcc.ke-DOM_BUF) {
+    for(int i = dom->Gcc.is-DOM_BUF; i < dom->Gcc.ie-DOM_BUF; i++) {
+      sc_noghost[i + tj*dom->Gcc._s1 + tk*dom->Gcc._s2]
+        = sc_ghost[(i+DOM_BUF) + (tj+DOM_BUF)*dom->Gcc._s1b
+        + (tk+DOM_BUF)*dom->Gcc._s2b];
+    }
+  }
+}
+
+__global__ void scalar_coeffs_init(dom_struct *dom, int pitch, real *values)
+{
+  int i;  // iterator
+  int C;  // cell
+
+  int tj = blockIdx.x * blockDim.x + threadIdx.x;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y;
+
+  // loop over all slices to initialize to zero
+  if(tj < dom->Gcc.jn && tk < dom->Gcc.kn) {
+    for(i = dom->Gcc.is-DOM_BUF; i < dom->Gcc.ie-DOM_BUF; i++) {
+      C = i + tj*dom->Gcc.s1 + tk*dom->Gcc.s2;
+      values[C + 0*pitch]  = 0.;
+      values[C + 1*pitch]  = 0.;
+      values[C + 2*pitch]  = 0.;
+      values[C + 3*pitch]  = 0.;
+      values[C + 4*pitch]  = 0.;
+      values[C + 5*pitch]  = 0.;
+      values[C + 6*pitch]  = 0.;
+      values[C + 7*pitch]  = 0.;
+      values[C + 8*pitch]  = 0.;
+      values[C + 9*pitch]  = 0.;
+      values[C + 10*pitch] = 0.;
+      values[C + 11*pitch] = 0.;
+      values[C + 12*pitch] = 0.;
+    }
+  }
+}
+
+
+__global__ void scalar_coeffs(real DIFF, real dt, dom_struct *dom, int pitch,
+  real *values)
+{
+  int i;  // iterator
+  int C;  // cell locations
+  real ddx = 1. / (dom->dx * dom->dx);
+  real ddy = 1. / (dom->dy * dom->dy);
+  real ddz = 1. / (dom->dz * dom->dz);
+
+  int tj = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  // loop over slices to set values
+  if(tj < dom->Gcc.jn + DOM_BUF && tk < dom->Gcc.kn + DOM_BUF) {
+    for(i = dom->Gcc.is; i < dom->Gcc.ie; i++) {
+      C = (i-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+      values[C + pitch * 1]  -= 0.5*DIFF*dt*ddz;
+      values[C + pitch * 3]  -= 0.5*DIFF*dt*ddy;
+      values[C + pitch * 5]  -= 0.5*DIFF*dt*ddx;
+      values[C + pitch * 6]  += 1.;
+      values[C + pitch * 6]  += DIFF*dt*ddx;
+      values[C + pitch * 6]  += DIFF*dt*ddy;
+      values[C + pitch * 6]  += DIFF*dt*ddz;
+      values[C + pitch * 7]  -= 0.5*DIFF*dt*ddx;
+      values[C + pitch * 9]  -= 0.5*DIFF*dt*ddy;
+      values[C + pitch * 11] -= 0.5*DIFF*dt*ddz;
+    }
+  }
+}
+
+
+
+__global__ void copy_sc_ghost(real *sc_ghost, real *sc_noghost, dom_struct *dom)
+{
+  int tj = blockIdx.x * blockDim.x + threadIdx.x;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if(tj < dom->Gcc.je-DOM_BUF && tk < dom->Gcc.ke-DOM_BUF) {
+    for(int i = dom->Gcc.is-DOM_BUF; i < dom->Gcc.ie-DOM_BUF; i++) {
+      sc_ghost[(i+DOM_BUF) + (tj+DOM_BUF)*dom->Gcc._s1b
+        + (tk+DOM_BUF)*dom->Gcc._s2b] = sc_noghost[i + tj*dom->Gcc._s1
+        + tk*dom->Gcc._s2];
+    }
+  }
+}
+
+__global__ void scalar_rhs_upwind_1st(real rho_f, real DIFF, real *u, real *v, real *w,  real *epsp, real *f, real *conv0,real *conv,real *diff,real *sc0, real *sc_rhs, dom_struct *dom, real dt, real dt0)
+{
+  // create shared memory
+  // no reason to load pressure into shared memory, but leaving it in global
+  // will require additional if statements, so keep it in shared
+  __shared__ real s_w0[MAX_THREADS_DIM * MAX_THREADS_DIM];      // w back
+  __shared__ real s_w1[MAX_THREADS_DIM * MAX_THREADS_DIM];      // w center
+  __shared__ real s_u[MAX_THREADS_DIM * MAX_THREADS_DIM];       // u
+  __shared__ real s_v[MAX_THREADS_DIM * MAX_THREADS_DIM];       // v
+ 
+  __shared__ real s_d[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff0
+  __shared__ real s_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // conv
+  __shared__ real s_c0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // conv0
+  __shared__ real s_f[MAX_THREADS_DIM * MAX_THREADS_DIM];       // source term
+  __shared__ real s_rhs[MAX_THREADS_DIM * MAX_THREADS_DIM];  // solution
+
+//store scalar value of difference direction at cell center
+  __shared__ real sc_b[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at bottom center
+  __shared__ real sc_t[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at top    center
+  __shared__ real sc_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at        center
+
+//store point volume percentage in each grid cell
+  __shared__ real p_epsp[MAX_THREADS_DIM * MAX_THREADS_DIM];
+
+  // working constants
+  real ab0 = 0.5 * dt / dt0;   // for Adams-Bashforth stepping
+  real ab = 1. + ab0;          // for Adams-Bashforth stepping
+  real ddx = 1. / dom->dx;     // to limit the number of divisions needed
+  real ddy = 1. / dom->dy;     // to limit the number of divisions needed
+  real ddz = 1. / dom->dz;     // to limit the number of divisions needed
+   int C;
+  // loop over w-planes
+  for(int k = dom->Gcc._ks; k < dom->Gcc._ke; k++) {
+    // subdomain indices
+    // the extra 2*blockIdx.X terms implement the necessary overlapping of
+    // shared memory blocks in the subdomain
+    int i = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+    int j = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    // shared memory indices
+    int ti = threadIdx.x;
+    int tj = threadIdx.y;
+
+
+    if((j >= dom->Gcc._jsb && j < dom->Gcc._jeb)&& (i >= dom->Gcc._isb && i < dom->Gcc._ieb)) {
+sc_c[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+sc_b[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b];
+sc_t[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k+1)*dom->Gcc._s2b];
+
+s_c0[ti + tj*blockDim.x]=conv0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+s_f[ti + tj*blockDim.x]=    f[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+
+p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+}
+
+
+
+
+  // make sure all threads complete shared memory copy
+    __syncthreads();
+
+//No boundary value of u,v,w are used
+    if((j >= dom->Gfz._js && j < dom->Gfz._je)
+      && (i >= dom->Gfz._is && i < dom->Gfz._ie)) {
+      s_w0[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b];
+      s_w1[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + (k+1)*dom->Gfz._s2b];
+    }
+    if((j >= dom->Gfx._js && j < dom->Gfx._je)
+      && (i >= dom->Gfx._is && i < dom->Gfx._ie)) {
+      s_u[ti + tj*blockDim.x] = u[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b];
+    }
+    if((j >= dom->Gfy._js && j < dom->Gfy._je)
+      && (i >= dom->Gfy._is && i < dom->Gfy._ie)) {
+      s_v[ti + tj*blockDim.x] = v[i + j*dom->Gfy._s1b + k*dom->Gfy._s2b];
+    }
+
+   s_rhs[ti + tj*blockDim.x] = 0.0;  
+    // make sure all threads complete shared memory copy
+    __syncthreads();
+
+    // compute convective term
+    // if off the shared memory block boundary
+    if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1)) {
+//scalar on the west and east u face
+real u_c=(s_u[ti + tj*blockDim.x]+s_u[(ti+1) + tj*blockDim.x])/2;// at xm(i)
+real v_c=(s_v[ti + tj*blockDim.x]+s_v[ti + (tj+1)*blockDim.x])/2;
+real w_c=(s_w1[ti + tj*blockDim.x]+s_w0[ti + tj*blockDim.x])/2;
+ 
+//scalar at face center
+real sc_uw=(sc_c[ti + tj*blockDim.x]+sc_c[ti-1 + tj*blockDim.x])/2.0f;
+real sc_ue=(sc_c[ti + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x])/2.0f;
+
+real sc_vs=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj-1)*blockDim.x])/2.0f;
+real sc_vn=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x])/2.0f;
+
+real sc_wb=(sc_b[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
+real sc_wt=(sc_t[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
+
+//1st order upwind scheme
+real dsudx,dsvdy,dswdz;
+if(u_c>0)	dsudx= (sc_c[ti + tj*blockDim.x]*u_c-sc_uw*s_u[ti + tj*blockDim.x]) *2*ddx;//backward
+else		dsudx=-(sc_c[ti + tj*blockDim.x]*u_c-sc_ue*s_u[ti+1 + tj*blockDim.x]) *2* ddx;//forward
+
+if(v_c>0)	dsvdy= (sc_c[ti + tj*blockDim.x]*v_c-sc_vs*s_v[ti + tj*blockDim.x])*2*ddy;//backward
+else		dsvdy=-(sc_c[ti + tj*blockDim.x]*v_c-sc_vn*s_v[ti + (tj+1)*blockDim.x])*2*ddy;//forward
+
+if(w_c>0)	dswdz= (sc_c[ti + tj*blockDim.x]*w_c-sc_wb*s_w0[ti + tj*blockDim.x])*2*ddz;//backward
+else		dswdz=-(sc_c[ti + tj*blockDim.x]*w_c-sc_wt*s_w1[ti + tj*blockDim.x])*2*ddz;//forward
+
+//diffusive term of scalar at cell center
+real ddsdxx=(sc_c[ti-1 + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddx* ddx;
+real ddsdyy=(sc_c[ti + (tj-1)*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddy* ddy;
+real ddsdzz=(sc_b[ti + tj*blockDim.x]+sc_t[ti + tj*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddz* ddz;
+
+     //move convective term to right hand side 
+      s_c[ti + tj*blockDim.x]=-(dsudx+dsvdy+dswdz);
+     //Diffusion term
+      s_d[ti + tj*blockDim.x]= (ddsdxx+ddsdyy+ddsdzz)*DIFF;
+
+//if(isnan(sc_c[ti + tj*blockDim.x])) printf("\nconv_diff %f %f %f %f %f %d %d %d %d %d\n",dsudx,ddsdxx,ddx,ab,sc_c[ti + tj*blockDim.x],ti,tj,i,j,k);
+//Adam-bashforth at t+1/2 step
+real sc_conv;
+if(dt0>0)
+sc_conv= ab * s_c[ti + tj*blockDim.x]-ab0*s_c0[ti + tj*blockDim.x];
+else sc_conv=s_c[ti + tj*blockDim.x];
+
+
+//Crank-Nicolson method for convective scheme
+real sc_diff= 0.5 * s_d[ti + tj*blockDim.x];
+
+//advance scalar. Take the particle volume fraction into consideration
+//real rhs=(sc_diff+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
+real rhs=sc_diff+s_f[ti + tj*blockDim.x];
+//real rhs=s_f[ti + tj*blockDim.x];
+//sc_c[ti + tj*blockDim.x] +=(sc_conv+rhs)*dt;
+
+s_rhs[ti + tj*blockDim.x] =(sc_conv+rhs)*dt;
+s_rhs[ti + tj*blockDim.x] +=sc_c[ti + tj*blockDim.x];
+}
+
+// copy shared memory back to global, without copying boundary ghost values
+//sc stores n+1 timestep, conv and diff are n timestep!!
+    if((j >= dom->Gcc._js && j < dom->Gcc._je)
+     && (i >= dom->Gcc._is && i < dom->Gcc._ie)
+      && (ti > 0 && ti < (blockDim.x-1))
+      && (tj > 0 && tj < (blockDim.y-1))) {
+      C = i + j*dom->Gcc._s1b + k*dom->Gcc._s2b;
+      sc_rhs[C] = s_rhs[ti + tj*blockDim.x];
+      conv[C] = s_c[ti + tj*blockDim.x];
+      diff[C] =2*s_d[ti + tj*blockDim.x];
+
+    }
+  }
+}
+
+
+
+__global__ void scalar_rhs_FTCS(real rho_f, real DIFF, real *u, real *v, real *w,  real *epsp, real *f, real *conv0,real *conv,real *diff,real *sc0, real *sc_rhs, dom_struct *dom, real dt, real dt0)
+{
+  // create shared memory
+  // no reason to load pressure into shared memory, but leaving it in global
+  // will require additional if statements, so keep it in shared
+  __shared__ real s_w0[MAX_THREADS_DIM * MAX_THREADS_DIM];      // w back
+  __shared__ real s_w1[MAX_THREADS_DIM * MAX_THREADS_DIM];      // w center
+  __shared__ real s_u[MAX_THREADS_DIM * MAX_THREADS_DIM];       // u
+  __shared__ real s_v[MAX_THREADS_DIM * MAX_THREADS_DIM];       // v
+/*
+  __shared__ real s_w2[MAX_THREADS_DIM * MAX_THREADS_DIM];      // w forward
+  __shared__ real s_u01[MAX_THREADS_DIM * MAX_THREADS_DIM];     // u back
+  __shared__ real s_u12[MAX_THREADS_DIM * MAX_THREADS_DIM];     // u forward
+  __shared__ real s_v01[MAX_THREADS_DIM * MAX_THREADS_DIM];     // v back
+  __shared__ real s_v12[MAX_THREADS_DIM * MAX_THREADS_DIM];     // v forward
+*/
+
+  __shared__ real s_d[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff0
+  __shared__ real s_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // conv
+  __shared__ real s_c0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // conv0
+  __shared__ real s_f[MAX_THREADS_DIM * MAX_THREADS_DIM];       // source term
+  __shared__ real s_rhs[MAX_THREADS_DIM * MAX_THREADS_DIM];  // solution
+
+//store scalar value of difference direction at cell center
+  __shared__ real sc_b[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at bottom center
+  __shared__ real sc_t[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at top    center
+  __shared__ real sc_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at        center
+
+//store point volume percentage in each grid cell
+  __shared__ real p_epsp[MAX_THREADS_DIM * MAX_THREADS_DIM];
+
+  // working constants
+  real ab0 = 0.5 * dt / dt0;   // for Adams-Bashforth stepping
+  real ab = 1. + ab0;          // for Adams-Bashforth stepping
+  real ddx = 1. / dom->dx;     // to limit the number of divisions needed
+  real ddy = 1. / dom->dy;     // to limit the number of divisions needed
+  real ddz = 1. / dom->dz;     // to limit the number of divisions needed
+   int C;
+  // loop over w-planes
+  for(int k = dom->Gcc._ks; k < dom->Gcc._ke; k++) {
+    // subdomain indices
+    // the extra 2*blockIdx.X terms implement the necessary overlapping of
+    // shared memory blocks in the subdomain
+    int i = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+    int j = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    // shared memory indices
+    int ti = threadIdx.x;
+    int tj = threadIdx.y;
+
+
+    if((j >= dom->Gcc._jsb && j < dom->Gcc._jeb)&& (i >= dom->Gcc._isb && i < dom->Gcc._ieb)) {
+sc_c[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+sc_b[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b];
+sc_t[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k+1)*dom->Gcc._s2b];
+
+s_c0[ti + tj*blockDim.x]=conv0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+s_f[ti + tj*blockDim.x]=    f[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+
+p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+}
+
+
+
+
+  // make sure all threads complete shared memory copy
+    __syncthreads();
+
+//No boundary value of u,v,w are used
+    if((j >= dom->Gfz._js && j < dom->Gfz._je)
+      && (i >= dom->Gfz._is && i < dom->Gfz._ie)) {
+      s_w0[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b];
+      s_w1[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + (k+1)*dom->Gfz._s2b];
+    }
+    if((j >= dom->Gfx._js && j < dom->Gfx._je)
+      && (i >= dom->Gfx._is && i < dom->Gfx._ie)) {
+      s_u[ti + tj*blockDim.x] = u[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b];
+    }
+    if((j >= dom->Gfy._js && j < dom->Gfy._je)
+      && (i >= dom->Gfy._is && i < dom->Gfy._ie)) {
+      s_v[ti + tj*blockDim.x] = v[i + j*dom->Gfy._s1b + k*dom->Gfy._s2b];
+    }
+
+   s_rhs[ti + tj*blockDim.x] = 0.0;  
+    // make sure all threads complete shared memory copy
+    __syncthreads();
+
+    // compute convective term
+    // if off the shared memory block boundary
+    if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1)) {
+//scalar at face center
+real sc_uw=(sc_c[ti + tj*blockDim.x]+sc_c[ti-1 + tj*blockDim.x])/2.0f;
+real sc_ue=(sc_c[ti + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x])/2.0f;
+
+real sc_vs=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj-1)*blockDim.x])/2.0f;
+real sc_vn=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x])/2.0f;
+
+real sc_wb=(sc_b[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
+real sc_wt=(sc_t[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
+
+//convective term of scalar at cell center
+real dsudx=(s_u[(ti+1) + tj*blockDim.x]*sc_ue - s_u[ti + tj*blockDim.x]*sc_uw) * ddx;
+real dsvdy=(s_v[ti + (tj+1)*blockDim.x]*sc_vn - s_v[ti + tj*blockDim.x]*sc_vs) * ddy;
+real dswdz=(s_w1[ti + tj*blockDim.x]   *sc_wt - s_w0[ti + tj*blockDim.x]*sc_wb) * ddz;
+
+//diffusive term of scalar at cell center
+real ddsdxx=(sc_c[ti-1 + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddx* ddx;
+real ddsdyy=(sc_c[ti + (tj-1)*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddy* ddy;
+real ddsdzz=(sc_b[ti + tj*blockDim.x]+sc_t[ti + tj*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddz* ddz;
+
+     //move convective term to right hand side 
+      s_c[ti + tj*blockDim.x]=-(dsudx+dsvdy+dswdz);
+     //Diffusion term
+      s_d[ti + tj*blockDim.x]= (ddsdxx+ddsdyy+ddsdzz)*DIFF;
+
+//if(isnan(sc_c[ti + tj*blockDim.x])) printf("\nconv_diff %f %f %f %f %f %d %d %d %d %d\n",dsudx,ddsdxx,ddx,ab,sc_c[ti + tj*blockDim.x],ti,tj,i,j,k);
+//Adam-bashforth at t+1/2 step
+real sc_conv;
+if(dt0>0)
+sc_conv= ab * s_c[ti + tj*blockDim.x]-ab0*s_c0[ti + tj*blockDim.x];
+else sc_conv=s_c[ti + tj*blockDim.x];
+
+
+//Crank-Nicolson method for convective scheme
+real sc_diff= 0.5 * s_d[ti + tj*blockDim.x];
+
+//advance scalar. Take the particle volume fraction into consideration
+//real rhs=(sc_diff+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
+real rhs=sc_diff+s_f[ti + tj*blockDim.x];
+//real rhs=s_f[ti + tj*blockDim.x];
+//sc_c[ti + tj*blockDim.x] +=(sc_conv+rhs)*dt;
+
+s_rhs[ti + tj*blockDim.x] =(sc_conv+rhs)*dt;
+s_rhs[ti + tj*blockDim.x] +=sc_c[ti + tj*blockDim.x];
+}
+
+// copy shared memory back to global, without copying boundary ghost values
+//sc stores n+1 timestep, conv and diff are n timestep!!
+    if((j >= dom->Gcc._js && j < dom->Gcc._je)
+     && (i >= dom->Gcc._is && i < dom->Gcc._ie)
+      && (ti > 0 && ti < (blockDim.x-1))
+      && (tj > 0 && tj < (blockDim.y-1))) {
+      C = i + j*dom->Gcc._s1b + k*dom->Gcc._s2b;
+      sc_rhs[C] = s_rhs[ti + tj*blockDim.x];
+      conv[C] = s_c[ti + tj*blockDim.x];
+      diff[C] =2*s_d[ti + tj*blockDim.x];
+//if(isnan( s_rhs[ti + tj*blockDim.x])||isinf( s_rhs[ti + tj*blockDim.x])||isnan(s_c[ti + tj*blockDim.x])||isinf(s_c[ti + tj*blockDim.x])||isnan(s_d[ti + tj*blockDim.x])||isinf(s_d[ti + tj*blockDim.x])) printf("\nwrong out %d %d %d %f %f %f\n",i,j,k,s_rhs[ti + tj*blockDim.x],s_c[ti + tj*blockDim.x],s_d[ti + tj*blockDim.x]);
+
+    }
+  }
+}
+
+   
+
+
+
+__global__ void scalar_coeffs_periodic_W(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values)
+{
+  int i = dom->Gcc.is;  // iterator
+  int C;  // cell locations
+  real ddx = 1. / (dom->dx * dom->dx);
+
+  int tj = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((tj < (dom->Gcc.jn + DOM_BUF)) && (tk < (dom->Gcc.kn + DOM_BUF))) {
+    C = (i-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+    values[C + pitch * 5] += 0.5*DIFF*dt*ddx;
+    values[C + pitch * 8] -= 0.5*DIFF*dt*ddx;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_E(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values)
+{
+  int i = dom->Gcc.ie-1;  // iterator
+  int C;  // cell locations
+  real ddx = 1. / (dom->dx * dom->dx);
+
+  int tj = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((tj < (dom->Gcc.jn + DOM_BUF)) && (tk < (dom->Gcc.kn + DOM_BUF))) {
+    C = (i-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+    values[C + pitch * 4] -= 0.5*DIFF*dt*ddx;
+    values[C + pitch * 7] += 0.5*DIFF*dt*ddx;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_S(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values)
+{
+  int j = dom->Gcc.js;  // iterator
+  int C;  // cell locations
+  real ddy = 1. / (dom->dy * dom->dy);
+
+  int tk = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int ti = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((tk < (dom->Gcc.kn + DOM_BUF)) && (ti < (dom->Gcc.in + DOM_BUF))) {
+    C = (ti-DOM_BUF) + (j-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+    values[C + pitch * 3]  += 0.5*DIFF*dt*ddy;
+    values[C + pitch * 10] -= 0.5*DIFF*dt*ddy;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_N(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values)
+{
+  int j = dom->Gcc.je-1;  // iterator
+  int C;  // cell locations
+  real ddy = 1. / (dom->dy * dom->dy);
+
+  int tk = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int ti = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((tk < (dom->Gcc.kn + DOM_BUF)) && (ti < (dom->Gcc.in + DOM_BUF))) {
+    C = (ti-DOM_BUF) + (j-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+    values[C + pitch * 2] -= 0.5*DIFF*dt*ddy;
+    values[C + pitch * 9] += 0.5*DIFF*dt*ddy;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_B(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values)
+{
+  int k = dom->Gcc.ks;  // iterator
+  int C;  // cell locations
+  real ddz = 1. / (dom->dz * dom->dz);
+
+  int ti = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tj = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((ti < (dom->Gcc.in + DOM_BUF)) && (tj < (dom->Gcc.jn + DOM_BUF))) {
+    C = (ti-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (k-DOM_BUF)*dom->Gcc.s2;
+    values[C + pitch * 1]  += 0.5*DIFF*dt*ddz;
+    values[C + pitch * 12] -= 0.5*DIFF*dt*ddz;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_T(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values)
+{
+  int k = dom->Gcc.ke-1;  // iterator
+  int C;  // cell locations
+  real ddz = 1. / (dom->dz * dom->dz);
+
+  int ti = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tj = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((ti < (dom->Gcc.in + DOM_BUF)) && (tj < (dom->Gcc.jn + DOM_BUF))) {
+    C = (ti-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (k-DOM_BUF)*dom->Gcc.s2;
+    values[C + pitch * 0]  -= 0.5*DIFF*dt*ddz;
+    values[C + pitch * 11] += 0.5*DIFF*dt*ddz;
+  }
+}
+
+
 // scalar; west; periodic
 __global__ void BC_sc_W_P(real *sc, dom_struct *dom)
 {
@@ -746,8 +1251,8 @@ real sc_diff= ab * s_d[ti + tj*blockDim.x]-ab0*s_d0[ti + tj*blockDim.x];
 //s_rhs[ti + tj*blockDim.x]=sc_conv+sc_diff+s_f[ti + tj*blockDim.x];
 //advance scalar
 //Take the particle volume fraction into consideration
-//real rhs=(sc_diff+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
-real rhs=sc_diff+s_f[ti + tj*blockDim.x];
+real rhs=(sc_diff+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
+//real rhs=sc_diff+s_f[ti + tj*blockDim.x];
 sc_c[ti + tj*blockDim.x] +=(sc_conv+rhs)*dt;
 }
 
@@ -911,8 +1416,8 @@ real sc_diff=  s_d[ti + tj*blockDim.x] ;
 //s_rhs[ti + tj*blockDim.x]=sc_conv+sc_diff+s_f[ti + tj*blockDim.x];
 //advance scalar
 //Take the particle volume fraction into consideration
-//real rhs=(sc_diff+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
-real rhs=sc_diff+s_f[ti + tj*blockDim.x];
+real rhs=(sc_diff+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
+//real rhs=sc_diff+s_f[ti + tj*blockDim.x];
 sc_c[ti + tj*blockDim.x] +=(sc_conv+rhs)*dt;
 }
 
@@ -1350,7 +1855,7 @@ __global__ void lpt_scalar_source_convDiff_test(real *src,dom_struct *dom,real t
 {
   int tj = blockDim.x*blockIdx.x + threadIdx.x- 2*blockIdx.x;
   int tk = blockDim.y*blockIdx.y + threadIdx.y- 2*blockIdx.y;
-
+  int i;
   int s1b = dom->Gcc._s1b;
   int s2b = dom->Gcc._s2b;
 /*
@@ -1370,11 +1875,15 @@ __global__ void lpt_scalar_source_convDiff_test(real *src,dom_struct *dom,real t
  real q=2;
  real r=wt;
  real U0=10;
+// real U0=0;
+
 
 
 if(tj < dom->Gcc._jeb && tk < dom->Gcc._keb) {
-    for(int i = dom->Gcc._isb; i < dom->Gcc._ieb; i++) 
+    for( i = dom->Gcc._isb; i < dom->Gcc._ieb; i++) 
 	{
+//if(tj==dom->Gcc._je&&tk==dom->Gcc._ke&&i==dom->Gcc._ie) printf("\ncorrect block\n");
+
  real x = ((i-0.5) * dom->dx) + dom->xs;
  real y = ((tj-0.5) * dom->dy) + dom->ys;
 	src[i+tj*s1b+tk*s2b]=cos(wx*x)*cos(wy*y)*(cos(wt*t)+(wx*wx+wy*wy)*DIFF*sin(wt*t)/wt)-1.f/wt*U0*sin(r*t)*sin(wt*t)*(wx*cos(q*x)*cos(q*y)*cos(wy*y)*sin(wx*x)+wy*cos(wx*x)*sin(q*x)*sin(q*y)*sin(wy*y));	

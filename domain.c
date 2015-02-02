@@ -2087,7 +2087,7 @@ fprintf(rest, "\n");
      fprintf(rest, "%e ", points[i].ms);
      fprintf(rest, "%e ", points[i].ms0);
      fprintf(rest, "%e ", points[i].msdot);
-     fprintf(rest, "%e ", points[i].hp);
+     fprintf(rest, "%e ", points[i].Nu);
      fprintf(rest, "%e ", points[i].dt);
  
 
@@ -2360,7 +2360,7 @@ void in_restart(void)
     fret = fscanf(infile, "%le ", &points[i].ms);
     fret = fscanf(infile, "%le ", &points[i].ms0);
     fret = fscanf(infile, "%le ", &points[i].msdot);
-    fret = fscanf(infile, "%le ", &points[i].hp);
+    fret = fscanf(infile, "%le ", &points[i].Nu);
     fret = fscanf(infile, "%le ", &points[i].dt);
  
 
@@ -2440,7 +2440,7 @@ void in_restart(void)
     fret = fscanf(infile, "%e ", &points[i].ms);
     fret = fscanf(infile, "%e ", &points[i].ms0);
     fret = fscanf(infile, "%e ", &points[i].msdot);
-    fret = fscanf(infile, "%e ", &points[i].hp);
+    fret = fscanf(infile, "%e ", &points[i].Nu);
     fret = fscanf(infile, "%e ", &points[i].dt);
  
 

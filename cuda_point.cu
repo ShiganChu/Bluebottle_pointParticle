@@ -14,23 +14,38 @@ extern "C"
 real cuda_find_dt_points(real dt)
 {
   // results from all devices
-  real *pdt;
+//  real *pdt;
+  real *vel2_p;
  
-  checkCudaErrors(cudaMalloc((void**) &(pdt),sizeof(real) * npoints));
+//  checkCudaErrors(cudaMalloc((void**) &(pdt),sizeof(real) * npoints));
+  checkCudaErrors(cudaMalloc((void**) &(vel2_p),sizeof(real) * npoints));
+
   dim3 dimBlocks_p,numBlocks_p;
   block_thread_point(dimBlocks_p,numBlocks_p,npoints);
 
-  copy_points_dt<<<numBlocks_p,dimBlocks_p>>>(pdt,_points[0],npoints);
-  real min;
-  min = find_min(npoints, pdt);
+  points_vel_square<<<numBlocks_p,dimBlocks_p>>>(_points[0],vel2_p,npoints);
+
+//  copy_points_dt<<<numBlocks_p,dimBlocks_p>>>(pdt,_points[0],npoints);
+  real max_vel2;
+  max_vel2 = find_max(npoints, vel2_p);
+//  min = find_min(npoints, pdt);
 
   // clean up
-  cudaFree(pdt);
-//printf("\npoints_dt %f %f\n",min,dt);
-  if(min>dt||min<EPSILON) min=dt; 
+//  cudaFree(pdt);
+  cudaFree(vel2_p);
 
-//printf("\npoints_dt2 %f %f\n",min,dt);
-  return min;
+ real pdt;
+ real min_meshsize;
+ min_meshsize=min(Dom.dx,Dom.dy);
+ min_meshsize=min(Dom.dz,min_meshsize);
+
+ pdt=CFL*min_meshsize/(sqrt(max_vel2)+EPSILON);
+
+//printf("\npoints_dt2 %f %f %f\n",pdt,dt,max_vel2);
+  if(pdt>dt) pdt=dt; 
+
+
+  return pdt;
 }
 
 
@@ -120,7 +135,26 @@ fflush(stdout);
 
 }
 
-//extern "C"
+void point_ms_init(void)
+{
+
+if(npoints<=0) return;
+ // allocate device memory on device
+  #pragma omp parallel num_threads(nsubdom)
+  {
+    int dev = omp_get_thread_num();
+    checkCudaErrors(cudaSetDevice(dev + dev_start));
+
+    dim3 dimBlocks_p,numBlocks_p;
+    block_thread_point(dimBlocks_p,numBlocks_p,npoints);
+
+//bc is bc.uTD etc. Make sure which BC this is. 
+	point_ms_initD<<<numBlocks_p, dimBlocks_p>>>(_points[dev],npoints,sc_init_percent);
+
+	}
+
+}
+
 void match_point_vel_with_flow(void)
 {
 
@@ -166,6 +200,36 @@ sc_eq,DIFF);
 
 }
 
+
+void match_bubble_vel_with_flow(void)
+{
+
+if(npoints<=0) return;
+ // allocate device memory on device
+  #pragma omp parallel num_threads(nsubdom)
+  {
+    int dev = omp_get_thread_num();
+    checkCudaErrors(cudaSetDevice(dev + dev_start));
+
+    dim3 dimBlocks_p,numBlocks_p;
+    block_thread_point(dimBlocks_p,numBlocks_p,npoints);
+
+//bc is bc.uTD etc. Make sure which BC this is. 
+//	point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],ug[dev],vg[dev],wg[dev],           lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],scg[dev]);
+ 
+        interpolate_point_vel_Lag2<<<numBlocks_p, dimBlocks_p>>>(_u[dev],_v[dev],_w[dev],
+                                                         npoints,rho_f,nu,
+                                                         ug[dev],vg[dev],wg[dev],
+                                                        _points[dev],_dom[dev],bc);
+
+        point_vel_specify<<<numBlocks_p, dimBlocks_p>>>(ug[dev],vg[dev],wg[dev],_points[dev],npoints);
+
+
+	store_pointsD<<<numBlocks_p, dimBlocks_p>>>(_points[dev],_dom[dev],npoints);
+
+	}
+
+}
 
 
 
@@ -281,6 +345,15 @@ rho_f,mu,g,gradP,
 C_add, C_stress,C_drag,
 sc_eq,DIFF,dt_try);
 
+/*
+//In this subroutine, sc_eq is not used at all
+drag_move_bubbles<<<numBlocks_p, dimBlocks_p>>>(_points[dev],_dom[dev],npoints,
+ug[dev],vg[dev],wg[dev],
+lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],scg[dev],
+rho_f,mu,g,gradP,
+sc_eq,DIFF,dt_try);
+*/
+
 fflush(stdout);
 
 getLastCudaError("Kernel execution failed.");
@@ -308,15 +381,39 @@ if(npoints<=0) return;
     int dev = omp_get_thread_num();
     checkCudaErrors(cudaSetDevice(dev + dev_start));
 
-int valType=0;
-/* 
-lpt_mollify_sc_optH(1,valType,dev,_f_x[dev]);
-lpt_mollify_sc_optH(2,valType,dev,_f_y[dev]);
-lpt_mollify_sc_optH(3,valType,dev,_f_z[dev]);
-*/
-lpt_mollify_delta_scH(1,valType,dev,_f_x[dev]);
-lpt_mollify_delta_scH(2,valType,dev,_f_y[dev]);
-lpt_mollify_delta_scH(3,valType,dev,_f_z[dev]);
+    dim3 dimBlocks_x,numBlocks_x;
+    dim3 dimBlocks_y,numBlocks_y;
+    dim3 dimBlocks_z,numBlocks_z;
+
+    int coordiSys,planeDirc;
+	
+    coordiSys=1;
+    planeDirc=1;
+    block_thread_cell_noOverLap(dimBlocks_x,numBlocks_x,dom[dev],coordiSys,planeDirc);
+    coordiSys=2;
+    planeDirc=2;
+    block_thread_cell_noOverLap(dimBlocks_y,numBlocks_y,dom[dev],coordiSys,planeDirc);
+    coordiSys=3;
+    planeDirc=3;
+    block_thread_cell_noOverLap(dimBlocks_z,numBlocks_z,dom[dev],coordiSys,planeDirc);
+
+if(dt0 > 0.)
+	{
+
+//printf("\nforcing test %f %f\n",dt,dt0);
+
+//The coefficient here should be inverse of the present time step rather than last time step
+    forcing_add_x_field<<<numBlocks_x, dimBlocks_x>>>(1/dt, _lpt_mom_source_x[dev],
+      _f_x[dev], _dom[dev]);
+    forcing_add_y_field<<<numBlocks_y, dimBlocks_y>>>(1/dt, _lpt_mom_source_y[dev],
+      _f_y[dev], _dom[dev]);
+    forcing_add_z_field<<<numBlocks_z, dimBlocks_z>>>(1/dt, _lpt_mom_source_z[dev],
+      _f_z[dev], _dom[dev]);
+	}
+
+     forcing_reset_x<<<numBlocks_x, dimBlocks_x>>>(_lpt_mom_source_x[dev], _dom[dev]);
+     forcing_reset_y<<<numBlocks_y, dimBlocks_y>>>(_lpt_mom_source_y[dev], _dom[dev]);
+     forcing_reset_z<<<numBlocks_z, dimBlocks_z>>>(_lpt_mom_source_z[dev], _dom[dev]);
 
 
      }
@@ -324,6 +421,25 @@ lpt_mollify_delta_scH(3,valType,dev,_f_z[dev]);
 
 
    
+extern "C"
+void lpt_point_twoway_momentum()
+{
+if(npoints<=0) return;
+ // parallelize over CPU threads
+  #pragma omp parallel num_threads(nsubdom)
+  {
+    int dev = omp_get_thread_num();
+    checkCudaErrors(cudaSetDevice(dev + dev_start));
+
+int valType=0;
+//Mollify particle back reaction momentum source
+lpt_mollify_delta_scH(1,valType,dev,_lpt_mom_source_x[dev]);
+lpt_mollify_delta_scH(2,valType,dev,_lpt_mom_source_y[dev]);
+lpt_mollify_delta_scH(3,valType,dev,_lpt_mom_source_z[dev]);
+
+     }
+}
+
 
 
 
@@ -353,6 +469,7 @@ if(npoints<=0) return;
 
 //    dim3 dimBlocks_3d,numBlocks_3d;
     dim3 dimBlocks_w,numBlocks_w;
+    dim3 dimBlocks_z,numBlocks_z;
     dim3 dimBlocks_p,numBlocks_p;
 //    dim3 numBlocks_st;
 
@@ -361,7 +478,8 @@ if(npoints<=0) return;
 //int coordiSys=0;//coordinate systerm, cell-center or face center
 int planeDirc=3;//parallel x-y or y-z or x-z plane
 
-block_thread_cell(dimBlocks_w,numBlocks_w,dom[dev],coordiSys,planeDirc);
+//block_thread_cell(dimBlocks_z,numBlocks_z,dom[dev],coordiSys,planeDirc);
+block_thread_cell_noOverLap(dimBlocks_w,numBlocks_w,dom[dev],coordiSys,planeDirc);
 //block_thread_cell_3D(dimBlocks_3d,numBlocks_3d,dom[dev],coordiSys);
 block_thread_point(dimBlocks_p,numBlocks_p,npoints);
 //block_thread_point(dimBlocks_p,numBlocks_st,npoints*STENCIL3);
@@ -440,6 +558,8 @@ milliseconds = 0;
 cudaEventRecord(start);
 */
 
+
+//Note the numBlocks_w doesn't contain overLap for the shared memory. This should vary from kernel to kernel
 lpt_mollify_delta_scD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,lptSourceVal[dev],cellStart[dev],cellEnd[dev],npoints,coordiSys);
 
 getLastCudaError("Kernel execution failed.");
@@ -636,6 +756,69 @@ default: break;
     numBlocks.y=blocks_y;
 
 }
+
+
+//About Swap, and reference, dirc is the system direction, dirc2 is the plane direction
+void block_thread_cell_noOverLap(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int dirc,int dirc2)
+{
+
+    int threads_y = 0;
+    int threads_x = 0;
+    int blocks_y = 0;
+    int blocks_x = 0;
+
+    int lenX=0;
+    int lenY=0;
+
+grid_info G;
+switch(dirc)
+{
+case 0:G=dom.Gcc;break;
+case 1:G=dom.Gfx;break;
+case 2:G=dom.Gfy;break;
+case 3:G=dom.Gfz;break;
+default: break;
+}
+
+	switch(dirc2)
+	{
+	case 1:
+		lenX=G._jnb;
+		lenY=G._knb;
+		break;
+	case 2:
+		lenX=G._knb;
+		lenY=G._inb;
+		break;
+	case 3:
+		lenX=G._inb;
+		lenY=G._jnb;
+		break;
+	default: break;	
+	}
+
+
+    if(lenX < MAX_THREADS_DIM)
+      threads_x = lenX;
+    else
+      threads_x = MAX_THREADS_DIM;
+
+    if(lenY < MAX_THREADS_DIM)
+      threads_y = lenY;
+    else
+      threads_y = MAX_THREADS_DIM;
+
+
+    blocks_x = (int)ceil((real) lenX / (real) (threads_x));
+    blocks_y = (int)ceil((real) lenY / (real) (threads_y));
+
+    dimBlocks.x=threads_x;
+    dimBlocks.y=threads_y;
+    numBlocks.x=blocks_x;
+    numBlocks.y=blocks_y;
+
+}
+
 
 /*
 //About Swap, and reference, dirc is the system direction, get 3d blocks and threads
@@ -846,6 +1029,27 @@ void cuda_point_malloc(void)
   _flag_w = (int**) malloc(nsubdom * sizeof(int*));
   cpumem += nsubdom * sizeof(int*);
 
+
+  // allocate device memory on host
+  //add by shigan_9_22_2014, fluid stress on face center
+  _stress_u = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+  _stress_v = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+  _stress_w = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+
+
+  _lpt_mom_source_x = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+  _lpt_mom_source_y = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+  _lpt_mom_source_z = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+
+
+
+
   lpt_point_source_mollify_init();
 
 
@@ -869,6 +1073,42 @@ void cuda_point_malloc(void)
       sizeof(int) * dom[dev].Gfz.s3b));
     gpumem += sizeof(int) * dom[dev].Gfz.s3b;
  
+//add by shigan
+    checkCudaErrors(cudaMalloc((void**) &(_stress_u[dev]),
+      sizeof(real) * dom[dev].Gfx.s3b));
+    gpumem += sizeof(int) * dom[dev].Gfx.s3b;
+    checkCudaErrors(cudaMalloc((void**) &(_stress_v[dev]),
+      sizeof(real) * dom[dev].Gfy.s3b));
+    gpumem += sizeof(int) * dom[dev].Gfy.s3b;
+    checkCudaErrors(cudaMalloc((void**) &(_stress_w[dev]),
+      sizeof(real) * dom[dev].Gfz.s3b));
+    gpumem += sizeof(int) * dom[dev].Gfz.s3b;
+
+
+    checkCudaErrors(cudaMalloc((void**) &(_lpt_mom_source_x[dev]),
+      sizeof(real) * dom[dev].Gfx.s3b));
+    gpumem += sizeof(int) * dom[dev].Gfx.s3b;
+    checkCudaErrors(cudaMalloc((void**) &(_lpt_mom_source_y[dev]),
+      sizeof(real) * dom[dev].Gfy.s3b));
+    gpumem += sizeof(int) * dom[dev].Gfy.s3b;
+    checkCudaErrors(cudaMalloc((void**) &(_lpt_mom_source_z[dev]),
+      sizeof(real) * dom[dev].Gfz.s3b));
+    gpumem += sizeof(int) * dom[dev].Gfz.s3b;
+
+
+/*
+    checkCudaErrors(cudaMalloc((void**) &(_omega_x[dev]),
+      sizeof(real) * dom[dev].Gfx.s3b));
+    checkCudaErrors(cudaMalloc((void**) &(_omega_y[dev]),
+      sizeof(real) * dom[dev].Gfy.s3b));
+    checkCudaErrors(cudaMalloc((void**) &(_omega_z[dev]),
+      sizeof(real) * dom[dev].Gfz.s3b));
+*/
+
+
+
+
+
   }
 
 
@@ -891,6 +1131,22 @@ void cuda_point_free(void)
     checkCudaErrors(cudaFree(_flag_w[dev]));
   
 
+    checkCudaErrors(cudaFree(_stress_u[dev]));
+    checkCudaErrors(cudaFree(_stress_v[dev]));
+    checkCudaErrors(cudaFree(_stress_w[dev]));
+
+
+    checkCudaErrors(cudaFree(_lpt_mom_source_x[dev]));
+    checkCudaErrors(cudaFree(_lpt_mom_source_y[dev]));
+    checkCudaErrors(cudaFree(_lpt_mom_source_z[dev]));
+
+/*
+    checkCudaErrors(cudaFree(_omega_x[dev]));
+    checkCudaErrors(cudaFree(_omega_y[dev]));
+    checkCudaErrors(cudaFree(_omega_z[dev]));
+*/
+
+
 }
 
  
@@ -898,6 +1154,20 @@ void cuda_point_free(void)
   free(_flag_u);
   free(_flag_v);
   free(_flag_w);
+
+  free(_stress_u);
+  free(_stress_v);
+  free(_stress_w);
+
+  free(_lpt_mom_source_x);
+  free(_lpt_mom_source_y);
+  free(_lpt_mom_source_z);
+
+/*  
+  free(_omega_x);
+  free(_omega_y);
+  free(_omega_z);
+*/
 
   lpt_point_source_mollify_final();
 

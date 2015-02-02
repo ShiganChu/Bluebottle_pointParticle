@@ -19,6 +19,40 @@ extern texture<float,1,cudaReadModeElementType> texRefGaussian;
 extern texture<int,1,cudaReadModeElementType> texRefDomInfo;
 
 
+
+__global__ void copy_sc_noghost(real *sc_noghost, real *sc_ghost, dom_struct *dom);
+__global__ void scalar_coeffs_init(dom_struct *dom, int pitch, real *values);
+__global__ void scalar_coeffs(real DIFF, real dt, dom_struct *dom, int pitch,real *values);
+__global__ void copy_sc_ghost(real *sc_ghost, real *sc_noghost, dom_struct *dom);
+
+__global__ void scalar_rhs_FTCS(real rho_f, real DIFF, real *u, real *v, real *w,
+ real *epsp, real *f, real *conv0,real *conv,real *diff, real *sc0,real *sc_rhs, dom_struct *dom, real dt, real dt0);
+
+__global__ void scalar_rhs_upwind_1st(real rho_f, real DIFF, real *u, real *v, real *w,  real *epsp, real *f, real *conv0,real *conv,real *diff,real *sc0, real *sc_rhs, dom_struct *dom, real dt, real dt0);
+
+
+
+__global__ void scalar_coeffs_periodic_W(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values);
+__global__ void scalar_coeffs_periodic_E(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values);
+__global__ void scalar_coeffs_periodic_S(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values);
+__global__ void scalar_coeffs_periodic_N(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values);
+__global__ void scalar_coeffs_periodic_B(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values);
+__global__ void scalar_coeffs_periodic_T(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values);
+
+
+
+
+
+
+
+
+
 /****f* cuda_bluebottle_kernel/BC_sc_W_P<<<>>>()
  * NAME
  *  BC_sc_W_P<<<>>>()

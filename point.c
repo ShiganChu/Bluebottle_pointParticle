@@ -100,52 +100,36 @@ void points_show_config(void)
   }
 }
 
-
-//This subroutine delete the old particle&scalar, and inject new particle and scalar into the flow field based on point.config&&scalar.config
-void points_scalar_inject(void)
+//This subroutine delete the old scalar, and inject new scalar into the flow field based on point.config&&scalar.config
+void scalar_inject(void)
 {
 
-//free points on device and host
-      cuda_point_free();
-      points_clean();
 //free scalar on device and host
       cuda_scalar_free();
       scalar_clean();
 
-//read and initialize points	
-      points_read_input();
-      int points_init_flag = points_init();
-      fflush(stdout);
-      if(points_init_flag == EXIT_FAILURE) {
-        printf("\nThe initial point_particle configuration is not allowed.\n");
-        return EXIT_FAILURE;
-      }
 //read and initialize scalar
       scalar_read_input();
     // initialize the scalar 
       int scalar_init_flag = scalar_init();
-      fflush(stdout);
-      if(scalar_init_flag == EXIT_FAILURE) {
+    /*
+  if(scalar_init_flag == EXIT_FAILURE) {
         printf("\nThe initial scalar configuration is not allowed.\n");
         return EXIT_FAILURE;
       }
+
+*/
+      point_ms_init();
+      cuda_point_pull();
 
 //malloc device memory of scalar and point, and push host data to device
       cuda_scalar_malloc();
       cuda_scalar_push();
       
-      cuda_point_malloc();
-      cuda_point_push();
-
-if(npoints>0) cuda_flow_stress();
-
-//The domain velocity has already been pushed to device
-//Match device point velocity with flow field based on point position, which is copied from host
-      match_point_vel_with_flow();
-//pull the new point infomation to host
-          cuda_point_pull();
 //Initialize time again
 	ttime=0.f;
+	dt0=0.f;	
+	dt=0.f;
 //write initial field 
           cuda_dom_pull();
           if(rec_flow_field_dt > 0) {
@@ -167,6 +151,196 @@ if(npoints>0) cuda_flow_stress();
 
 }
 
+
+
+
+
+//This subroutine delete the old particle, and inject new particle into the flow field based on point.config&&scalar.config
+void points_inject(void)
+{
+
+//free points on device and host
+      cuda_point_free();
+      points_clean();
+
+
+//read and initialize points	
+      points_read_input();
+      int points_init_flag = points_init();
+      /*
+	if(points_init_flag == EXIT_FAILURE) {
+        printf("\nThe initial point_particle configuration is not allowed.\n");
+        return EXIT_FAILURE;
+      }
+      */
+      cuda_point_malloc();
+      cuda_point_push();
+
+if(npoints>0) cuda_flow_stress();
+
+//The domain velocity has already been pushed to device
+//Match device point velocity with flow field based on point position, which is copied from host
+      match_point_vel_with_flow();
+//pull the new point infomation to host
+       cuda_point_pull();
+//Initialize time again
+	ttime=0.f;
+	dt0=0.f;
+	dt=0.f;
+//write initial field 
+          cuda_dom_pull();
+          if(rec_flow_field_dt > 0) {
+            cgns_grid();
+            cgns_flow_field(rec_flow_field_dt);
+            rec_flow_field_stepnum_out++;
+//printf("\nrec_flow %d\n", rec_flow_field_stepnum_out);
+          }
+          if(rec_point_particle_dt > 0) {
+            cgns_point_particles(rec_point_particle_dt);
+            rec_point_particle_stepnum_out++;
+          }
+      
+         if(rec_scalar_field_dt > 0) {
+            cgns_scalar_field(rec_scalar_field_dt);
+            rec_scalar_stepnum_out++;
+          }
+        
+
+}
+
+
+
+//This subroutine delete the old particle&scalar, and inject new particle and scalar into the flow field based on point.config&&scalar.config
+void points_scalar_inject(void)
+{
+
+//free points on device and host
+      cuda_point_free();
+      points_clean();
+//free scalar on device and host
+      cuda_scalar_free();
+      scalar_clean();
+
+//read and initialize points	
+      points_read_input();
+      int points_init_flag = points_init();
+      fflush(stdout);
+/*
+      if(points_init_flag == EXIT_FAILURE) {
+        printf("\nThe initial point_particle configuration is not allowed.\n");
+        return EXIT_FAILURE;
+      }
+*/
+//read and initialize scalar
+      scalar_read_input();
+    // initialize the scalar 
+      int scalar_init_flag = scalar_init();
+/*
+      fflush(stdout);
+      if(scalar_init_flag == EXIT_FAILURE) {
+        printf("\nThe initial scalar configuration is not allowed.\n");
+        return EXIT_FAILURE;
+      }
+*/
+//malloc device memory of scalar and point, and push host data to device
+      cuda_scalar_malloc();
+      cuda_scalar_push();
+      
+      cuda_point_malloc();
+      cuda_point_push();
+
+if(npoints>0) cuda_flow_stress();
+
+//The domain velocity has already been pushed to device
+//Match device point velocity with flow field based on point position, which is copied from host
+      match_point_vel_with_flow();
+//pull the new point infomation to host
+          cuda_point_pull();
+//Initialize time again
+	ttime=0.f;
+	dt0=0.f;
+	dt=0.f;
+//write initial field 
+          cuda_dom_pull();
+          if(rec_flow_field_dt > 0) {
+            cgns_grid();
+            cgns_flow_field(rec_flow_field_dt);
+            rec_flow_field_stepnum_out++;
+//printf("\nrec_flow %d\n", rec_flow_field_stepnum_out);
+          }
+          if(rec_point_particle_dt > 0) {
+            cgns_point_particles(rec_point_particle_dt);
+            rec_point_particle_stepnum_out++;
+          }
+      
+         if(rec_scalar_field_dt > 0) {
+            cgns_scalar_field(rec_scalar_field_dt);
+            rec_scalar_stepnum_out++;
+          }
+        
+
+}
+
+
+//This subroutine delete the old particle&scalar, and inject new particle and scalar into the flow field based on point.config&&scalar.config
+void bubble_scalar_inject(void)
+{
+
+//free points on device and host
+      cuda_point_free();
+      points_clean();
+//free scalar on device and host
+      cuda_scalar_free();
+      scalar_clean();
+
+//read and initialize points	
+      points_read_input();
+      int points_init_flag = points_init();
+      fflush(stdout);
+ 
+//read and initialize scalar
+      scalar_read_input();
+    // initialize the scalar 
+      int scalar_init_flag = scalar_init();
+ 
+//malloc device memory of scalar and point, and push host data to device
+      cuda_scalar_malloc();
+      cuda_scalar_push();
+      
+      cuda_point_malloc();
+      cuda_point_push();
+
+if(npoints>0) cuda_flow_stress();
+
+//The domain velocity has already been pushed to device
+//Match device point velocity with flow field based on point position, which is copied from host
+      match_bubble_vel_with_flow();
+//pull the new point infomation to host
+          cuda_point_pull();
+//Initialize time again
+	ttime=0.f;
+	dt0=0.f;
+	dt=0.f;
+//write initial field 
+          cuda_dom_pull();
+          if(rec_flow_field_dt > 0) {
+            cgns_grid();
+            cgns_flow_field(rec_flow_field_dt);
+            rec_flow_field_stepnum_out++;
+//printf("\nrec_flow %d\n", rec_flow_field_stepnum_out);
+          }
+          if(rec_point_particle_dt > 0) {
+            cgns_point_particles(rec_point_particle_dt);
+            rec_point_particle_stepnum_out++;
+          }
+      
+         if(rec_scalar_field_dt > 0) {
+            cgns_scalar_field(rec_scalar_field_dt);
+            rec_scalar_stepnum_out++;
+          }
+        
+
+}
 
 
 
@@ -244,7 +418,7 @@ int points_init(void)
     points[i].z0 =points[i].z;
     points[i].ms0 =points[i].ms ;
     points[i].msdot =0;
-    points[i].hp =0;
+    points[i].Nu =0;
 
     //point id
     points[i].id = i+1;

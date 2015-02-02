@@ -724,7 +724,6 @@ void cuda_dom_pull(void)
     real *fxx = (real*) malloc(dom[dev].Gfx.s3b * sizeof(real));
     real *fyy = (real*) malloc(dom[dev].Gfy.s3b * sizeof(real));
     real *fzz = (real*) malloc(dom[dev].Gfz.s3b * sizeof(real));
-    real *epspp = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
 
     checkCudaErrors(cudaMemcpy(fxx, _f_x[dev], sizeof(real) * dom[dev].Gfx.s3b,
       cudaMemcpyDeviceToHost));
@@ -733,8 +732,6 @@ void cuda_dom_pull(void)
     checkCudaErrors(cudaMemcpy(fzz, _f_z[dev], sizeof(real) * dom[dev].Gfz.s3b,
       cudaMemcpyDeviceToHost));
 
-    checkCudaErrors(cudaMemcpy(epspp, _epsp[dev], sizeof(real) * dom[dev].Gcc.s3b,
-      cudaMemcpyDeviceToHost));
 
 
    // copy from device to host
@@ -781,124 +778,8 @@ void cuda_dom_pull(void)
     checkCudaErrors(cudaMemcpy(convww, _conv_w[dev],
       sizeof(real) * dom[dev].Gfz.s3b, cudaMemcpyDeviceToHost));
 
-#ifdef DEBUG // run test code
-    real *uu_star = (real*) malloc(dom[dev].Gfx.s3b * sizeof(real));
-    // cpumem += dom[dev].Gfx.s3b * sizeof(real);
-    real *vv_star = (real*) malloc(dom[dev].Gfy.s3b * sizeof(real));
-    // cpumem += dom[dev].Gfy.s3b * sizeof(real);
-    real *ww_star = (real*) malloc(dom[dev].Gfz.s3b * sizeof(real));
-    // cpumem += dom[dev].Gfz.s3b * sizeof(real);
-    checkCudaErrors(cudaMemcpy(uu_star, _u_star[dev],
-      sizeof(real) * dom[dev].Gfx.s3b, cudaMemcpyDeviceToHost)); 
-    checkCudaErrors(cudaMemcpy(vv_star, _v_star[dev],
-      sizeof(real) * dom[dev].Gfy.s3b, cudaMemcpyDeviceToHost)); 
-    checkCudaErrors(cudaMemcpy(ww_star, _w_star[dev],
-      sizeof(real) * dom[dev].Gfz.s3b, cudaMemcpyDeviceToHost)); 
 
-    // fill in apropriate subdomain (copy back ghost cells)
-    // p
-    for(k = dom[dev].Gcc.ksb; k < dom[dev].Gcc.keb; k++) {
-      for(j = dom[dev].Gcc.jsb; j < dom[dev].Gcc.jeb; j++) {
-        for(i = dom[dev].Gcc.isb; i < dom[dev].Gcc.ieb; i++) {
-          ii = i - dom[dev].Gcc.isb;
-          jj = j - dom[dev].Gcc.jsb;
-          kk = k - dom[dev].Gcc.ksb;
-          C = i + j * Dom.Gcc.s1b + k * Dom.Gcc.s2b;
-          CC = ii + jj * dom[dev].Gcc.s1b + kk * dom[dev].Gcc.s2b;
-          p0[C] = pp0[CC];
-          p[C] = pp[CC];
-          divU[C] = pdivU[CC];
-
-epsp[C]=epspp[C];
-        }
-      }
-    }
-    // u
-    for(k = dom[dev].Gfx.ksb; k < dom[dev].Gfx.keb; k++) {
-      for(j = dom[dev].Gfx.jsb; j < dom[dev].Gfx.jeb; j++) {
-        for(i = dom[dev].Gfx.isb; i < dom[dev].Gfx.ieb; i++) {
-          ii = i - dom[dev].Gfx.isb;
-          jj = j - dom[dev].Gfx.jsb;
-          kk = k - dom[dev].Gfx.ksb;
-          C = i + j * Dom.Gfx.s1b + k * Dom.Gfx.s2b;
-          CC = ii + jj * dom[dev].Gfx.s1b + kk * dom[dev].Gfx.s2b;
-          u[C] = uu[CC];
-          u0[C] = uu0[CC];
-        }
-      }
-    }
-    // v
-    for(k = dom[dev].Gfy.ksb; k < dom[dev].Gfy.keb; k++) {
-      for(j = dom[dev].Gfy.jsb; j < dom[dev].Gfy.jeb; j++) {
-        for(i = dom[dev].Gfy.isb; i < dom[dev].Gfy.ieb; i++) {
-          ii = i - dom[dev].Gfy.isb;
-          jj = j - dom[dev].Gfy.jsb;
-          kk = k - dom[dev].Gfy.ksb;
-          C = i + j * Dom.Gfy.s1b + k * Dom.Gfy.s2b;
-          CC = ii + jj * dom[dev].Gfy.s1b + kk * dom[dev].Gfy.s2b;
-          v[C] = vv[CC];
-          v0[C] = vv0[CC];
-        }
-      }
-    }
-    // w
-    for(k = dom[dev].Gfz.ksb; k < dom[dev].Gfz.keb; k++) {
-      for(j = dom[dev].Gfz.jsb; j < dom[dev].Gfz.jeb; j++) {
-        for(i = dom[dev].Gfz.isb; i < dom[dev].Gfz.ieb; i++) {
-          ii = i - dom[dev].Gfz.isb;
-          jj = j - dom[dev].Gfz.jsb;
-          kk = k - dom[dev].Gfz.ksb;
-          C = i + j * Dom.Gfz.s1b + k * Dom.Gfz.s2b;
-          CC = ii + jj * dom[dev].Gfz.s1b + kk * dom[dev].Gfz.s2b;
-          w[C] = ww[CC];
-          w0[C] = ww0[CC];
-        }
-      }
-    }
-    // u
-    for(k = dom[dev].Gfx.ksb; k < dom[dev].Gfx.keb; k++) {
-      for(j = dom[dev].Gfx.jsb; j < dom[dev].Gfx.jeb; j++) {
-        for(i = dom[dev].Gfx.isb; i < dom[dev].Gfx.ieb; i++) {
-          ii = i - dom[dev].Gfx.isb;
-          jj = j - dom[dev].Gfx.jsb;
-          kk = k - dom[dev].Gfx.ksb;
-          C = i + j * Dom.Gfx.s1b + k * Dom.Gfx.s2b;
-          CC = ii + jj * dom[dev].Gfx.s1b + kk * dom[dev].Gfx.s2b;
-          u_star[C] = uu_star[CC];
-        }
-      }
-    }
-    // v
-    for(k = dom[dev].Gfy.ksb; k < dom[dev].Gfy.keb; k++) {
-      for(j = dom[dev].Gfy.jsb; j < dom[dev].Gfy.jeb; j++) {
-        for(i = dom[dev].Gfy.isb; i < dom[dev].Gfy.ieb; i++) {
-          ii = i - dom[dev].Gfy.isb;
-          jj = j - dom[dev].Gfy.jsb;
-          kk = k - dom[dev].Gfy.ksb;
-          C = i + j * Dom.Gfy.s1b + k * Dom.Gfy.s2b;
-          CC = ii + jj * dom[dev].Gfy.s1b + kk * dom[dev].Gfy.s2b;
-          v_star[C] = vv_star[CC];
-        }
-      }
-    }
-    // w
-    for(k = dom[dev].Gfz.ksb; k < dom[dev].Gfz.keb; k++) {
-      for(j = dom[dev].Gfz.jsb; j < dom[dev].Gfz.jeb; j++) {
-        for(i = dom[dev].Gfz.isb; i < dom[dev].Gfz.ieb; i++) {
-          ii = i - dom[dev].Gfz.isb;
-          jj = j - dom[dev].Gfz.jsb;
-          kk = k - dom[dev].Gfz.ksb;
-          C = i + j * Dom.Gfz.s1b + k * Dom.Gfz.s2b;
-          CC = ii + jj * dom[dev].Gfz.s1b + kk * dom[dev].Gfz.s2b;
-          w_star[C] = ww_star[CC];
-        }
-      }
-    }
-    free(uu_star);
-    free(vv_star);
-    free(ww_star);
-
-#else // run simulation
+ // run simulation
     // fill in apropriate subdomain
     // p
     for(k = dom[dev].Gcc.ksb; k < dom[dev].Gcc.keb; k++) {
@@ -1014,14 +895,13 @@ f_z[C]=fzz[C];
 
 
 
-#endif
+
 
     // free host subdomain working arrays
     free(fxx);
     free(fyy);
     free(fzz);
 
-    free(epspp);
 
     free(pp0);
     free(pp);
@@ -3182,6 +3062,8 @@ real cuda_find_dt(void)
 
   // clean up
   free(dts);
+
+//if(max>0.05f) max=0.05f;
 
   return max;
 }

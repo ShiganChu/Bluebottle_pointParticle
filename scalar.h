@@ -132,6 +132,11 @@ void scalar_clean(void);
 //Advance the scalar diffusion equation
 void cuda_scalar_advance(void);
 
+
+//solve scalar equation implicitly
+void cuda_scalar_rhs(int dev);
+void cuda_scalar_helmholtz(void);
+
 //Find the maximum time-step for scalar field, dt is the time-step of flow field for comparison
 real cuda_find_dt_sc(real dt);
 

@@ -7,18 +7,18 @@
 #include <cuda.h>
 #include <helper_cuda.h>
 
+#include <cusp/array1d.h>
+#include <cusp/blas.h>
+#include <cusp/dia_matrix.h>
+#include <cusp/monitor.h>
+#include <cusp/precond/diagonal.h>
+#include <cusp/krylov/bicgstab.h>
+#include <cusp/krylov/cg.h>
+#include <cusp/print.h>
+
 extern "C"
 void cuda_scalar_malloc(void)
 {
-  // allocate device memory on host
-  //add by shigan_9_22_2014, fluid stress on face center
-  _stress_u = (real**) malloc(nsubdom * sizeof(real*));
-  cpumem += nsubdom * sizeof(real*);
-  _stress_v = (real**) malloc(nsubdom * sizeof(real*));
-  cpumem += nsubdom * sizeof(real*);
-  _stress_w = (real**) malloc(nsubdom * sizeof(real*));
-  cpumem += nsubdom * sizeof(real*);
-
 /*
   _omega_x = (real**) malloc(nsubdom * sizeof(real*));
   cpumem += nsubdom * sizeof(real*);
@@ -44,6 +44,8 @@ void cuda_scalar_malloc(void)
   _scSrc = (real**) malloc(nsubdom * sizeof(real*));
   cpumem += nsubdom * sizeof(real*);
 
+
+
   _epsp = (real**) malloc(nsubdom * sizeof(real*));
   cpumem += nsubdom * sizeof(real*);
 
@@ -55,23 +57,8 @@ void cuda_scalar_malloc(void)
     int dev = omp_get_thread_num();
     checkCudaErrors(cudaSetDevice(dev + dev_start));
 
-printf("\n dom[dev].Gfx.s3b,dom[dev].Gfy.s3b,dom[dev].Gfz.s3b %d %d %d \n",dom[dev].Gfx.s3b,dom[dev].Gfy.s3b,dom[dev].Gfz.s3b);
-//add by shigan
-    checkCudaErrors(cudaMalloc((void**) &(_stress_u[dev]),
-      sizeof(real) * dom[dev].Gfx.s3b));
-    checkCudaErrors(cudaMalloc((void**) &(_stress_v[dev]),
-      sizeof(real) * dom[dev].Gfy.s3b));
-    checkCudaErrors(cudaMalloc((void**) &(_stress_w[dev]),
-      sizeof(real) * dom[dev].Gfz.s3b));
+//printf("\n dom[dev].Gfx.s3b,dom[dev].Gfy.s3b,dom[dev].Gfz.s3b %d %d %d \n",dom[dev].Gfx.s3b,dom[dev].Gfy.s3b,dom[dev].Gfz.s3b);
 
-/*
-    checkCudaErrors(cudaMalloc((void**) &(_omega_x[dev]),
-      sizeof(real) * dom[dev].Gfx.s3b));
-    checkCudaErrors(cudaMalloc((void**) &(_omega_y[dev]),
-      sizeof(real) * dom[dev].Gfy.s3b));
-    checkCudaErrors(cudaMalloc((void**) &(_omega_z[dev]),
-      sizeof(real) * dom[dev].Gfz.s3b));
-*/
 
 //allocate scalar on device
     checkCudaErrors(cudaMalloc((void**) &(_sc[dev]),
@@ -96,6 +83,7 @@ printf("\n dom[dev].Gfx.s3b,dom[dev].Gfy.s3b,dom[dev].Gfz.s3b %d %d %d \n",dom[d
       sizeof(real) * dom[dev].Gcc.s3b));
     gpumem += dom[dev].Gcc.s3b * sizeof(real);
 
+
     checkCudaErrors(cudaMalloc((void**) &(_epsp[dev]),
       sizeof(real) * dom[dev].Gcc.s3b));
     gpumem += dom[dev].Gcc.s3b * sizeof(real);
@@ -106,6 +94,42 @@ printf("\n dom[dev].Gfx.s3b,dom[dev].Gfy.s3b,dom[dev].Gfz.s3b %d %d %d \n",dom[d
     //printf("Device %d of %d using %f Mb global memory.\n", dev, nsubdom, mb);
   }
 
+
+
+}
+
+
+extern "C"
+void cuda_scalar_free(void)
+{
+  // free device memory on device
+  #pragma omp parallel num_threads(nsubdom)
+  {
+    int dev = omp_get_thread_num();
+    checkCudaErrors(cudaSetDevice(dev + dev_start));
+
+    checkCudaErrors(cudaFree(_sc0[dev]));
+    checkCudaErrors(cudaFree(_sc[dev]));
+    checkCudaErrors(cudaFree(_diff0_sc[dev]));
+    checkCudaErrors(cudaFree(_diff_sc[dev]));
+    checkCudaErrors(cudaFree(_conv0_sc[dev]));
+    checkCudaErrors(cudaFree(_conv_sc[dev]));
+    checkCudaErrors(cudaFree(_scSrc[dev]));
+    checkCudaErrors(cudaFree(_epsp[dev]));
+
+
+  }
+
+  // free device memory on host
+
+    free(_sc0);
+    free(_sc);
+    free(_diff0_sc);
+    free(_diff_sc);
+    free(_conv0_sc);
+    free(_conv_sc);
+    free(_scSrc);
+    free(_epsp);
 
 
 }
@@ -392,9 +416,8 @@ void cuda_scalar_pull(void)
       cudaMemcpyDeviceToHost));
 
 
-#ifdef DEBUG // run test code
    
-#else // run simulation
+ // run simulation
     // fill in apropriate subdomain
     // scalar
     for(k = dom[dev].Gcc.ksb; k < dom[dev].Gcc.keb; k++) {
@@ -468,7 +491,6 @@ void cuda_scalar_pull(void)
 */
 
 
-#endif
 
     // free host subdomain working arrays
    
@@ -493,55 +515,6 @@ void cuda_scalar_pull(void)
 }
 
 
-extern "C"
-void cuda_scalar_free(void)
-{
-  // free device memory on device
-  #pragma omp parallel num_threads(nsubdom)
-  {
-    int dev = omp_get_thread_num();
-    checkCudaErrors(cudaSetDevice(dev + dev_start));
-
-    checkCudaErrors(cudaFree(_sc0[dev]));
-    checkCudaErrors(cudaFree(_sc[dev]));
-    checkCudaErrors(cudaFree(_diff0_sc[dev]));
-    checkCudaErrors(cudaFree(_diff_sc[dev]));
-    checkCudaErrors(cudaFree(_conv0_sc[dev]));
-    checkCudaErrors(cudaFree(_conv_sc[dev]));
-    checkCudaErrors(cudaFree(_scSrc[dev]));
-    checkCudaErrors(cudaFree(_epsp[dev]));
-
-
-    checkCudaErrors(cudaFree(_stress_u[dev]));
-    checkCudaErrors(cudaFree(_stress_v[dev]));
-    checkCudaErrors(cudaFree(_stress_w[dev]));
-/*
-    checkCudaErrors(cudaFree(_omega_x[dev]));
-    checkCudaErrors(cudaFree(_omega_y[dev]));
-    checkCudaErrors(cudaFree(_omega_z[dev]));
-*/
-  }
-
-  // free device memory on host
-  free(_stress_u);
-  free(_stress_v);
-  free(_stress_w);
-/*  
-  free(_omega_x);
-  free(_omega_y);
-  free(_omega_z);
-*/
-    free(_sc0);
-    free(_sc);
-    free(_diff0_sc);
-    free(_diff_sc);
-    free(_conv0_sc);
-    free(_conv_sc);
-    free(_scSrc);
-    free(_epsp);
-
-
-}
 
 
 
@@ -636,8 +609,6 @@ getLastCudaError("Kernel execution failed.");
     print_kernel_array_real<<<numBlocks_s,dimBlocks_s>>>(_epsp[dev],lenSrc);
  */
 
- 
-  
 
 lpt_epsp_clip<<<numBlocks_x, dimBlocks_x>>>(_epsp[dev],_dom[dev]);
 
@@ -674,8 +645,9 @@ else
 advance_sc_upwind_1st_init<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 
 //advance_sc_init<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
-fflush(stdout);
 }
+
+
 
 /*
 //Using MacCormack scheme to advance scalar
@@ -684,7 +656,8 @@ fflush(stdout);
 */
 
 //advance_sc_QUICK<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt_try);
-fflush(stdout);
+
+// cuda_scalar_helmholtz();
 
 getLastCudaError("Kernel execution failed.");
 
@@ -727,13 +700,13 @@ real cuda_find_dt_sc(real dt)
     real u_max = find_max_mag(dom[dev].Gfx.s3, _u[dev]);
     real v_max = find_max_mag(dom[dev].Gfy.s3, _v[dev]);
     real w_max = find_max_mag(dom[dev].Gfz.s3, _w[dev]);
-
+/*
 //FTCS scheme with Adam-Bashforth method
     dts[dev] = (u_max + 2 * DIFF_eq / dom[dev].dx) / dom[dev].dx  + u_max*u_max/2/DIFF_eq;
     dts[dev] += (v_max + 2 * DIFF_eq / dom[dev].dy) / dom[dev].dy + v_max*v_max/2/DIFF_eq;
     dts[dev] += (w_max + 2 * DIFF_eq / dom[dev].dz) / dom[dev].dz + w_max*w_max/2/DIFF_eq;
     dts[dev] = CFL / dts[dev];
-
+*/
 
 
 /*
@@ -742,12 +715,13 @@ real cuda_find_dt_sc(real dt)
     dts[dev] += (v_max + 2 * DIFF_eq / dom[dev].dy) / dom[dev].dy;
     dts[dev] += (w_max + 2 * DIFF_eq / dom[dev].dz) / dom[dev].dz;
     dts[dev] = CFL / dts[dev];
+*/
+
 //1st upwind scheme
     dts[dev] =  (u_max + 2 * DIFF_eq / dom[dev].dx) / dom[dev].dx;
     dts[dev] += (v_max + 2 * DIFF_eq / dom[dev].dy) / dom[dev].dy;
     dts[dev] += (w_max + 2 * DIFF_eq / dom[dev].dz) / dom[dev].dz;
     dts[dev] = CFL / dts[dev];
-*/
 
 getLastCudaError("Kernel execution failed.");
 
@@ -760,7 +734,9 @@ getLastCudaError("Kernel execution failed.");
 
   // clean up
   free(dts);
-
+//Make the 1st time step smaller
+//  if(dt0<=0) dt=0.01f*dt;
+ 
   if(max>dt) max=dt; 
 
   return max;
@@ -768,6 +744,204 @@ getLastCudaError("Kernel execution failed.");
 
 
 
+extern "C"
+void cuda_scalar_helmholtz(void)
+{
+  // CPU thread for multi-GPU
+  #pragma omp parallel num_threads(nsubdom)
+  {
+    int dev = omp_get_thread_num();
+    cudaSetDevice(dev + dev_start);
+    // write right-hand side
+    cuda_scalar_rhs(dev);
+
+    // create temporary U* without ghost cells for bicgstab result
+    cusp::array1d<real, cusp::device_memory> scalar_tmp(dom[dev].Gcc.s3, 0.);
+
+    // create CUSP diagonal matrix for p
+    cusp::dia_matrix<int, real, cusp::device_memory> *_A_scalar;
+    _A_scalar = new cusp::dia_matrix<int, real, cusp::device_memory>
+      (dom[dev].Gcc._s3, dom[dev].Gcc._s3, 0, 13);
+
+    // set up the coefficient matrix for Crank-Nicolson
+    _A_scalar->diagonal_offsets[0]  = -dom[dev].Gcc._s3 + dom[dev].Gcc._s2;
+    _A_scalar->diagonal_offsets[1]  = -dom[dev].Gcc._s2;
+    _A_scalar->diagonal_offsets[2]  = -dom[dev].Gcc._s2 + dom[dev].Gcc._s1;
+    _A_scalar->diagonal_offsets[3]  = -dom[dev].Gcc._s1;
+    _A_scalar->diagonal_offsets[4]  = -dom[dev].Gcc._s1 + 1;//has to be 2 if use Gfx for staggered grid, 1 for Gcc
+    _A_scalar->diagonal_offsets[5]  = -1;
+    _A_scalar->diagonal_offsets[6]  = 0;
+    _A_scalar->diagonal_offsets[7]  = 1;
+    _A_scalar->diagonal_offsets[8]  = dom[dev].Gcc._s1 - 1;//has to be 2 if use Gfx for staggered grid,1 for Gcc
+    _A_scalar->diagonal_offsets[9]  = dom[dev].Gcc._s1;
+    _A_scalar->diagonal_offsets[10] = dom[dev].Gcc._s2 - dom[dev].Gcc._s1;
+    _A_scalar->diagonal_offsets[11] = dom[dev].Gcc._s2;
+    _A_scalar->diagonal_offsets[12] = dom[dev].Gcc._s3 - dom[dev].Gcc._s2;
+
+    // write coefficients using kernel
+    int threads_x = 0;
+    int threads_y = 0;
+    int threads_z = 0;
+    int blocks_x = 0;
+    int blocks_y = 0;
+    int blocks_z = 0;
+
+    if(dom[dev].Gcc._in < MAX_THREADS_DIM)
+      threads_x = dom[dev].Gcc._in;
+    else
+      threads_x = MAX_THREADS_DIM;
+
+    if(dom[dev].Gcc._jn < MAX_THREADS_DIM)
+      threads_y = dom[dev].Gcc._jn;
+    else
+      threads_y = MAX_THREADS_DIM;
+
+    if(dom[dev].Gcc._kn < MAX_THREADS_DIM)
+      threads_z = dom[dev].Gcc._kn;
+    else
+      threads_z = MAX_THREADS_DIM;
+
+    blocks_x = (int)ceil((real) dom[dev].Gcc._in / (real) threads_x);
+    blocks_y = (int)ceil((real) dom[dev].Gcc._jn / (real) threads_y);
+    blocks_z = (int)ceil((real) dom[dev].Gcc._kn / (real) threads_z);
+
+    dim3 dimBlocks_x(threads_y, threads_z);
+    dim3 numBlocks_x(blocks_y, blocks_z);
+    dim3 dimBlocks_y(threads_z, threads_x);
+    dim3 numBlocks_y(blocks_z, blocks_x);
+    dim3 dimBlocks_z(threads_x, threads_y);
+    dim3 numBlocks_z(blocks_x, blocks_y);
+
+    // create temporary scalar without ghost cells
+    real *_scalar_noghost;
+    checkCudaErrors(cudaMalloc((void**) &_scalar_noghost,
+      sizeof(real) * dom[dev].Gcc.s3));
+    // copy u_star into noghost structure for Helmholtz right-hand side
+    copy_sc_noghost<<<numBlocks_x, dimBlocks_x>>>(_scalar_noghost, _sc[dev],
+      _dom[dev]);
+
+    // build pressure-Poisson coefficient matrix
+    scalar_coeffs_init<<<numBlocks_x, dimBlocks_x>>>(_dom[dev],
+      _A_scalar->values.pitch,
+      thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
+    scalar_coeffs<<<numBlocks_x, dimBlocks_x>>>(DIFF, dt_try, _dom[dev],
+      _A_scalar->values.pitch,
+      thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
+
+    // account for boundary conditions
+    if(sc_bc.scW == PERIODIC)
+      scalar_coeffs_periodic_W<<<numBlocks_x, dimBlocks_x>>>(DIFF, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
+    if(sc_bc.scE == PERIODIC)
+      scalar_coeffs_periodic_E<<<numBlocks_x, dimBlocks_x>>>(DIFF, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
+    if(sc_bc.scS == PERIODIC)
+      scalar_coeffs_periodic_S<<<numBlocks_y, dimBlocks_y>>>(DIFF, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
+    if(sc_bc.scN == PERIODIC)
+      scalar_coeffs_periodic_N<<<numBlocks_y, dimBlocks_y>>>(DIFF, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
+    if(sc_bc.scB == PERIODIC)
+      scalar_coeffs_periodic_B<<<numBlocks_z, dimBlocks_z>>>(DIFF, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
+    if(sc_bc.scT == PERIODIC)
+      scalar_coeffs_periodic_T<<<numBlocks_z, dimBlocks_z>>>(DIFF, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
+
+getLastCudaError("Kernel execution failed.");
+    // create CUSP pointer to right-hand side
+    thrust::device_ptr<real> _ptr_scalar(_scalar_noghost);
+    cusp::array1d<real, cusp::device_memory> *_scalar_rhs;
+    _scalar_rhs = new cusp::array1d<real, cusp::device_memory>(_ptr_scalar,
+      _ptr_scalar + dom[dev].Gcc._s3);
+
+getLastCudaError("Kernel execution failed.");
+
+    // normalize the problem by the right-hand side before sending to CUSP
+    real norm = cusp::blas::nrm2(*_scalar_rhs);
+    if(norm == 0)       norm = 1.;
+    cusp::blas::scal(*_scalar_rhs, 1. / norm);
+
+    // call BiCGSTAB to solve for scalar_tmp
+    cusp::convergence_monitor<real> monitor(*_scalar_rhs, pp_max_iter,
+      pp_residual);
+    cusp::precond::diagonal<real, cusp::device_memory> M(*_A_scalar);
+    //cusp::krylov::bicgstab(*_A_scalar, scalar_tmp, *_scalar_rhs, monitor, M);
+    cusp::krylov::cg(*_A_scalar, scalar_tmp, *_scalar_rhs, monitor, M);
+    // write convergence data to file
+      recorder_bicgstab("solver_helmholtz_scalar.rec", monitor.iteration_count(),monitor.residual_norm());
+    if(!monitor.converged()) {
+      printf("The scalar Helmholtz equation did not converge.              \n");
+      exit(EXIT_FAILURE);
+    }
+
+    // unnormalize the solution
+    cusp::blas::scal(scalar_tmp, norm);
+
+    // copy solution back to _sc
+    copy_sc_ghost<<<numBlocks_x, dimBlocks_x>>>(_sc[dev],
+      thrust::raw_pointer_cast(scalar_tmp.data()), _dom[dev]);
+
+    // clean up
+    delete(_scalar_rhs);
+    delete(_A_scalar);
+    checkCudaErrors(cudaFree(_scalar_noghost));
+
+getLastCudaError("Kernel execution failed.");
+
+  }
+}
+
+
+
+
+extern "C"
+void cuda_scalar_rhs(int dev)
+{
+  int threads_y = 0;
+  int threads_z = 0;
+  int blocks_y = 0;
+  int blocks_z = 0;
+
+  if(dom[dev].Gcc.jnb < MAX_THREADS_DIM)
+    threads_y = dom[dev].Gcc.jnb + 2;
+  else
+    threads_y = MAX_THREADS_DIM;
+
+  if(dom[dev].Gcc.knb < MAX_THREADS_DIM)
+    threads_z = dom[dev].Gcc.knb + 2;
+  else
+    threads_z = MAX_THREADS_DIM;
+
+  blocks_y = (int)ceil((real) dom[dev].Gcc.jnb / (real) (threads_y-2));
+  blocks_z = (int)ceil((real) dom[dev].Gcc.knb / (real) (threads_z-2));
+
+  dim3 dimBlocks(threads_y, threads_z);
+  dim3 numBlocks(blocks_y, blocks_z);
+/*
+  scalar_rhs_FTCS<<<numBlocks, dimBlocks>>>(rho_f, DIFF_eq,
+			 _u[dev], _v[dev], _w[dev],
+			 _epsp[dev], _scSrc[dev],
+			 _conv0_sc[dev],_conv_sc[dev],_diff_sc[dev],
+			_sc0[dev],_sc[dev], 
+			_dom[dev], dt_try, dt0_try);
+*/
+  scalar_rhs_upwind_1st<<<numBlocks, dimBlocks>>>(rho_f, DIFF_eq,
+			 _u[dev], _v[dev], _w[dev],
+			 _epsp[dev], _scSrc[dev],
+			 _conv0_sc[dev],_conv_sc[dev],_diff_sc[dev],
+			_sc0[dev],_sc[dev], 
+			_dom[dev], dt_try, dt0_try);
+
+fflush(stdout);
+getLastCudaError("Kernel execution failed.");
+}
 
 
 

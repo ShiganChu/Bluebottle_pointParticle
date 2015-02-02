@@ -15,6 +15,9 @@ extern "C"
 #include "bluebottle.h"
 //#include "point.h"
 }
+//To use forcing_reset_x,forcing_add_x etc
+#include "cuda_bluebottle.h"
+
 #include "thrust/device_ptr.h"
 #include "thrust/for_each.h"
 #include "thrust/iterator/zip_iterator.h"
@@ -28,7 +31,6 @@ void cuda_free_array_real(real**& A);
 void cuda_malloc_array_int(int**& A,int len);
 void cuda_malloc_array_real(real**& A,int len);
 
-//void match_point_vel_with_flow(void);
 
 void lpt_point_source_mollify_init();
 void gaussian_array_initH();
@@ -41,6 +43,11 @@ void lpt_point_source_mollify_final();
 //mathch point velocity with the flow interpolated velocity at the particle position
 __global__ void point_vel_specify(real *ug,real *vg,real *wg,point_struct *points,int npoints);
 
+//Initialize particle ms when injecting scalar field
+__global__ void point_ms_initD(point_struct *points, int npoints,int percent);
+
+//Calculate particle velocity square
+__global__ void points_vel_square(point_struct *points, real *vel, int npoints);
 
 //initialize array A with length n, initialize the array to be a constant C 
 __global__ void array_init(real *A,dom_struct *dom, int n, real C);
@@ -243,6 +250,7 @@ __global__ void point_interp_init(int npoints,point_struct *points,real *ug,real
 //About Swap, and reference, coordiSys is the system direction, valType is the plane direction, incGhost is whether include ghost boundary or not
 void block_thread_cell(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordiSys,int valType);
 
+void block_thread_cell_noOverLap(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordiSys,int valType);
 //About Swap, and reference, dirc is the system direction, get 3d blocks and threads
 void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordiSys);
 
@@ -301,6 +309,12 @@ real sc_eq,real DIFF);
 __global__ void move_points_a(point_struct *points, int npoints, real dt);
 __global__ void move_points_b(dom_struct *dom,point_struct *points, int npoints, real dt);
 
+//Note for this method, C_drag has to be greater than 0!!
+__global__ void drag_move_bubbles(point_struct *points,dom_struct *dom, int npoints,
+real *ug,real *vg,real *wg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg,
+real rho_f,real mu, g_struct g,gradP_struct gradP,
+real sc_eq,real DIFF,real dt);
 
 __global__ void drag_move_points(point_struct *points,dom_struct *dom, int npoints,
 real *ug,real *vg,real *wg,
@@ -321,7 +335,7 @@ real rho_f,real mu, g_struct g,gradP_struct gradP,
 real C_add,real C_stress,real C_drag,
 real sc_eq,real DIFF);
 
-
+__global__ void store_pointsD(point_struct *points,dom_struct *dom, int npoints);
 
 
 /****f* cuda_particle_kernel/reset_flag_u<<<>>>()

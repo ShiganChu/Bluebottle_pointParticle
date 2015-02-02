@@ -16,6 +16,13 @@
 //Determins whether particle will have momentum reaction to fluid flow
 //if lpt_twoway >0, there is reaction back to flow, otherwise the particles are passive.
 extern real lpt_twoway;
+extern real **_lpt_mom_source_x;
+extern real **_lpt_mom_source_y;
+extern real **_lpt_mom_source_z;
+
+
+
+
 
 #define EPSILON 1e-7
 
@@ -82,8 +89,10 @@ extern real C_add;
 extern real C_stress;
 extern real C_drag;
 
-//Add particle reaction force to fluid momentum source term
+//Add particle reaction force to fluid momentum source term in every fluid time
 void lpt_point_twoway_forcing();
+//Add twoway reaction force to momentum in every particle sub-time step;
+void lpt_point_twoway_momentum();
 
 //calculate fluid stress du/dt to impose on particles
 void cuda_flow_stress(void);
@@ -245,11 +254,11 @@ typedef struct point_struct {
 
  /*
  Change rate of soluble mass 
- hp*dp/D=2+0.6Re_p^0.5 Sc^{1/3}
+ Nu=hp*dp/D=2+0.6Re_p^0.5 Sc^{1/3}
  msdot= hp*4*PI*r^2*(sc-sc_sat)
 */
   real msdot;
-  real hp;
+  real Nu;
   real rs;
 /*
   real spring_k;
@@ -503,9 +512,13 @@ void points_show_config(void);
  ******
  */
 
-
+void points_inject(void);
+void scalar_inject(void);
 void points_scalar_inject(void);
+void bubble_scalar_inject(void);
 void match_point_vel_with_flow(void);
+void match_bubble_vel_with_flow(void);
+void point_ms_init(void);
 
 /****f* point_particle/points_init()
  * NAME
