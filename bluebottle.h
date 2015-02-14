@@ -1461,6 +1461,69 @@ extern int stepnum;
  ******
  */
 
+/****v* bluebottle/rec_flow_field_ttime_out
+ * NAME
+ *  rec_flow_field_ttime_out
+ * TYPE
+ */
+extern real rec_flow_field_ttime_out;
+/*
+ * PURPOSE
+ *  Recorder flow field output time since last output.
+ ******
+ */
+
+
+/****v* bluebottle/rec_paraview_ttime_out
+ * NAME
+ *  rec_paraview_ttime_out
+ * TYPE
+ */
+extern real rec_paraview_ttime_out;
+/*
+ * PURPOSE
+ *  Recorder paraview output time since last output.
+ ******
+ */
+
+
+
+/****v* bluebottle/rec_precursor_ttime_out
+ * NAME
+ *  rec_precursor_ttime_out
+ * TYPE
+ */
+extern real rec_scalar_ttime_out;
+/*
+ * PURPOSE
+ *  Recorder precursor output time since last output.
+ ******
+ */
+
+/****v* bluebottle/rec_restart_ttime_out
+ * NAME
+ *  rec_restart_ttime_out
+ * TYPE
+ */
+extern real rec_restart_ttime_out;
+/*
+ * PURPOSE
+ *  Recorder restart output time since last output.
+ ******
+ */
+
+
+/****v* bluebottle/rec_particle_ttime_out
+ * NAME
+ *  rec_particle_ttime_out
+ * TYPE
+ */
+extern real rec_point_particle_ttime_out;
+/*
+ * PURPOSE
+ *  Recorder particle output time since last output.
+ ******
+ */
 /****v* bluebottle/rec_flow_field_stepnum_out
  * NAME
  *  rec_flow_field_stepnum_out
@@ -2268,15 +2331,20 @@ void cuda_store_coeffs(void);
  ******
  */
 
-/****f* bluebottle/cuda_compute_forcing()
- * NAME
- *  cuda_compute_forcing()
- * USAGE
- */
 void cuda_compute_forcing(void);
+//void cuda_compute_forcing(real *pid_int, real *pid_back, real Kp, real Ki, real Kd);
 /*
  * FUNCTION
- *  Set up the forcing array for this time step.
+ *  Set up the forcing array for this time step. It also partially incorporates
+ *  a PID controller to push the net force on particles to zero by adjusting
+ *  the pressure gradient. It currently only works in the z-direction.
+ * MEMBERS
+ *  * pid_int - the integral up to this point in time
+ *  * pid_back - the previous value for the net force, to be used by the
+ *    derivative term
+ *  * Kp - the proportional gain
+ *  * Ki - the integral gain
+ *  * Kd - the derivative gain
  ******
  */
 

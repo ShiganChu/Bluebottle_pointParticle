@@ -371,6 +371,10 @@ void cgns_grid(void)
   cg_close(fn);
 }
 
+
+
+
+
 void cgns_flow_field(real dtout)
 {
   // create the solution file
@@ -540,6 +544,51 @@ void cgns_flow_field(real dtout)
 //  free(phaseout);
 
 }
+
+
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+//add By shigan
+void check_output_dir(void)
+{
+
+char fnameOut[FILE_NAME_SIZE]="";
+char fnameRec[FILE_NAME_SIZE]="";
+
+sprintf(fnameOut, "%s/output", ROOT_DIR);
+sprintf(fnameRec, "%s/record", ROOT_DIR);
+
+
+//int errOut=mkdir(fnameOut)
+struct stat s1={0};
+if(stat(fnameOut, &s1)==-1) {mkdir(fnameOut,0700);}
+struct stat s2={0};
+if(stat(fnameRec, &s2)==-1) {mkdir(fnameRec,0700);}
+
+
+/*
+int err = stat("/path/to/possible_dir", &s);
+if(-1 == err) {
+    if(ENOENT == errno) {
+//         does not exist 
+    } else {
+        perror("stat");
+        exit(1);
+    }
+} else {
+    if(S_ISDIR(s.st_mode)) {
+        // it's a dir 
+    } else {
+        // exists but is no dir 
+    }
+  }
+}
+*/
+}
+
+
 
 
 //add by shigan

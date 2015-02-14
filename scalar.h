@@ -73,10 +73,12 @@ extern real DIFF_eq;//Diffusion coefficient for scalar diffusion equation
 //source for scalar diffusion, on host on device
 extern real *scSrc;
 extern real **_scSrc;
+extern real **_scSrc0;
 
 //particle volume fraction in each grid cell, on host on device
 extern real *epsp;
 extern real **_epsp;
+extern real **_epsp0;
 
 //time step for scalar diffusion
 extern real dt_sc;

@@ -402,7 +402,7 @@ if(i==30&&j==30&&k==30) printf("\ntime 1~4 %d %d %d %d\n",dt1,dt2,dt3,dt4);
 //This method will work with higher efficiency for thousands of particles
 __global__
 void lpt_mollify_delta_scD(dom_struct *dom,
-	      real *A,
+	      real *flowSource,
 	      real *lptSourceVal,
               int   *cellStart,
               int   *cellEnd,
@@ -412,9 +412,7 @@ void lpt_mollify_delta_scD(dom_struct *dom,
 
 int is,js,ks,ie,je,ke;
 
-//get domain start and end index
-int incGhost=1;
-dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+
 
 __shared__ int cell_start[MAX_THREADS_DIM * MAX_THREADS_DIM];
 __shared__ int cell_end[MAX_THREADS_DIM * MAX_THREADS_DIM];
@@ -427,6 +425,12 @@ __shared__ int cell_end[MAX_THREADS_DIM * MAX_THREADS_DIM];
     // shared memory indices
     int ti = threadIdx.x;
     int tj = threadIdx.y;
+
+//get domain start and end index
+int incGhost=1;
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+//if(i==2&&j==3) printf("\ncoordi %d %d %d %d %d\n",is,ie,je,ke,coordiSys);
+
    __syncthreads();
 
 
@@ -462,7 +466,10 @@ if(start_index>=0)
 			{ 
 	  	end_index=cell_end[ti+tj*blockDim.x];
 				for (int index=start_index; index<end_index; index++)
-				forceCell += lptSourceVal[index];
+{				forceCell += lptSourceVal[index];
+//if(coordiSys==3||coordiSys==0)
+//if(coordiSys==0)  printf("\nlptSourceVal %d %d %d %d %d %f\n",index,coordiSys,i,j,k,lptSourceVal[index]);
+}
 			}
 		}
 
@@ -475,7 +482,9 @@ if(start_index>=0)
      && (i >= is && i < ie))
 		{
 		 // examine neighbouring cells
-		 A[gridHash]=forceCell;
+		 flowSource[gridHash]=forceCell;
+//if(coordiSys==3||coordiSys==0)
+//if(coordiSys==0) if(fabs(forceCell)>EPSILON)  printf("\nflowSource %d %d %d %d %d %f\n",gridHash,coordiSys,i,j,k,forceCell);
 		}
 
 	}
@@ -629,7 +638,7 @@ int dt15=(int) (time16-time15);
 int dt16=(int) (time17-time16);
 int dt17=(int) (time18-time17);
 //if(i==31&&j==31&&k==31)
- printf("\ninner time: %d %d %d %d %d %d %d\n",dt11,dt12,dt13,dt14,dt15,dt16,dt17);
+// printf("\ninner time: %d %d %d %d %d %d %d\n",dt11,dt12,dt13,dt14,dt15,dt16,dt17);
 	 
 				}
 
@@ -662,13 +671,12 @@ clock_t time4 = clock();
 		}
 
 clock_t time5 = clock();
-
 int dt1=(int) (time2-time1);
 int dt2=(int) (time3-time2);
 int dt3=(int) (time4-time3);
 int dt4=(int) (time5-time4);
 
-if(i==30&&j==30&&k==30) printf("\ntime 1~4 %d %d %d %d\n",dt1,dt2,dt3,dt4);
+//if(i==30&&j==30&&k==30) printf("\ntime 1~4 %d %d %d %d\n",dt1,dt2,dt3,dt4);
 
 	}
 }
@@ -1220,6 +1228,8 @@ real ddx=1.f/dom->dx;
 real ddy=1.f/dom->dy;
 real ddz=1.f/dom->dz;
 
+int index=coordiSys*48 +coordiSys*6-4;
+int Ng=tex1Dfetch(texRefDomInfo,index);
 switch(coordiSys)
 {
 case 0:
@@ -1231,16 +1241,21 @@ case 1:
   ip = floor((xp - xs) * ddx + 0.5f) + DOM_BUF;//for xm[i+1], ip should be i+1
   jp = floor((yp - ys) * ddy) + DOM_BUF;	   //for y[i]
   kp = floor((zp - zs) * ddz) + DOM_BUF;	   //for z[i]
+
+if(ip>=Ng) ip -=Ng-DOM_BUF;
   break;
 case 2:
   ip = floor((xp - xs) * ddx) + DOM_BUF;//for x[i] 
   jp = floor((yp - ys) * ddy + 0.5f) + DOM_BUF;	   //for ym[i+1]
   kp = floor((zp - zs) * ddz) + DOM_BUF;	   //for z[i]
+
+if(jp>=Ng) jp -=Ng-DOM_BUF;
   break;
 case 3:
   ip = floor((xp - xs) * ddx) + DOM_BUF;//for x[i] 
   jp = floor((yp - ys) * ddy) + DOM_BUF;	   //for y[i]
   kp = floor((zp - zs) * ddz+ 0.5f) + DOM_BUF;  //for zm[i+1]
+if(kp>=Ng) kp -=Ng-DOM_BUF;
   break;
 default:break;
 }
@@ -1697,6 +1712,7 @@ break;
 case 3:
 //Particle z-momentum reaction to fluid
 Ap=-points[pp].Fz;
+//printf("\nAp %d %f %f %f\n",pp,Ap,cellVol,Ap/cellVol);
 break;
 default:
 break;
@@ -1765,6 +1781,96 @@ points[pp].k= kp;
 }
 
 }
+
+
+//Should Add after we have perfect two-way coupling!!
+//Note that this subroutine calculate dudt only 1st order in time
+__global__ void DvelDt(real *u0,real *u,
+real *conv_u, 
+real *dudt,
+dom_struct *dom, real dt, 
+int coordiSys)
+{
+  // create shared memory
+  __shared__ real s_u0[MAX_THREADS_DIM * MAX_THREADS_DIM];      // u back
+  __shared__ real s_u1[MAX_THREADS_DIM * MAX_THREADS_DIM];      // u center
+
+  __shared__ real s_dudt[MAX_THREADS_DIM * MAX_THREADS_DIM];       // diff
+//  __shared__ real s_conv0_u[MAX_THREADS_DIM * MAX_THREADS_DIM];       
+  __shared__ real s_conv_u[MAX_THREADS_DIM * MAX_THREADS_DIM];        
+
+
+// working constants
+/*
+  real a = (0.5 * dt) / (0.5 * dt0 + 0.5 * dt); //why in time??
+  real ab0= 0.5 * a ;
+  real ab=1. + ab0 ;
+
+//Weight for Adam-Bashforth interpolation
+  real a = dt0/dt;
+  a = (a + 2.)/(a + 1.);
+  real ab0= a-1.0 ;
+  real ab=a;
+  */
+ 
+int is,js,ks,ie,je,ke;
+//get domain start and end index
+int incGhost=1;
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+int index=coordiSys*48	+21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+  // loop over u-planes
+  for(int i =is; i < ie; i++) {
+
+ // subdomain indices
+    // the extra 2*blockIdx.X terms implement the necessary overlapping of
+    // shared memory blocks in the subdomain
+    int j = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+    int k = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    // shared memory indices
+    int tj = threadIdx.x;
+    int tk = threadIdx.y;
+
+ // load shared memory
+    // TODO: look into the effect of removing these if statements and simply
+    // allowing memory overruns for threads that don't matter for particular
+    // discretizations
+    // TODO: THIS CAN BE FIXED BY PADDING ALL OF THESE ARRAYS WHEN COPYING FROM
+    // HOST TO DEVICE
+    if((k >= ks && k < ke)
+      && (j >= js && j < je)) {
+      s_u0[tj + tk*blockDim.x] = u0[i + j*s1b + k*s2b];
+      s_u1[tj + tk*blockDim.x] = u[i + j*s1b + k*s2b];
+//      s_conv0_u[tj + tk*blockDim.x] = conv0_u[i + j*s1b + k*s2b];
+      s_conv_u[tj + tk*blockDim.x] = conv_u[i + j*s1b + k*s2b];
+    }
+   
+    __syncthreads();
+
+    real idt=__fdiv_rd(1,dt);
+    // Calculate the value at time t_n-0.5, could be more close to t_n instead
+    if((tj > 0 && tj < blockDim.x-1) && (tk > 0 && tk < blockDim.y-1)) {
+
+//     s_dudt[tj + tk*blockDim.x]=(s_u1[tj + tk*blockDim.x]-s_u0[tj + tk*blockDim.x])*idt + (s_conv0_u[tj + tk*blockDim.x]+s_conv_u[tj + tk*blockDim.x])/2.f;
+     s_dudt[tj + tk*blockDim.x]=(s_u1[tj + tk*blockDim.x]-s_u0[tj + tk*blockDim.x])*idt + s_conv_u[tj + tk*blockDim.x];
+
+    }
+   // make sure all threads complete computations
+    __syncthreads();
+
+    // copy shared memory back to global
+    if((k >= ks && k < ke)
+      && (j >= js && j < je)
+      && (tj > 0 && tj < (blockDim.x-1))
+      && (tk > 0 && tk < (blockDim.y-1))) { 
+ 	 dudt[i + j*s1b + k*s2b] =s_dudt[tj + tk*blockDim.x];  }
+  }
+} 
+
+
+
 
 
 __global__ void stress_u(real rho_f, real nu, real *u0,real *p,real *p0,real *stress, dom_struct *dom,int *flag_u, real dt, real dt0)
@@ -2328,13 +2434,25 @@ jc=j+jj;
 kc=k+kk;
 periodic_grid_index(ic,jc,kc,dom,3);
 	wg[pp]+=weight[ii][jj][kk]*w[ic + jc*dom->Gfz.s1b + kc*dom->Gfz.s2b];
+//if(fabs(w[ic + jc*dom->Gfz.s1b + kc*dom->Gfz.s2b])>0.1f) printf("\nw %d %d %d %f\n",ic,jc,kc,w[ic + jc*dom->Gfz.s1b + kc*dom->Gfz.s2b]);
 	}
+//if(pp==0) printf("\nwg %f %f %f %f\n",x,y,z,wg[pp]);
  }
 
 
+__global__ void point_interp_init(int npoints,point_struct *points,real *ug,real *vg,real *wg)
+{
+ int pp = threadIdx.x + blockIdx.x*blockDim.x;
+  if(pp >= npoints) return;
+//real rad=  points[pp].r;
+ug[pp]=0;
+vg[pp]=0;
+wg[pp]=0;
 
 
+}
 
+/*
 __global__ void point_interp_init(int npoints,point_struct *points,real *ug,real *vg,real *wg,real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg)
 {
  int pp = threadIdx.x + blockIdx.x*blockDim.x;
@@ -2354,7 +2472,7 @@ scg[pp]=0;
 //volPoint[pp]=PI*4/3*rad*rad*rad;
 
 }
-
+*/
 
 //Note for this method, C_drag has to be greater than 0!!
 __global__ void drag_move_bubbles(point_struct *points,dom_struct *dom, int npoints,
@@ -2457,9 +2575,15 @@ real virt_buoy_z=(wf-wp)*idvdt;
 
 
 //Total add mass,  -gradP.x~z are the body force on fluid apart from gravity
+/*
 real dudt=(stress_x/rho_f-gradP.x);
 real dvdt=(stress_y/rho_f-gradP.y);
 real dwdt=(stress_z/rho_f-gradP.z);
+*/
+real dudt=stress_x;
+real dvdt=stress_y;
+real dwdt=stress_z;
+
 
 //Store the fluid force on particle including add mass, drag, fluid force and gravity
 //default C_add=0.5; C_stress=1; C_drag=1;
@@ -2510,7 +2634,6 @@ points[pp].Fx=(rhs_x-mp*g.x)*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
 points[pp].Fy=(rhs_y-mp*g.y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
 points[pp].Fz=(rhs_z-mp*g.z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
 */
-
      // update soluble mass
       points[pp].ms = points[pp].ms0 + msdot * dt;
       points[pp].msdot=msdot;
@@ -2768,6 +2891,211 @@ real wp=points[pp].w;
 }
 
 
+
+
+//The droplet mass is constant for momentum in this case
+__global__ void drag_move_points(point_struct *points,dom_struct *dom, int npoints,
+real *ug,real *vg,real *wg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg,
+real rho_f,real mu, g_struct g,gradP_struct gradP,
+real C_add,real C_stress,real C_drag,
+real sc_eq,real DIFF,real dt)
+//gradP serve as bodyforce for the time being
+{
+  int pp = threadIdx.x + blockIdx.x*blockDim.x;
+
+  if(pp >= npoints) return;
+
+real up=points[pp].u;
+real vp=points[pp].v;
+real wp=points[pp].w;
+
+real xp=points[pp].x;
+real yp=points[pp].y;
+real zp=points[pp].z;
+
+real dia=2*points[pp].r;
+real rhod=points[pp].rho;//rhod is the particle density
+
+
+//fluid velocity at the particle position
+real uf=ug[pp];
+real vf=vg[pp];
+real wf=wg[pp];
+
+//realative velocity between point_particle and fluid
+real ur=sqrt((up-uf)*(up-uf)+(vp-vf)*(vp-vf)+(wp-wf)*(wp-wf));
+real nu=mu/rho_f;
+
+//Particle Reynolds number
+real Rep=ur*dia/nu+EPSILON;
+
+
+//Modification to stokes theory when Rep>1
+real F = 1.0f+0.15f*powf(Rep,0.687f); 
+//real F = 1.0f; 
+real taud = rhod*dia*dia/(18.0f*mu);
+real itau=F/taud;
+
+//if(pp==1) printf("\nitau %f %f %f %f\n",Rep,F,taud,itau);
+
+real volume=1./6. * PI * dia*dia*dia;
+
+//Including soluble part:rhod*volume  and insoluble part: ms
+real ms =  points[pp].ms;
+//real mp =  rhod *volume + ms;
+real mp =  rhod *volume;
+//fluid mass in particle volume
+real mf =  rho_f *volume;
+//real gammar=mp/mf;
+
+//drag force on particle
+real drag_x=(uf-up)*itau*mp;
+real drag_y=(vf-vp)*itau*mp;
+real drag_z=(wf-wp)*itau*mp;
+
+//if(pp==0) printf("\ntau %f %f %f\n",1.f/itau,taud,Rep);
+//if(pp==0) printf("\nflow vel %f %f %f\n",wf,wp,drag_z);
+//Fluid stress at the particle position
+
+real stress_x=lpt_stress_u[pp];
+real stress_y=lpt_stress_v[pp];
+real stress_z=lpt_stress_w[pp];
+
+
+//Total add mass,  -gradP.x~z are the body force on fluid apart from gravity
+real dudt=(stress_x/rho_f-gradP.x);
+real dvdt=(stress_y/rho_f-gradP.y);
+real dwdt=(stress_z/rho_f-gradP.z);
+
+real add_x=dudt*mf;
+real add_y=dvdt*mf;
+real add_z=dwdt*mf;
+
+//Store the fluid force on particle including add mass, drag, fluid force and gravity
+//default C_add=0.5; C_stress=1; C_drag=1;
+real Fx=(C_add*add_x+C_stress*stress_x*volume+C_drag*drag_x)+(mp-mf)*g.x;
+real Fy=(C_add*add_y+C_stress*stress_y*volume+C_drag*drag_y)+(mp-mf)*g.y;
+real Fz=(C_add*add_z+C_stress*stress_z*volume+C_drag*drag_z)+(mp-mf)*g.z;
+
+
+real rhs_x=Fx+ C_drag*up*itau*mp;
+real rhs_y=Fy+ C_drag*vp*itau*mp;
+real rhs_z=Fz+ C_drag*wp*itau*mp;
+
+//if(pp==0) printf("\n Fz %f %f %f %f %f %f\n",add_z,stress_z*volume,drag_z,(mp-mf)*g.z,Fz,rhs_z);
+
+
+
+//Exchange rate of soluble mass into scalar field dms/dt = pi *dp^2*hp*(rho_s-rho_{sat})   ref eq (20) in Oresta&&Prosperetti(2014)
+
+
+//Based on hp*dp/D=2+0.6Re_p^0.5 Sc^{1/3}, ref eq (22) in Oresta&&Prosperetti(2014)
+real Nu =2+0.6*sqrt(Rep)*powf(nu/DIFF,1.0/3.0);
+points[pp].Nu=Nu;
+//Nu=2;
+real hp =Nu*DIFF/dia;
+
+//sc_eq=log(K_{ow}), and rho_{sat}= \kappa *ms/vp, where \kappa=rho_f/rhod*1/K_{ow}
+real kappa=rho_f/rhod/__exp10f(sc_eq);
+//real kappa=rho_f/rhod/__expf(sc_eq);
+real rho_sat=kappa*ms/volume;
+real msdot= PI*dia*dia*hp*(scg[pp]- rho_sat);
+
+
+ 
+     //Treat taup as very small and integrate directly!!
+     // real acc_m=points[pp].msdot+C_drag*mp*itau;
+      real acc_m=C_drag*mp*itau;
+      real total_m=mp+C_add*mf; 
+      real idt=acc_m/total_m;
+      real ratio=exp(-dt*idt);
+	
+      real x1,y1,z1;
+      real u1,v1,w1;
+
+ if(fabs(acc_m)>EPSILON)
+{
+      real termVel_x=rhs_x/acc_m;
+      real termVel_y=rhs_y/acc_m;
+      real termVel_z=rhs_z/acc_m;
+//if(isnan(acc_m)||isnan(total_m)) printf("\nacc_m %f %f %f %f %d\n",points[pp].msdot,hp,scg[pp],sc_eq,pp);
+
+ 
+     // update linear velocities
+       u1 = ratio*(up -termVel_x) + termVel_x;
+       v1 = ratio*(vp -termVel_y) + termVel_y;
+       w1 = ratio*(wp -termVel_z) + termVel_z;
+
+
+//if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nrhs %f %f %f\n",rhs_x,total_m,acc_m);
+//if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nu0~w0 %f %f %f %f\n",rhs_x/total_m,rhs_x/acc_m,points[pp].u0,dt);
+
+    // update position 
+       x1 = xp + (up-termVel_x)*(1-ratio)/idt+termVel_x*dt;
+       y1 = yp + (vp-termVel_y)*(1-ratio)/idt+termVel_y*dt;
+       z1 = zp + (wp-termVel_z)*(1-ratio)/idt+termVel_z*dt;
+
+}
+
+else
+{
+real acc_x=rhs_x/total_m;
+real acc_y=rhs_y/total_m;
+real acc_z=rhs_z/total_m;
+
+ u1=acc_x*dt+up;
+ v1=acc_y*dt+vp;
+ w1=acc_z*dt+wp;
+
+ x1=xp+(0.5f *acc_x*dt+up)*dt;
+ y1=yp+(0.5f *acc_y*dt+vp)*dt;
+ z1=zp+(0.5f *acc_z*dt+wp)*dt;
+
+}
+
+      points[pp].u = u1;
+      points[pp].v = v1;
+      points[pp].w = w1;
+
+      points[pp].x = x1;
+      points[pp].y = y1;
+      points[pp].z = z1;
+ 
+//Store the fluid Momentum force on particle including add mass, drag, fluid force and gravity added mass effect on particle-fluid force interaction  gravity is not implemented on fluid, but we need to add -mf*g to reaction force; F=d(mp*u)/dt -mp*g, according to eq 6 from dropDiffusionForceImpleBlue.pdf
+
+
+//This is in fact momentum back reaction in particle sub-timestep, it will be accumulated during the sub-step, and then been added to fluid source force.
+//Usually we use this one
+
+points[pp].Fx=(rhs_x-mp*g.x)*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
+points[pp].Fy=(rhs_y-mp*g.y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
+points[pp].Fz=(rhs_z-mp*g.z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
+
+
+//TODO periodic BC for particles, may need to change in future
+periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
+//update old values
+      points[pp].x0 = points[pp].x;
+      points[pp].y0 = points[pp].y;
+      points[pp].z0 = points[pp].z;
+
+      points[pp].u0 = points[pp].u;
+      points[pp].v0 = points[pp].v;
+      points[pp].w0 = points[pp].w;
+
+     // update soluble mass
+      points[pp].ms = points[pp].ms0 + msdot * dt;
+      points[pp].msdot = msdot;
+  
+     // update particle time step
+      points[pp].dt =  dt;
+
+      points[pp].ms0 = points[pp].ms;
+
+}
+
+/*
 //Note for this method, C_drag has to be greater than 0!!
 //The relaxed condition would be that C_drag*dms/dt can't be 0 together!
 __global__ void drag_move_points(point_struct *points,dom_struct *dom, int npoints,
@@ -2806,12 +3134,6 @@ real nu=mu/rho_f;
 //Particle Reynolds number
 real Rep=ur*dia/nu+EPSILON;
 
-//Based on hp*dp/D=2+0.6Re_p^0.5 Sc^{1/3}, ref eq (22) in Oresta&&Prosperetti(2014)
-real Nu =2+0.6*sqrt(Rep)*powf(nu/DIFF,1.0/3.0);
-points[pp].Nu=Nu;
-
-//Nu=2;
-real hp =Nu*DIFF/dia;
 
 //Modification to stokes theory when Rep>1
 real F = 1.0f+0.15f*powf(Rep,0.687f); 
@@ -2828,7 +3150,6 @@ real ms =  points[pp].ms;
 real mp =  rhod *volume + ms;
 //fluid mass in particle volume
 real mf =  rho_f *volume;
-real msdot=points[pp].msdot;
 //real gammar=mp/mf;
 
 //drag force on particle
@@ -2836,21 +3157,248 @@ real drag_x=(uf-up)*itau*mp;
 real drag_y=(vf-vp)*itau*mp;
 real drag_z=(wf-wp)*itau*mp;
 
+//if(pp==0) printf("\ntau %f %f %f\n",1.f/itau,taud,Rep);
+//if(pp==0) printf("\nflow vel %f %f %f\n",wf,wp,drag_z);
 //Fluid stress at the particle position
+
 real stress_x=lpt_stress_u[pp];
 real stress_y=lpt_stress_v[pp];
 real stress_z=lpt_stress_w[pp];
 
+
 //Total add mass,  -gradP.x~z are the body force on fluid apart from gravity
-real add_x=(stress_x/rho_f-gradP.x)*mf;
-real add_y=(stress_y/rho_f-gradP.y)*mf;
-real add_z=(stress_z/rho_f-gradP.z)*mf;
+real dudt=(stress_x/rho_f-gradP.x);
+real dvdt=(stress_y/rho_f-gradP.y);
+real dwdt=(stress_z/rho_f-gradP.z);
+
+real add_x=dudt*mf;
+real add_y=dvdt*mf;
+real add_z=dwdt*mf;
 
 //Store the fluid force on particle including add mass, drag, fluid force and gravity
 //default C_add=0.5; C_stress=1; C_drag=1;
 real Fx=(C_add*add_x+C_stress*stress_x*volume+C_drag*drag_x)+(mp-mf)*g.x;
 real Fy=(C_add*add_y+C_stress*stress_y*volume+C_drag*drag_y)+(mp-mf)*g.y;
 real Fz=(C_add*add_z+C_stress*stress_z*volume+C_drag*drag_z)+(mp-mf)*g.z;
+
+
+real rhs_x=Fx+ C_drag*up*itau*mp;
+real rhs_y=Fy+ C_drag*vp*itau*mp;
+real rhs_z=Fz+ C_drag*wp*itau*mp;
+
+//if(pp==0) printf("\n Fz %f %f %f %f %f %f\n",add_z,stress_z*volume,drag_z,(mp-mf)*g.z,Fz,rhs_z);
+
+
+
+//Exchange rate of soluble mass into scalar field dms/dt = pi *dp^2*hp*(rho_s-rho_{sat})   ref eq (20) in Oresta&&Prosperetti(2014)
+
+
+//Based on hp*dp/D=2+0.6Re_p^0.5 Sc^{1/3}, ref eq (22) in Oresta&&Prosperetti(2014)
+real Nu =2+0.6*sqrt(Rep)*powf(nu/DIFF,1.0/3.0);
+points[pp].Nu=Nu;
+//Nu=2;
+real hp =Nu*DIFF/dia;
+
+//sc_eq=log(K_{ow}), and rho_{sat}= \kappa *ms/vp, where \kappa=rho_f/rhod*1/K_{ow}
+real kappa=rho_f/rhod/__exp10f(sc_eq);
+//real kappa=rho_f/rhod/__expf(sc_eq);
+real rho_sat=kappa*ms/volume;
+real msdot= PI*dia*dia*hp*(scg[pp]- rho_sat);
+
+
+
+//if(pp==1) printf("\nhp %f %f \n",dia,hp);
+//if(pp==1) printf("\nsc_eq %f %f %f %f %f %f\n",kappa,ms,volume,scg[pp], rho_sat, msdot);
+//if(msdot>0) printf("\nmsdot %d %f %f %f %f %f\n",pp,ms,volume,scg[pp], rho_sat, msdot);
+//if(scg[pp]<0) printf("\nscg %d %f %f %f %f %f\n",pp,ms,volume,scg[pp], rho_sat, msdot);
+
+     //Treat taup as very small and integrate directly!!
+      real acc_m=points[pp].msdot+C_drag*mp*itau;
+      real total_m=mp+C_add*mf; 
+      real idt=acc_m/total_m;
+      real ratio=exp(-dt*idt);
+	
+      real x1,y1,z1;
+      real u1,v1,w1;
+
+ if(fabs(acc_m)>EPSILON)
+{
+      real termVel_x=rhs_x/acc_m;
+      real termVel_y=rhs_y/acc_m;
+      real termVel_z=rhs_z/acc_m;
+//if(isnan(acc_m)||isnan(total_m)) printf("\nacc_m %f %f %f %f %d\n",points[pp].msdot,hp,scg[pp],sc_eq,pp);
+
+ 
+     // update linear velocities
+       u1 = ratio*(up -termVel_x) + termVel_x;
+       v1 = ratio*(vp -termVel_y) + termVel_y;
+       w1 = ratio*(wp -termVel_z) + termVel_z;
+
+
+//if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nrhs %f %f %f\n",rhs_x,total_m,acc_m);
+//if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nu0~w0 %f %f %f %f\n",rhs_x/total_m,rhs_x/acc_m,points[pp].u0,dt);
+
+    // update position 
+       x1 = xp + (up-termVel_x)*(1-ratio)/idt+termVel_x*dt;
+       y1 = yp + (vp-termVel_y)*(1-ratio)/idt+termVel_y*dt;
+       z1 = zp + (wp-termVel_z)*(1-ratio)/idt+termVel_z*dt;
+
+}
+
+else
+{
+real acc_x=rhs_x/total_m;
+real acc_y=rhs_y/total_m;
+real acc_z=rhs_z/total_m;
+
+ u1=acc_x*dt+up;
+ v1=acc_y*dt+vp;
+ w1=acc_z*dt+wp;
+
+ x1=xp+(0.5f *acc_x*dt+up)*dt;
+ y1=yp+(0.5f *acc_y*dt+vp)*dt;
+ z1=zp+(0.5f *acc_z*dt+wp)*dt;
+
+}
+
+      points[pp].u = u1;
+      points[pp].v = v1;
+      points[pp].w = w1;
+
+      points[pp].x = x1;
+      points[pp].y = y1;
+      points[pp].z = z1;
+ 
+//Store the fluid Momentum force on particle including add mass, drag, fluid force and gravity added mass effect on particle-fluid force interaction  gravity is not implemented on fluid, but we need to add -mf*g to reaction force; F=d(mp*u)/dt -mp*g, according to eq 6 from dropDiffusionForceImpleBlue.pdf
+
+
+//This is in fact momentum back reaction in particle sub-timestep, it will be accumulated during the sub-step, and then been added to fluid source force.
+//Usually we use this one
+
+points[pp].Fx=(rhs_x-mp*g.x)*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
+points[pp].Fy=(rhs_y-mp*g.y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
+points[pp].Fz=(rhs_z-mp*g.z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
+
+
+//TODO periodic BC for particles, may need to change in future
+periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
+//update old values
+      points[pp].x0 = points[pp].x;
+      points[pp].y0 = points[pp].y;
+      points[pp].z0 = points[pp].z;
+
+      points[pp].u0 = points[pp].u;
+      points[pp].v0 = points[pp].v;
+      points[pp].w0 = points[pp].w;
+
+     // update soluble mass
+      points[pp].ms = points[pp].ms0 + msdot * dt;
+      points[pp].msdot = msdot;
+  
+     // update particle time step
+      points[pp].dt =  dt;
+
+      points[pp].ms0 = points[pp].ms;
+
+}
+
+*/
+
+//Twoway coupling of point motion
+//The relaxed condition would be that C_drag*dms/dt can't be 0 together!
+__global__ void drag_move_points_twoway(point_struct *points,dom_struct *dom, int npoints,
+real *ug,real *vg,real *wg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,
+real *lpt_dudt,real *lpt_dvdt,real *lpt_dwdt,
+real *scg,
+real rho_f,real mu, g_struct g,gradP_struct gradP,
+real C_add,real C_stress,real C_drag,
+real sc_eq,real DIFF,real dt)
+//gradP serve as bodyforce for the time being
+{
+  int pp = threadIdx.x + blockIdx.x*blockDim.x;
+
+  if(pp >= npoints) return;
+
+real up=points[pp].u;
+real vp=points[pp].v;
+real wp=points[pp].w;
+
+real xp=points[pp].x;
+real yp=points[pp].y;
+real zp=points[pp].z;
+
+real dia=2*points[pp].r;
+real rhod=points[pp].rho;//rhod is the particle density
+
+
+//fluid velocity at the particle position
+real uf=ug[pp];
+real vf=vg[pp];
+real wf=wg[pp];
+
+//realative velocity between point_particle and fluid
+real ur=sqrt((up-uf)*(up-uf)+(vp-vf)*(vp-vf)+(wp-wf)*(wp-wf));
+real nu=mu/rho_f;
+
+//Particle Reynolds number
+real Rep=ur*dia/nu+EPSILON;
+
+
+//Modification to stokes theory when Rep>1
+real F = 1.0f+0.15f*powf(Rep,0.687f); 
+//real F = 1.0f; 
+real taud = rhod*dia*dia/(18.0f*mu);
+real itau=F/taud;
+
+//if(pp==1) printf("\nitau %f %f %f %f\n",Rep,F,taud,itau);
+
+real volume=1./6. * PI * dia*dia*dia;
+
+//Including soluble part:rhod*volume  and insoluble part: ms
+real ms =  points[pp].ms;
+real mp =  rhod *volume + ms;
+//fluid mass in particle volume
+real mf =  rho_f *volume;
+//real gammar=mp/mf;
+
+//drag force on particle
+real drag_x=(uf-up)*itau*mp;
+real drag_y=(vf-vp)*itau*mp;
+real drag_z=(wf-wp)*itau*mp;
+
+//if(pp==0) printf("\ntau %f %f %f\n",1.f/itau,taud,Rep);
+//if(pp==0) printf("\nflow vel %f %f %f\n",wf,wp,drag_z);
+//Fluid stress at the particle position
+ 
+
+//Fluid acceleration evaluated at the particle position
+real stress_x=lpt_stress_u[pp];
+real stress_y=lpt_stress_v[pp];
+real stress_z=lpt_stress_w[pp];
+
+real dudt=lpt_dudt[pp];
+real dvdt=lpt_dvdt[pp];
+real dwdt=lpt_dwdt[pp];
+
+/*
+//Total add mass,  -gradP.x~z are the body force on fluid apart from gravity
+real dudt=(stress_x/rho_f-gradP.x);
+real dvdt=(stress_y/rho_f-gradP.y);
+real dwdt=(stress_z/rho_f-gradP.z);
+
+*/
+ 
+real add_x=dudt*mf;
+real add_y=dvdt*mf;
+real add_z=dwdt*mf;
+
+//Store the fluid force on particle including add mass, drag, fluid force and gravity
+//default C_add=0.5; C_stress=1; C_drag=1;
+real Fx=(C_add*add_x+C_stress*stress_x*volume+C_drag*drag_x)+(mp-mf)*g.x;
+real Fy=(C_add*add_y+C_stress*stress_y*volume+C_drag*drag_y)+(mp-mf)*g.y;
+real Fz=(C_add*add_z+C_stress*stress_z*volume+C_drag*drag_z)+(mp-mf)*g.z;
+
 
 real rhs_x=Fx+ C_drag*up*itau*mp;
 real rhs_y=Fy+ C_drag*vp*itau*mp;
@@ -2861,49 +3409,87 @@ real rhs_z=Fz+ C_drag*wp*itau*mp;
 Exchange rate of soluble mass into scalar field
 dms/dt = pi *dp^2*hp*(rho_s-rho_{sat})   ref eq (20) in Oresta&&Prosperetti(2014)
 */
+//Based on hp*dp/D=2+0.6Re_p^0.5 Sc^{1/3}, ref eq (22) in Oresta&&Prosperetti(2014)
+real Nu =2+0.6*sqrt(Rep)*powf(nu/DIFF,1.0/3.0);
+points[pp].Nu=Nu;
+//Nu=2;
+real hp =Nu*DIFF/dia;
+
 //sc_eq=log(K_{ow}), and rho_{sat}= \kappa *ms/vp, where \kappa=rho_f/rhod*1/K_{ow}
-real kappa=rho_f/rhod/exp(sc_eq);
+real kappa=rho_f/rhod/__exp10f(sc_eq);
+//real kappa=rho_f/rhod/__expf(sc_eq);
 real rho_sat=kappa*ms/volume;
-points[pp].msdot= PI*dia*dia*hp*(scg[pp]- rho_sat);
-
-
+real msdot= PI*dia*dia*hp*(scg[pp]- rho_sat);
+ 
      //Treat taup as very small and integrate directly!!
-      real acc_m=msdot+C_drag*mp*itau;
+      real acc_m=points[pp].msdot+C_drag*mp*itau;
       real total_m=mp+C_add*mf; 
-      real idt=acc_m/total_m;
-      real ratio=exp(-dt*idt);
+      real idtp=acc_m/total_m;
+      real dtp=1/idtp;
+      real ratio=exp(-dt*idtp);
 	
+      real x1,y1,z1;
+      real u1,v1,w1;
+
+ if(fabs(acc_m)>EPSILON||C_drag>0)
+{
       real termVel_x=rhs_x/acc_m;
       real termVel_y=rhs_y/acc_m;
       real termVel_z=rhs_z/acc_m;
-//if(isnan(acc_m)||isnan(total_m)) printf("\nacc_m %f %f %f %f %d\n",points[pp].msdot,hp,scg[pp],sc_eq,pp);
 
-/*
-      real u0=points[pp].u0;
-      real v0=points[pp].v0;
-      real w0=points[pp].w0;
-*/
      // update linear velocities
-      real u1 = ratio*(up -termVel_x) + termVel_x;
-      real v1 = ratio*(vp -termVel_y) + termVel_y;
-      real w1 = ratio*(wp -termVel_z) + termVel_z;
+       u1 = ratio*(up -termVel_x) + termVel_x;
+       v1 = ratio*(vp -termVel_y) + termVel_y;
+       w1 = ratio*(wp -termVel_z) + termVel_z;
 
-
-      points[pp].u = u1;
-      points[pp].v = v1;
-      points[pp].w = w1;
+if(pp==0) printf("\ntermVz %f %f %f %f %f %f\n",termVel_z,w1,wp,wf,Rep,ratio);
 
 //if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nrhs %f %f %f\n",rhs_x,total_m,acc_m);
 //if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nu0~w0 %f %f %f %f\n",rhs_x/total_m,rhs_x/acc_m,points[pp].u0,dt);
 
     // update position 
-      real x1 = xp + (up-termVel_x)*(1-ratio)/idt+termVel_x*dt;
-      real y1 = yp + (vp-termVel_y)*(1-ratio)/idt+termVel_y*dt;
-      real z1 = zp + (wp-termVel_z)*(1-ratio)/idt+termVel_z*dt;
+       x1 = xp + (up-termVel_x)*(1-ratio)*dtp+termVel_x*dt;
+       y1 = yp + (vp-termVel_y)*(1-ratio)*dtp+termVel_y*dt;
+       z1 = zp + (wp-termVel_z)*(1-ratio)*dtp+termVel_z*dt;
+
+}
+
+else
+{
+real acc_x=rhs_x/total_m;
+real acc_y=rhs_y/total_m;
+real acc_z=rhs_z/total_m;
+
+ u1=acc_x*dt+up;
+ v1=acc_y*dt+vp;
+ w1=acc_z*dt+wp;
+
+ x1=xp+(0.5f *acc_x*dt+up)*dt;
+ y1=yp+(0.5f *acc_y*dt+vp)*dt;
+ z1=zp+(0.5f *acc_z*dt+wp)*dt;
+
+}
+
+      real idt=1/dt;
+      points[pp].udot = (u1-up)*idt;
+      points[pp].vdot = (v1-vp)*idt;
+      points[pp].wdot = (w1-wp)*idt;
+
+     
+
+      points[pp].u = u1;
+      points[pp].v = v1;
+      points[pp].w = w1;
+
+
+
 
       points[pp].x = x1;
       points[pp].y = y1;
       points[pp].z = z1;
+
+
+
 /*
 Store the fluid Momentum force on particle including add mass, drag, fluid force and gravity
 added mass effect on particle-fluid force interaction
@@ -2911,36 +3497,28 @@ gravity is not implemented on fluid, but we need to add -mf*g to reaction force
 F=d(mp*u)/dt -mp*g, according to eq 6 from dropDiffusionForceImpleBlue.pdf
 */
 //This is in fact momentum back reaction in particle sub-timestep, it will be accumulated during the sub-step, and then been added to fluid source force.
+//Usually we use this one
 /*
 points[pp].Fx=(rhs_x-mp*g.x)*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
 points[pp].Fy=(rhs_y-mp*g.y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
 points[pp].Fz=(rhs_z-mp*g.z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
 */
-/*
+
 points[pp].Fx=(rhs_x-(mp-mf)*g.x)*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
 points[pp].Fy=(rhs_y-(mp-mf)*g.y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
 points[pp].Fz=(rhs_z-(mp-mf)*g.z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
-*/
-points[pp].Fx=(rhs_x)*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
-points[pp].Fy=(rhs_y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
-points[pp].Fz=(rhs_z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
 
-//if(pp==1) printf("\n Fx %f %f %f %f\n",(rhs_x-mp*g.x)*dt,C_add*(u1-up)*mf,C_drag*(x1-xp)*mp*itau,points[pp].Fx);
 
-//if(pp==0) printf("\n Fz %f %f %f %f\n",(rhs_z-mp*g.z)*dt,C_add*(u1-up)*mf,C_drag*(z1-zp)*mp*itau,points[pp].Fz);
-//if(pp==0) printf("\n vel %f %f %f %f %f %f\n",w1-wp,w1,u1,u1-up,dt,rhs_z);
-//if(pp==0) printf("\n position %f %f %f %f %f\n",x1-xp,x1,z1-zp,z1,zp);
-
-     // update soluble mass
-      points[pp].ms = points[pp].ms0 + points[pp].msdot * dt;
-  
-     // update particle time step
-      points[pp].dt =  dt;
-
+real dx=dom->dx;
+real Vg=dx*dx*dx;
+if(pp==0) printf("\nFz on point %f %f %f %f %f %f\n",add_z,stress_z*volume,drag_z,(mp-mf)*g.z,Fz,rhs_z);
+if(pp==0) printf("\nreaction %f %f %f %f %f\n",(rhs_z-mp*g.z)*dt,rhs_z,C_add*(u1-up)*mf,C_drag*(z1-zp)*mp*itau,points[pp].Fz);
+if(pp==0) printf("\nvelPredic %f %f %f\n",points[pp].Fz/Vg,points[pp].Fz,Vg);
+//if(pp==0) printf("\nposition %f %f %f %f %f\n",x1-xp,x1,z1-zp,z1,zp);
+//if(pp==0) printf("\npart vel %f %f %f %f %f %f\n",w1-wp,w1,u1,u1-up,dt,rhs_z);
 
 //TODO periodic BC for particles, may need to change in future
 periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
-
 //update old values
       points[pp].x0 = points[pp].x;
       points[pp].y0 = points[pp].y;
@@ -2950,9 +3528,18 @@ periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
       points[pp].v0 = points[pp].v;
       points[pp].w0 = points[pp].w;
 
+     // update soluble mass
+      points[pp].ms = points[pp].ms0 + msdot * dt;
+      points[pp].msdot = msdot;
+  
+     // update particle time step
+      points[pp].dt =  dt;
+
       points[pp].ms0 = points[pp].ms;
 
 }
+
+
 
 
 //Note for this method, C_drag has to be greater than 0!!

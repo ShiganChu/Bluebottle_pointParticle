@@ -59,6 +59,7 @@ void cgns_flow_field(real dtout);
  */
 void cgns_point_particles(real dtout);
 void cgns_scalar_field(real dtout);
+void check_output_dir(void);
 /*
  * FUNCTION
  *  Write the CGNS particles output file.

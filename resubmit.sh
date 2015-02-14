@@ -10,9 +10,8 @@
 
 #SBATCH --job-name=bb-point
 #SBATCH --open-mode=append
-
 ./build-restart.sh $SLURM_JOB_NODELIST $SLURM_JOB_NAME $SLURM_JOB_ID
 
 sbatch submit-restart.sh
 
-srun ./bluebottle  >good
+srun ./bluebottle -r >good

@@ -9,14 +9,15 @@
 #include "entrySearch.h"
 
 
-
+//TODO should be moved to the sub-timestep of scalar&&point
 extern "C"
 real cuda_find_dt_points(real dt)
 {
   // results from all devices
 //  real *pdt;
+ if(npoints<=0) return dt;
   real *vel2_p;
- 
+
 //  checkCudaErrors(cudaMalloc((void**) &(pdt),sizeof(real) * npoints));
   checkCudaErrors(cudaMalloc((void**) &(vel2_p),sizeof(real) * npoints));
 
@@ -87,8 +88,7 @@ if(npoints<=0) return;
 
     dim3 dimBlocks_u(threads_y, threads_z);
     dim3 numBlocks_u(blocks_y, blocks_z);
-    stress_u<<<numBlocks_u, dimBlocks_u>>>(rho_f, nu,_u[dev],_p[dev],_p0[dev], _stress_u[dev], _dom[dev],_flag_u[dev],dt,dt0);
-fflush(stdout);
+
 
 
 
@@ -109,8 +109,7 @@ fflush(stdout);
     dim3 dimBlocks_v(threads_z, threads_x);
     dim3 numBlocks_v(blocks_z, blocks_x);
 
-    stress_v<<<numBlocks_v, dimBlocks_v>>>(rho_f, nu,_v[dev],_p[dev],_p0[dev], _stress_v[dev], _dom[dev],_flag_v[dev],dt,dt0);
-fflush(stdout);
+
 
 // w-component
     if(dom[dev].Gfz.inb < MAX_THREADS_DIM)
@@ -129,7 +128,22 @@ fflush(stdout);
     dim3 dimBlocks_w(threads_x, threads_y);
     dim3 numBlocks_w(blocks_x, blocks_y);
 
+ 
+    stress_u<<<numBlocks_u, dimBlocks_u>>>(rho_f, nu,_u[dev],_p[dev],_p0[dev], _stress_u[dev], _dom[dev],_flag_u[dev],dt,dt0);
+    stress_v<<<numBlocks_v, dimBlocks_v>>>(rho_f, nu,_v[dev],_p[dev],_p0[dev], _stress_v[dev], _dom[dev],_flag_v[dev],dt,dt0);
     stress_w<<<numBlocks_w, dimBlocks_w>>>(rho_f, nu,_w[dev],_p[dev],_p0[dev], _stress_w[dev], _dom[dev],_flag_w[dev],dt,dt0);
+ 
+if(lpt_twoway>0)
+{
+int coordiSys;
+    coordiSys=1;
+    DvelDt<<<numBlocks_u, dimBlocks_u>>>(_u0[dev],_u[dev],_conv_u[dev], _dudt[dev], _dom[dev],dt,coordiSys );
+    coordiSys=2;
+    DvelDt<<<numBlocks_v, dimBlocks_v>>>(_v0[dev],_v[dev],_conv_v[dev], _dvdt[dev], _dom[dev],dt,coordiSys );
+    coordiSys=3;
+    DvelDt<<<numBlocks_w, dimBlocks_w>>>(_w0[dev],_w[dev],_conv_w[dev], _dwdt[dev], _dom[dev],dt,coordiSys );
+}
+
 fflush(stdout);
  }
 
@@ -169,9 +183,16 @@ if(npoints<=0) return;
     block_thread_point(dimBlocks_p,numBlocks_p,npoints);
 
 //bc is bc.uTD etc. Make sure which BC this is. 
+/*
 	point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
                                                 ug[dev],vg[dev],wg[dev],
                                                 lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],scg[dev]);
+*/
+point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
+                                                ug[dev],vg[dev],wg[dev]);
+point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
+                                                lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev]);
+array_init<<<numBlocks_p, dimBlocks_p>>>(scg[dev],_dom[dev],npoints, 0);                    
 
       interpolate_point_vel_Lag2<<<numBlocks_p, dimBlocks_p>>>(_u[dev],_v[dev],_w[dev],
                                                          npoints,rho_f,nu,
@@ -256,39 +277,20 @@ void cuda_move_points()
 
     
     if(npoints > 0) {
-      // do collision forcing
-      /** if there are n point_particles in a close group, repeat this n times **/
-    /*
-      real *forces;
-      checkCudaErrors(cudaMalloc((void**) &forces, 3*npoints*sizeof(real)));
-      gpumem += 3 * npoints * sizeof(real);
-      real *moments;
-      checkCudaErrors(cudaMalloc((void**) &moments, 3*npoints*sizeof(real)));
-      gpumem += 3 * npoints * sizeof(real);
-      real eps = 0.1 * (Dom.dx + Dom.dy + Dom.dz) / 3.;
-*/
-
-
-//for(int l = 0; l < 10; l++) {
-   //   collision_init<<<numBlocks_p, dimBlocks_p>>>(_points[dev], npoints);
-    
- /*
-       for(int i = 0; i < npoints; i++) {
-          collision_points<<<numBlocks_p, dimBlocks_p>>>(_points[dev], i,
-            _dom[dev], eps, forces, moments, npoints, mu, bc);
-        }
-        spring_points<<<numBlocks_p, dimBlocks_p>>>(_points[dev], npoints);
-        collision_walls<<<numBlocks_p, dimBlocks_p>>>(_dom[dev], _points[dev],
-          npoints, bc, eps, mu);
-      }
-   */
-
-
-
 //bc is bc.uTD etc. Make sure which BC this is. 
 point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
-						ug[dev],vg[dev],wg[dev],
-						lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],scg[dev]);
+						ug[dev],vg[dev],wg[dev]);
+point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
+						lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev]);
+array_init<<<numBlocks_p, dimBlocks_p>>>(scg[dev],_dom[dev],npoints, 0);						
+if(lpt_twoway>0)
+point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
+						lpt_dudt[dev],lpt_dvdt[dev],lpt_dwdt[dev]);
+
+
+
+
+
 fflush(stdout);
 
 interpolate_point_vel_Lag2<<<numBlocks_p, dimBlocks_p>>>(_u[dev],_v[dev],_w[dev],
@@ -311,10 +313,18 @@ C_drag=1;
 //get lpt_stress
 //TODO _stress_u is not available near the boundary(set to 0), while lpt_stress can be interpolated on BC
 if(C_stress>0||C_add>0) 
+{
 interpolate_point_vel_Lag2<<<numBlocks_p, dimBlocks_p>>>(_stress_u[dev],_stress_v[dev],_stress_w[dev],
 							 npoints, rho_f, nu,
 							 lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],
 							 _points[dev],_dom[dev],bc);
+if(lpt_twoway>0) 
+interpolate_point_vel_Lag2<<<numBlocks_p, dimBlocks_p>>>(_dudt[dev],_dvdt[dev],_dwdt[dev],
+							 npoints, rho_f, nu,
+							 lpt_dudt[dev],lpt_dvdt[dev],lpt_dwdt[dev],
+							 _points[dev],_dom[dev],bc);
+
+}
 
 /*
 drag_points<<<numBlocks_p, dimBlocks_p>>>(_points[dev],npoints,
@@ -337,13 +347,26 @@ fflush(stdout);
 
       move_points_b<<<numBlocks_p, dimBlocks_p>>>(_dom[dev], _points[dev], npoints,dt_try);
 */
-
+if(lpt_twoway<=0)
+{
 drag_move_points<<<numBlocks_p, dimBlocks_p>>>(_points[dev],_dom[dev],npoints,
 ug[dev],vg[dev],wg[dev],
 lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],scg[dev],
 rho_f,mu,g,gradP,
 C_add, C_stress,C_drag,
 sc_eq,DIFF,dt_try);
+}
+else
+{
+drag_move_points_twoway<<<numBlocks_p, dimBlocks_p>>>(_points[dev],_dom[dev],npoints,
+ug[dev],vg[dev],wg[dev],
+lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],
+lpt_dudt[dev],lpt_dvdt[dev],lpt_dwdt[dev],
+scg[dev],
+rho_f,mu,g,gradP,
+C_add, C_stress,C_drag,
+sc_eq,DIFF,dt_try);
+}
 
 /*
 //In this subroutine, sc_eq is not used at all
@@ -396,25 +419,24 @@ if(npoints<=0) return;
     coordiSys=3;
     planeDirc=3;
     block_thread_cell_noOverLap(dimBlocks_z,numBlocks_z,dom[dev],coordiSys,planeDirc);
-
+//At the very first step, we add nothing, since particle has no drag on fluid at all
 if(dt0 > 0.)
 	{
 
 //printf("\nforcing test %f %f\n",dt,dt0);
-
+real idt=1/dt;
 //The coefficient here should be inverse of the present time step rather than last time step
-    forcing_add_x_field<<<numBlocks_x, dimBlocks_x>>>(1/dt, _lpt_mom_source_x[dev],
+    forcing_add_x_field<<<numBlocks_x, dimBlocks_x>>>(idt, _lpt_mom_source_x[dev],
       _f_x[dev], _dom[dev]);
-    forcing_add_y_field<<<numBlocks_y, dimBlocks_y>>>(1/dt, _lpt_mom_source_y[dev],
+    forcing_add_y_field<<<numBlocks_y, dimBlocks_y>>>(idt, _lpt_mom_source_y[dev],
       _f_y[dev], _dom[dev]);
-    forcing_add_z_field<<<numBlocks_z, dimBlocks_z>>>(1/dt, _lpt_mom_source_z[dev],
+    forcing_add_z_field<<<numBlocks_z, dimBlocks_z>>>(idt, _lpt_mom_source_z[dev],
       _f_z[dev], _dom[dev]);
 	}
 
      forcing_reset_x<<<numBlocks_x, dimBlocks_x>>>(_lpt_mom_source_x[dev], _dom[dev]);
      forcing_reset_y<<<numBlocks_y, dimBlocks_y>>>(_lpt_mom_source_y[dev], _dom[dev]);
      forcing_reset_z<<<numBlocks_z, dimBlocks_z>>>(_lpt_mom_source_z[dev], _dom[dev]);
-
 
      }
 }
@@ -432,10 +454,19 @@ if(npoints<=0) return;
     checkCudaErrors(cudaSetDevice(dev + dev_start));
 
 int valType=0;
+
 //Mollify particle back reaction momentum source
 lpt_mollify_delta_scH(1,valType,dev,_lpt_mom_source_x[dev]);
 lpt_mollify_delta_scH(2,valType,dev,_lpt_mom_source_y[dev]);
 lpt_mollify_delta_scH(3,valType,dev,_lpt_mom_source_z[dev]);
+
+/*
+//Using Gaussian Kernel
+lpt_mollify_sc_optH(1,valType,dev,_lpt_mom_source_x[dev]);
+lpt_mollify_sc_optH(2,valType,dev,_lpt_mom_source_y[dev]);
+lpt_mollify_sc_optH(3,valType,dev,_lpt_mom_source_z[dev]);
+*/
+
 
      }
 }
@@ -608,6 +639,7 @@ default: break;
 }
 
 //block_thread_point(dimBlocks_print,numBlocks_print,lenCell);
+getLastCudaError("Kernel execution failed.");
 
 checkCudaErrors(cudaMemset(gridParticleHash[dev],-1,npoints*sizeof(int)));
 checkCudaErrors(cudaMemset(gridParticleIndex[dev],-1,npoints*sizeof(int)));
@@ -620,6 +652,9 @@ cudaEvent_t start, stop;
 cudaEventCreate(&start);
 cudaEventCreate(&stop);
 float milliseconds = 0;
+
+getLastCudaError("Kernel execution failed.");
+
 
 //printf("\ngridDim_p %d %d %d\n",numBlocks_p.x,dimBlocks_p.x,npoints);
 //printf("\ngridDim_3d %d %d %d %d\n",numBlocks_3d.x,numBlocks_3d.y,numBlocks_3d.z,lenCell);
@@ -659,7 +694,7 @@ findCellStart_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_reoder %f\n",milliseconds);
+//printf("\ntime_reoder %f\n",milliseconds);
 fflush(stdout);
 milliseconds = 0;
 cudaEventRecord(start);
@@ -669,10 +704,13 @@ cudaEventRecord(start);
 lpt_point_ksi_opt<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],posX[dev],posY[dev],posZ[dev],Ksi[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 fflush(stdout);
 
+getLastCudaError("Kernel execution failed.");
+
+
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_weight %f\n",milliseconds);
+//printf("\ntime_weight %f\n",milliseconds);
 fflush(stdout);
 
 milliseconds = 0;
@@ -684,12 +722,13 @@ cudaEventRecord(start);
 
 lpt_mollify_sc_ksi_optD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,posX[dev],posY[dev],posZ[dev],Ksi[dev],cellStart[dev],cellEnd[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 
+getLastCudaError("Kernel execution failed.");
 
 fflush(stdout);
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_mollify %f\n",milliseconds);
+//printf("\ntime_mollify %f\n",milliseconds);
 fflush(stdout);
 
 //print_kernel_array_int<<<numBlocks_print,dimBlocks_print>>>(cellEnd[dev],lenCell);
@@ -1048,6 +1087,16 @@ void cuda_point_malloc(void)
   cpumem += nsubdom * sizeof(real*);
 
 
+if(lpt_twoway>0)
+{
+  _dudt = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+  _dvdt = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+  _dwdt = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+
+}
 
 
   lpt_point_source_mollify_init();
@@ -1083,6 +1132,19 @@ void cuda_point_malloc(void)
     checkCudaErrors(cudaMalloc((void**) &(_stress_w[dev]),
       sizeof(real) * dom[dev].Gfz.s3b));
     gpumem += sizeof(int) * dom[dev].Gfz.s3b;
+
+if(lpt_twoway>0)
+{
+    checkCudaErrors(cudaMalloc((void**) &(_dudt[dev]),
+      sizeof(real) * dom[dev].Gfx.s3b));
+    gpumem += sizeof(int) * dom[dev].Gfx.s3b;
+    checkCudaErrors(cudaMalloc((void**) &(_dvdt[dev]),
+      sizeof(real) * dom[dev].Gfy.s3b));
+    gpumem += sizeof(int) * dom[dev].Gfy.s3b;
+    checkCudaErrors(cudaMalloc((void**) &(_dwdt[dev]),
+      sizeof(real) * dom[dev].Gfz.s3b));
+    gpumem += sizeof(int) * dom[dev].Gfz.s3b;
+}
 
 
     checkCudaErrors(cudaMalloc((void**) &(_lpt_mom_source_x[dev]),
@@ -1135,6 +1197,12 @@ void cuda_point_free(void)
     checkCudaErrors(cudaFree(_stress_v[dev]));
     checkCudaErrors(cudaFree(_stress_w[dev]));
 
+if(lpt_twoway>0)
+{
+    checkCudaErrors(cudaFree(_dudt[dev]));
+    checkCudaErrors(cudaFree(_dvdt[dev]));
+    checkCudaErrors(cudaFree(_dwdt[dev]));
+}
 
     checkCudaErrors(cudaFree(_lpt_mom_source_x[dev]));
     checkCudaErrors(cudaFree(_lpt_mom_source_y[dev]));
@@ -1158,6 +1226,14 @@ void cuda_point_free(void)
   free(_stress_u);
   free(_stress_v);
   free(_stress_w);
+
+if(lpt_twoway>0)
+{
+  free(_dudt);
+  free(_dvdt);
+  free(_dwdt);
+
+}
 
   free(_lpt_mom_source_x);
   free(_lpt_mom_source_y);
@@ -1220,6 +1296,13 @@ cuda_malloc_array_real(lptSourceValOld,npoints);
 cuda_malloc_array_real(lpt_stress_u,npoints);
 cuda_malloc_array_real(lpt_stress_v,npoints);
 cuda_malloc_array_real(lpt_stress_w,npoints);
+
+if(lpt_twoway>0)
+{
+cuda_malloc_array_real(lpt_dudt,npoints);
+cuda_malloc_array_real(lpt_dvdt,npoints);
+cuda_malloc_array_real(lpt_dwdt,npoints);
+}
 
 cuda_malloc_array_real(scg,npoints);
 cuda_malloc_array_real(Weight,npoints);
@@ -1432,6 +1515,13 @@ cuda_free_array_real(Weight);
 cuda_free_array_real(lpt_stress_u);
 cuda_free_array_real(lpt_stress_v);
 cuda_free_array_real(lpt_stress_w);
+
+if(lpt_twoway>0)
+{
+cuda_free_array_real(lpt_dudt);
+cuda_free_array_real(lpt_dvdt);
+cuda_free_array_real(lpt_dwdt);
+}
 
 cuda_free_array_int(cellStart);
 cuda_free_array_int(cellEnd);

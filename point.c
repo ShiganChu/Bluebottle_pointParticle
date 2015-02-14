@@ -411,6 +411,14 @@ int points_init(void)
     real m=4*PI/3.0f *points[i].r*points[i].r*points[i].r*points[i].rho;
     points[i].ms = sc_init_percent*m;
 
+//To make sure that the insoluble and soluble together make the real oil density, rho is the density of both initialy. As time goes, the soluble component will decrease in density.  mp=ms+m_is|t=0  =rho*Vp*(1+sc_init_percent)=rho*Vp'
+//We conclude rp'=rp*(1.f+sc_init_percent)^(1/3)
+//There are two ways, the 1st one is decrease insoluble density; the other is increase total mass
+//    points[i].r =points[i].r*powf((1.f+sc_init_percent),1/3.f);
+//    points[i].rho =points[i].rho*(1.f-sc_init_percent);
+
+//Keep the density to be a constant
+
 //printf("\npoint %d %f %f %f %f\n",i,sc_init_percent,m,points[i].r,points[i].rho);
 
     points[i].x0 =points[i].x;

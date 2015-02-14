@@ -17,6 +17,10 @@ real **_stress_u;
 real **_stress_v;
 real **_stress_w;
 
+real **_dudt,**_dvdt,**_dwdt;//device pointer of the fluid accleration at the particle position
+real **lpt_dudt,**lpt_dvdt,**lpt_dwdt;//device pointer of the fluid accleration at the particle position
+
+
 float *GaussianKernel; //Gaussian kernel weight contributed by each point particle 
 int *_DomInfo;
 
@@ -27,7 +31,8 @@ real **posXold,**posYold,**posZold;//device pointer of the particle position
 real **lptSourceVal; //Source from each point particle 
 real **lptSourceValOld; //Source from each point particle 
 
-real **lpt_stress_u,**lpt_stress_v,**lpt_stress_w;//device pointer of the fluid velocity at the particle position
+real **lpt_stress_u,**lpt_stress_v,**lpt_stress_w;//device pointer of the fluid stress at the particle position
+
 real **scg;//device pointer of the fluid scalar at the particle position
 real **Weight; //Gaussian kernel weight contributed by each point particle 
 real **Ksi; //Gaussian kernel weight contributed by each point particle 
@@ -93,8 +98,10 @@ real **_sc_BT;
 
 real *scSrc;
 real **_scSrc;
+real **_scSrc0;
 real *epsp;
 real **_epsp;
+real **_epsp0;
 
 real dt_sc;
 real dt_done;
@@ -197,6 +204,11 @@ real rec_point_particle_dt;
 real rec_scalar_field_dt;
 //real rec_scalar_field;
 real rec_restart_dt;
+      real rec_flow_field_ttime_out = 0.;
+      real rec_paraview_ttime_out = 0.;
+      real rec_point_particle_ttime_out = 0.;
+      real rec_restart_ttime_out = 0.;
+      real rec_scalar_ttime_out = 0.;
 
 int rec_restart_stop;
 real rec_precursor_dt;
@@ -367,6 +379,8 @@ int main(int argc, char *argv[]) {
         }
       }
 
+//Check whether the output directory exists
+      check_output_dir();
 
       if(runrestart != 1||runPointScalar_restart==1||runBubbleScalar_restart==1||runScalar_restart==1) {
         recorder_bicgstab_init("solver_flow.rec");
@@ -417,6 +431,7 @@ int main(int argc, char *argv[]) {
       cuda_scalar_malloc();
 fflush(stdout);
 
+
       // copy host data to devices
       cuda_dom_push();
       cuda_point_push();
@@ -431,16 +446,13 @@ fflush(stdout);
           }
       }
 
-      real rec_flow_field_ttime_out = 0.;
-      real rec_paraview_ttime_out = 0.;
-      real rec_point_particle_ttime_out = 0.;
-      real rec_restart_ttime_out = 0.;
-      real rec_scalar_ttime_out = 0.;
 
       // set up point_particles
       cuda_build_cages();
       ////cuda_point_pull();//why pull at the beginning???
       ////cuda_scalar_pull();
+
+
 
       // run restart if requested
       if(runrestart == 1) {
@@ -452,9 +464,41 @@ fflush(stdout);
         cuda_point_push();
         cuda_scalar_push();
 
-	if(runPointScalar_restart==1) points_scalar_inject();
-	if(runBubbleScalar_restart==1) bubble_scalar_inject();
-	if(runScalar_restart==1) scalar_inject();			
+	if(runPointScalar_restart==1)
+	 { points_scalar_inject();
+	// printf("\npoints_scalar_inject.\n");fflush(stdout);
+         }
+	if(runBubbleScalar_restart==1)
+	{ bubble_scalar_inject();
+	// printf("\nbubbles_scalar_inject.\n");fflush(stdout);
+	}
+	if(runScalar_restart==1)     
+	{ scalar_inject();
+	//printf("\nscalars_scalar_inject.\n");fflush(stdout);
+	}
+
+        if(runScalar_restart==1||runBubbleScalar_restart==1||runPointScalar_restart==1)
+{
+
+       //Initialize time out
+       rec_flow_field_ttime_out = 0.;
+       rec_paraview_ttime_out = 0.;
+       rec_point_particle_ttime_out = 0.;
+       rec_restart_ttime_out = 0.;
+       rec_scalar_ttime_out = 0.;
+
+ rec_flow_field_stepnum_out=0;
+ rec_paraview_stepnum_out=0;
+ rec_point_particle_stepnum_out=0;
+ rec_scalar_stepnum_out=0;
+
+       //Initialize time again
+        ttime=0.f;
+        dt0=0.f;
+        dt=0.f;
+
+
+} 
 
  	if(ttime >= duration) {
 	 printf("\n...simulation completed.\n");
@@ -498,6 +542,8 @@ fflush(stdout);
           cuda_dom_pull();
           cuda_point_pull();
           cuda_scalar_pull();
+
+
           if(rec_flow_field_dt > 0) {
             cgns_grid();
             cgns_flow_field(rec_flow_field_dt);
@@ -538,6 +584,7 @@ fflush(stdout);
  // time_t  t1=time(NULL);
 
           cuda_compute_forcing();
+         // cuda_compute_forcing(&pid_int, &pid_back, Kp, Ki, Kd);
 
 if(turbA>EPSILON)          cuda_compute_turb_forcing();//add
 if(npoints>0&&lpt_twoway>0)    	   lpt_point_twoway_forcing();
@@ -596,13 +643,13 @@ while(dt_done<dt)
           printf("SCLAR and Particle: Time = %e of %e (dt = %e).\n", ttime_done, duration, dt_try);
           fflush(stdout);
 
-//printf("\nrank %d\n",rank);
-//          fflush(stdout);
 
 	//move points explicitly at every sub-timestep
             if(npoints>0)   cuda_move_points();
+
 	//add particle back reaction in momentum to the flow during the substep, then add it to flow source term
             if(lpt_twoway>0&&npoints>0)   lpt_point_twoway_momentum();
+
             compute_scalar_BC();
             cuda_scalar_advance();
             cuda_scalar_BC();
@@ -701,6 +748,11 @@ while(dt_done<dt)
               rec_paraview_ttime_out = rec_paraview_ttime_out - rec_paraview_dt;
             }
           }
+
+/*
+          printf("\n point_dt = %f %f.\n",rec_point_particle_ttime_out,rec_point_particle_dt);
+          fflush(stdout);
+*/
           if(rec_point_particle_dt > 0) {
             if(rec_point_particle_ttime_out >= rec_point_particle_dt) {
               // pull back data and write fields

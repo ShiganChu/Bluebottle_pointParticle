@@ -53,6 +53,10 @@ extern real **_lpt_mom_source_z;
 extern real **_stress_u;
 extern real **_stress_v;
 extern real **_stress_w;
+extern real **lpt_stress_u,**lpt_stress_v,**lpt_stress_w;//device pointer of the fluid velocity at the particle position
+
+extern real **_dudt,**_dvdt,**_dwdt;//device pointer of the fluid accleration at the particle position
+extern real **lpt_dudt,**lpt_dvdt,**lpt_dwdt;//device pointer of the fluid accleration at the particle position
 
 //Fluid vorticity,located on edge center, memory on device
 extern real **_omega_x;
@@ -70,7 +74,6 @@ extern real **posXold,**posYold,**posZold;//device pointer of the particle posit
 extern real **lptSourceVal; //Source from each point particle 
 extern real **lptSourceValOld; //Source from each point particle 
 
-extern real **lpt_stress_u,**lpt_stress_v,**lpt_stress_w;//device pointer of the fluid velocity at the particle position
 extern real **scg;//device pointer of the fluid scalar at the particle position
 extern real **Weight; //Gaussian kernel weight contributed by each point particle 
 extern real **Ksi; //Gaussian kernel weight contributed by each point particle 

@@ -245,7 +245,9 @@ __global__ void lpt_point_ksi(   point_struct *points,
 				 int coordiSys, int valType);
 
 //initialize the the velocity ug~wg and stress of fluid lpt_stress_u~w, which will be interpreted at the point particle position. All arrays will be initialized to 0
-__global__ void point_interp_init(int npoints,point_struct *points,real *ug,real *vg,real *wg,real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg);
+//__global__ void point_interp_init(int npoints,point_struct *points,real *ug,real *vg,real *wg,real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg);
+__global__ void point_interp_init(int npoints,point_struct *points,real *ug,real *vg,real *wg);
+
 
 //About Swap, and reference, coordiSys is the system direction, valType is the plane direction, incGhost is whether include ghost boundary or not
 void block_thread_cell(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordiSys,int valType);
@@ -288,6 +290,13 @@ __global__ void stress_v(real rho_f, real nu, real *v0,real *p,real *p0,real *st
 __global__ void stress_w(real rho_f, real nu, real *w0,real *p,real *p0,real *stress, dom_struct *dom,int *flag_w,real dt,real dt0);
 
 
+
+//Should Add after we have perfect two-way coupling!!
+//Note that this subroutine calculate dudt only 1st order in time
+__global__ void DvelDt(real *u0,real *u,
+real *conv_u,real *dudt, 
+dom_struct *dom, real dt, int coordiSys);
+
 /*
 Calculate fluid force acted on particles, include drag force,fluid stress, added mass effect. Also calculate the exchange rate of soluble scalar mass between particle and flow field.
 	ug,vg,wg are the fluid velocity at the particle location
@@ -323,6 +332,14 @@ real rho_f,real mu, g_struct g,gradP_struct gradP,
 real C_add,real C_stress,real C_drag,
 real sc_eq,real DIFF,real dt);
 
+__global__ void drag_move_points_twoway(point_struct *points,dom_struct *dom, int npoints,
+real *ug,real *vg,real *wg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,
+real *lpt_dudt,real *lpt_dvdt,real *lpt_dwdt,
+real *scg,
+real rho_f,real mu, g_struct g,gradP_struct gradP,
+real C_add,real C_stress,real C_drag,
+real sc_eq,real DIFF,real dt);
 
 //Locate the grid cell index (i,j,k) of each particle
 __global__ void lpt_localize(int npoints, point_struct *points, dom_struct *dom, BC bc);

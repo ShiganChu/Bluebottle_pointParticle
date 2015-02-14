@@ -44,7 +44,55 @@ __global__ void scalar_coeffs_init(dom_struct *dom, int pitch, real *values)
   }
 }
 
+__global__ void scalar_coeffs(real DIFF, real dt, dom_struct *dom, int pitch,
+  real *values,  int *flag_u, int *flag_v, int *flag_w,real *epsp)
+{
+  int i;  // iterator
+  int C;  // cell locations
+  int W, E, S, N, B, T;  // cell locations
+  real ddx = 1. / (dom->dx * dom->dx);
+  real ddy = 1. / (dom->dy * dom->dy);
+  real ddz = 1. / (dom->dz * dom->dz);
 
+  int tj = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  int CC;
+  real epsf,iepsf;
+//  real epsfe,epsfw,epsfs,epsfn,epsfb,epsft;
+//  real iepsfe,iepsfw,iepsfs,iepsfn,iepsfb,iepsft;
+  // loop over slices to set values
+  if(tj < dom->Gcc.jn + DOM_BUF && tk < dom->Gcc.kn + DOM_BUF) {
+    for(i = dom->Gcc.is; i < dom->Gcc.ie; i++) {
+      W = i + tj*dom->Gfx.s1b + tk*dom->Gfx.s2b;
+      E = (i+1) + tj*dom->Gfx.s1b + tk*dom->Gfx.s2b;
+      S = i + tj*dom->Gfy.s1b + tk*dom->Gfy.s2b;
+      N = i + (tj+1)*dom->Gfy.s1b + tk*dom->Gfy.s2b;
+      B = i + tj*dom->Gfz.s1b + tk*dom->Gfz.s2b;
+      T = i + tj*dom->Gfz.s1b + (tk+1)*dom->Gfz.s2b;
+
+      C = (i-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+     // CC = i + tj*dom->Gcc.s1 + tk*dom->Gcc.s2;
+      CC = i + tj*dom->Gcc.s1b + tk*dom->Gcc.s2b;
+
+//TODO the iepsf should be changed to face values correspondingly	
+	epsf=1-epsp[CC];
+        iepsf=__fdiv_rd(1.f,epsf);
+      values[C + pitch * 1]  -= (real)abs(flag_w[B]) *0.5f*DIFF*dt*ddz*iepsf;
+      values[C + pitch * 3]  -= (real)abs(flag_v[S]) *0.5f*DIFF*dt*ddy*iepsf;
+      values[C + pitch * 5]  -= (real)abs(flag_u[W]) *0.5f*DIFF*dt*ddx*iepsf;
+      values[C + pitch * 6]  += 1.;
+      values[C + pitch * 6]  += (real)(abs(flag_u[W]) + abs(flag_u[E])) *DIFF*dt*ddx*iepsf;
+      values[C + pitch * 6]  += (real)(abs(flag_v[S]) + abs(flag_v[N])) *DIFF*dt*ddy*iepsf;
+      values[C + pitch * 6]  += (real)(abs(flag_w[B]) + abs(flag_w[T])) *DIFF*dt*ddz*iepsf;
+      values[C + pitch * 7]  -= (real)abs(flag_u[E]) *0.5f*DIFF*dt*ddx*iepsf;
+      values[C + pitch * 9]  -= (real)abs(flag_v[N]) *0.5f*DIFF*dt*ddy*iepsf;
+      values[C + pitch * 11] -= (real)abs(flag_w[T]) *0.5f*DIFF*dt*ddz*iepsf;
+    }
+  }
+}
+
+/*
 __global__ void scalar_coeffs(real DIFF, real dt, dom_struct *dom, int pitch,
   real *values)
 {
@@ -74,7 +122,7 @@ __global__ void scalar_coeffs(real DIFF, real dt, dom_struct *dom, int pitch,
     }
   }
 }
-
+*/
 
 
 __global__ void copy_sc_ghost(real *sc_ghost, real *sc_noghost, dom_struct *dom)
@@ -91,7 +139,14 @@ __global__ void copy_sc_ghost(real *sc_ghost, real *sc_noghost, dom_struct *dom)
   }
 }
 
-__global__ void scalar_rhs_upwind_1st(real rho_f, real DIFF, real *u, real *v, real *w,  real *epsp, real *f, real *conv0,real *conv,real *diff,real *sc0, real *sc_rhs, dom_struct *dom, real dt, real dt0)
+//2nd order for source as well as for convective&diffusion term
+__global__ void scalar_rhs_upwind_1st(real rho_f, real DIFF, 
+real *u, real *v, real *w, 
+real *epsp,real *epsp0,
+real *f, real *f0,
+real *conv0,real *conv,real *diff,
+real *sc0, real *sc_rhs, dom_struct *dom, 
+real dt, real dt0)
 {
   // create shared memory
   // no reason to load pressure into shared memory, but leaving it in global
@@ -105,6 +160,7 @@ __global__ void scalar_rhs_upwind_1st(real rho_f, real DIFF, real *u, real *v, r
   __shared__ real s_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // conv
   __shared__ real s_c0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // conv0
   __shared__ real s_f[MAX_THREADS_DIM * MAX_THREADS_DIM];       // source term
+  __shared__ real s_f0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // source term
   __shared__ real s_rhs[MAX_THREADS_DIM * MAX_THREADS_DIM];  // solution
 
 //store scalar value of difference direction at cell center
@@ -114,6 +170,7 @@ __global__ void scalar_rhs_upwind_1st(real rho_f, real DIFF, real *u, real *v, r
 
 //store point volume percentage in each grid cell
   __shared__ real p_epsp[MAX_THREADS_DIM * MAX_THREADS_DIM];
+  __shared__ real p_epsp0[MAX_THREADS_DIM * MAX_THREADS_DIM];
 
   // working constants
   real ab0 = 0.5 * dt / dt0;   // for Adams-Bashforth stepping
@@ -123,7 +180,7 @@ __global__ void scalar_rhs_upwind_1st(real rho_f, real DIFF, real *u, real *v, r
   real ddz = 1. / dom->dz;     // to limit the number of divisions needed
    int C;
   // loop over w-planes
-  for(int k = dom->Gcc._ks; k < dom->Gcc._ke; k++) {
+  for(int k = dom->Gcc._ks; k < dom->Gcc._ke; k++) { //k from 1~nz
     // subdomain indices
     // the extra 2*blockIdx.X terms implement the necessary overlapping of
     // shared memory blocks in the subdomain
@@ -133,16 +190,18 @@ __global__ void scalar_rhs_upwind_1st(real rho_f, real DIFF, real *u, real *v, r
     int ti = threadIdx.x;
     int tj = threadIdx.y;
 
-
+   //j range in 0~ny+1; i range in 0~nx+1
     if((j >= dom->Gcc._jsb && j < dom->Gcc._jeb)&& (i >= dom->Gcc._isb && i < dom->Gcc._ieb)) {
 sc_c[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
-sc_b[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b];
-sc_t[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k+1)*dom->Gcc._s2b];
+sc_b[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b];//k-1 from 0~nz-1
+sc_t[ti + tj*blockDim.x]=sc0[i+j*dom->Gcc._s1b + (k+1)*dom->Gcc._s2b];//k+1 from 2~nz+1
 
 s_c0[ti + tj*blockDim.x]=conv0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
 s_f[ti + tj*blockDim.x]=    f[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+s_f0[ti + tj*blockDim.x]=   f0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
 
 p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
+p_epsp0[ti + tj*blockDim.x]= epsp0[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
 }
 
 
@@ -154,8 +213,8 @@ p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
 //No boundary value of u,v,w are used
     if((j >= dom->Gfz._js && j < dom->Gfz._je)
       && (i >= dom->Gfz._is && i < dom->Gfz._ie)) {
-      s_w0[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b];
-      s_w1[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + (k+1)*dom->Gfz._s2b];
+      s_w0[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b];//k from 1~nz
+      s_w1[ti + tj*blockDim.x] = w[i + j*dom->Gfz._s1b + (k+1)*dom->Gfz._s2b];//k from 2~nz+1
     }
     if((j >= dom->Gfx._js && j < dom->Gfx._je)
       && (i >= dom->Gfx._is && i < dom->Gfx._ie)) {
@@ -176,7 +235,7 @@ p_epsp[ti + tj*blockDim.x]= epsp[i+j*dom->Gcc._s1b + k*dom->Gcc._s2b];
 //scalar on the west and east u face
 real u_c=(s_u[ti + tj*blockDim.x]+s_u[(ti+1) + tj*blockDim.x])/2;// at xm(i)
 real v_c=(s_v[ti + tj*blockDim.x]+s_v[ti + (tj+1)*blockDim.x])/2;
-real w_c=(s_w1[ti + tj*blockDim.x]+s_w0[ti + tj*blockDim.x])/2;
+real w_c=(s_w1[ti + tj*blockDim.x]+s_w0[ti + tj*blockDim.x])/2;//average at cell center, from 1~nz
  
 //scalar at face center
 real sc_uw=(sc_c[ti + tj*blockDim.x]+sc_c[ti-1 + tj*blockDim.x])/2.0f;
@@ -185,8 +244,8 @@ real sc_ue=(sc_c[ti + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x])/2.0f;
 real sc_vs=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj-1)*blockDim.x])/2.0f;
 real sc_vn=(sc_c[ti + tj*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x])/2.0f;
 
-real sc_wb=(sc_b[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
-real sc_wt=(sc_t[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;
+real sc_wb=(sc_b[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;//average at face center, from 1~nz
+real sc_wt=(sc_t[ti + tj*blockDim.x]+sc_c[ti + tj*blockDim.x])/2.0f;//average at face center, from 2~nz+1
 
 //1st order upwind scheme
 real dsudx,dsvdy,dswdz;
@@ -211,22 +270,36 @@ real ddsdzz=(sc_b[ti + tj*blockDim.x]+sc_t[ti + tj*blockDim.x]-2*sc_c[ti + tj*bl
 
 //if(isnan(sc_c[ti + tj*blockDim.x])) printf("\nconv_diff %f %f %f %f %f %d %d %d %d %d\n",dsudx,ddsdxx,ddx,ab,sc_c[ti + tj*blockDim.x],ti,tj,i,j,k);
 //Adam-bashforth at t+1/2 step
-real sc_conv;
+real sc_conv,sc_f,sc_epsp;
 if(dt0>0)
+{
 sc_conv= ab * s_c[ti + tj*blockDim.x]-ab0*s_c0[ti + tj*blockDim.x];
-else sc_conv=s_c[ti + tj*blockDim.x];
-
+sc_f=    ab * s_f[ti + tj*blockDim.x]-ab0*s_f0[ti + tj*blockDim.x];
+sc_epsp= ab * p_epsp[ti + tj*blockDim.x]-ab0*p_epsp0[ti + tj*blockDim.x];
+}
+else
+{
+ sc_conv=s_c[ti + tj*blockDim.x];
+ sc_f=s_f[ti + tj*blockDim.x];
+ sc_epsp=p_epsp[ti + tj*blockDim.x];
+}
 
 //Crank-Nicolson method for convective scheme
 real sc_diff= 0.5 * s_d[ti + tj*blockDim.x];
 
 //advance scalar. Take the particle volume fraction into consideration
-//real rhs=(sc_diff+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
-real rhs=sc_diff+s_f[ti + tj*blockDim.x];
+real iepsf=__fdiv_rd(1.f,(1-sc_epsp));
+real rhs=(sc_diff+sc_f)*iepsf;
+//if(rhs<0) printf("\nrhs error: %d %d %d %f %f %f\n",i,j,k,sc_diff,s_f[ti + tj*blockDim.x],iepsf);
+
+s_d[ti + tj*blockDim.x]=s_d[ti + tj*blockDim.x]*iepsf;
+
+//real rhs=sc_diff+s_f[ti + tj*blockDim.x];
 //real rhs=s_f[ti + tj*blockDim.x];
 //sc_c[ti + tj*blockDim.x] +=(sc_conv+rhs)*dt;
 
 s_rhs[ti + tj*blockDim.x] =(sc_conv+rhs)*dt;
+//if(sc_conv+rhs<0) printf("\nrhs error: %d %d %d %f %f\n",i,j,k,sc_conv,rhs);
 s_rhs[ti + tj*blockDim.x] +=sc_c[ti + tj*blockDim.x];
 }
 
@@ -399,9 +472,153 @@ s_rhs[ti + tj*blockDim.x] +=sc_c[ti + tj*blockDim.x];
 }
 
    
+__global__ void scalar_coeffs_periodic_W(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values,real *epsp)
+{
+  int i = dom->Gcc.is;  // iterator
+    int C;  // cell locations
+  int CC;
+  real epsf,iepsf;
 
+  real ddx = 1. / (dom->dx * dom->dx);
 
+  int tj = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
 
+  if((tj < (dom->Gcc.jn + DOM_BUF)) && (tk < (dom->Gcc.kn + DOM_BUF))) {
+    C = (i-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+   
+    //CC = i + tj*dom->Gcc.s1 + tk*dom->Gcc.s2;
+    CC = i + tj*dom->Gcc.s1b + tk*dom->Gcc.s2b;
+    epsf=1-epsp[CC];
+    iepsf=__fdiv_rd(1.f,epsf);
+
+    values[C + pitch * 5] += 0.5*DIFF*iepsf*dt*ddx;
+    values[C + pitch * 8] -= 0.5*DIFF*iepsf*dt*ddx;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_E(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values,real *epsp)
+{
+  int i = dom->Gcc.ie-1;  // iterator
+    int C;  // cell locations
+  int CC;
+  real epsf,iepsf;
+
+  real ddx = 1. / (dom->dx * dom->dx);
+
+  int tj = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tk = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((tj < (dom->Gcc.jn + DOM_BUF)) && (tk < (dom->Gcc.kn + DOM_BUF))) {
+    C = (i-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+   // CC = i + tj*dom->Gcc.s1 + tk*dom->Gcc.s2;
+    CC = i + tj*dom->Gcc.s1b + tk*dom->Gcc.s2b;
+    epsf=1-epsp[CC];
+    iepsf=__fdiv_rd(1.f,epsf);
+    values[C + pitch * 4] -= 0.5*DIFF*iepsf*dt*ddx;
+    values[C + pitch * 7] += 0.5*DIFF*iepsf*dt*ddx;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_S(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values,real *epsp)
+{
+  int j = dom->Gcc.js;  // iterator
+    int C;  // cell locations
+  int CC;
+  real epsf,iepsf;
+
+  real ddy = 1. / (dom->dy * dom->dy);
+
+  int tk = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int ti = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((tk < (dom->Gcc.kn + DOM_BUF)) && (ti < (dom->Gcc.in + DOM_BUF))) {
+    C = (ti-DOM_BUF) + (j-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+    //CC = ti + j*dom->Gcc.s1 + tk*dom->Gcc.s2;
+    CC = ti + j*dom->Gcc.s1b + tk*dom->Gcc.s2b;
+    epsf=1-epsp[CC];
+    iepsf=__fdiv_rd(1.f,epsf);
+    values[C + pitch * 3]  += 0.5*DIFF*iepsf*dt*ddy;
+    values[C + pitch * 10] -= 0.5*DIFF*iepsf*dt*ddy;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_N(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values,real *epsp)
+{
+  int j = dom->Gcc.je-1;  // iterator
+    int C;  // cell locations
+  int CC;
+  real epsf,iepsf;
+
+  real ddy = 1. / (dom->dy * dom->dy);
+
+  int tk = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int ti = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((tk < (dom->Gcc.kn + DOM_BUF)) && (ti < (dom->Gcc.in + DOM_BUF))) {
+    C = (ti-DOM_BUF) + (j-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
+    //CC = ti + j*dom->Gcc.s1 + tk*dom->Gcc.s2;
+    CC = ti + j*dom->Gcc.s1b + tk*dom->Gcc.s2b;
+    epsf=1-epsp[CC];
+    iepsf=__fdiv_rd(1.f,epsf);
+    values[C + pitch * 2] -= 0.5*DIFF*iepsf*dt*ddy;
+    values[C + pitch * 9] += 0.5*DIFF*iepsf*dt*ddy;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_B(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values,real *epsp)
+{
+  int k = dom->Gcc.ks;  // iterator
+    int C;  // cell locations
+  int CC;
+  real epsf,iepsf;
+
+  real ddz = 1. / (dom->dz * dom->dz);
+
+  int ti = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tj = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((ti < (dom->Gcc.in + DOM_BUF)) && (tj < (dom->Gcc.jn + DOM_BUF))) {
+    C = (ti-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (k-DOM_BUF)*dom->Gcc.s2;
+    //CC = ti + tj*dom->Gcc.s1 + k*dom->Gcc.s2;
+    CC = ti + tj*dom->Gcc.s1b + k*dom->Gcc.s2b;
+    epsf=1-epsp[CC];
+    iepsf=__fdiv_rd(1.f,epsf);
+    values[C + pitch * 1]  += 0.5*DIFF*iepsf*dt*ddz;
+    values[C + pitch * 12] -= 0.5*DIFF*iepsf*dt*ddz;
+  }
+}
+
+__global__ void scalar_coeffs_periodic_T(real DIFF, real dt, dom_struct *dom,
+  int pitch, real *values,real *epsp)
+{
+  int k = dom->Gcc.ke-1;  // iterator
+    int C;  // cell locations
+  int CC;
+  real epsf,iepsf;
+
+  real ddz = 1. / (dom->dz * dom->dz);
+
+  int ti = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
+  int tj = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
+
+  if((ti < (dom->Gcc.in + DOM_BUF)) && (tj < (dom->Gcc.jn + DOM_BUF))) {
+    C = (ti-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (k-DOM_BUF)*dom->Gcc.s2;
+    //CC = ti + tj*dom->Gcc.s1 + k*dom->Gcc.s2;
+    CC = ti + tj*dom->Gcc.s1b + k*dom->Gcc.s2b;
+    epsf=1-epsp[CC];
+    iepsf=__fdiv_rd(1.f,epsf);
+    values[C + pitch * 0]  -= 0.5*DIFF*iepsf*dt*ddz;
+    values[C + pitch * 11] += 0.5*DIFF*iepsf*dt*ddz;
+  }
+}
+
+/*
 __global__ void scalar_coeffs_periodic_W(real DIFF, real dt, dom_struct *dom,
   int pitch, real *values)
 {
@@ -503,6 +720,9 @@ __global__ void scalar_coeffs_periodic_T(real DIFF, real dt, dom_struct *dom,
     values[C + pitch * 11] += 0.5*DIFF*dt*ddz;
   }
 }
+
+*/
+
 
 
 // scalar; west; periodic
@@ -1057,7 +1277,6 @@ real dswdz=(s_w1[ti + tj*blockDim.x]   *sc_wt - s_w0[ti + tj*blockDim.x]*sc_wb) 
 real u_c=(s_u[(ti+1) + tj*blockDim.x] + s_u[ti + tj*blockDim.x])/2.0f;
 real v_c=(s_v[ti + (tj+1)*blockDim.x]+s_v[ti + tj*blockDim.x])/2.0f;
 real w_c=(s_w1[ti + tj*blockDim.x]+s_w0[ti + tj*blockDim.x])/2.0f;
-
 
 //diffusive term of scalar at cell center
 real ddsdxx=(sc_c[ti-1 + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddx* ddx;

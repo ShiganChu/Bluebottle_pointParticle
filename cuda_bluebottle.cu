@@ -285,6 +285,11 @@ void cuda_dom_push(void)
     // cpumem += dom[dev].Gfy.s3b * sizeof(real);
 
 
+    real *fxx = (real*) malloc(dom[dev].Gfx.s3b * sizeof(real));
+    real *fyy = (real*) malloc(dom[dev].Gfy.s3b * sizeof(real));
+    real *fzz = (real*) malloc(dom[dev].Gfz.s3b * sizeof(real));
+
+
     // select appropriate subdomain
     // p
     for(k = dom[dev].Gcc.ksb; k < dom[dev].Gcc.keb; k++) {
@@ -316,6 +321,8 @@ void cuda_dom_push(void)
           conv0_uu[CC] = conv0_u[C];
           diff_uu[CC] = diff_u[C];
           conv_uu[CC] = conv_u[C];
+
+fxx[CC]=f_x[C];
         }
       }
     }
@@ -334,6 +341,7 @@ void cuda_dom_push(void)
           conv0_vv[CC] = conv0_v[C];
           diff_vv[CC] = diff_v[C];
           conv_vv[CC] = conv_v[C];
+fyy[CC]=f_y[C];
         }
       }
     }
@@ -352,6 +360,7 @@ void cuda_dom_push(void)
           conv0_ww[CC] = conv0_w[C];
           diff_ww[CC] = diff_w[C];
           conv_ww[CC] = conv_w[C];
+fzz[CC]=f_z[C];
         }
       }
     }
@@ -402,7 +411,22 @@ void cuda_dom_push(void)
       sizeof(real) * dom[dev].Gfz.s3b, cudaMemcpyHostToDevice));
 
 
+    checkCudaErrors(cudaMemcpy(_f_x[dev],fxx, sizeof(real) * dom[dev].Gfx.s3b,
+      cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(_f_y[dev],fyy, sizeof(real) * dom[dev].Gfy.s3b,
+      cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(_f_z[dev],fzz, sizeof(real) * dom[dev].Gfz.s3b,
+      cudaMemcpyHostToDevice));
+
+
+
+
     // free host subdomain working arrays
+    free(fxx);
+    free(fyy);
+    free(fzz);
+
+
     free(pp0);
     free(pp);
     free(pdivU);
@@ -424,6 +448,7 @@ void cuda_dom_push(void)
     free(conv_uu);
     free(conv_vv);
     free(conv_ww);
+
 
   }
 }
@@ -3063,8 +3088,8 @@ real cuda_find_dt(void)
   // clean up
   free(dts);
 
-//if(max>0.05f) max=0.05f;
-
+//if(max>1e-5) max=1e-5f;
+//if(dt0>0&&max<1) max=1;
   return max;
 }
 
@@ -3102,6 +3127,7 @@ void cuda_store_u(void)
   }
 }
 
+//void cuda_compute_forcing(real *pid_int, real *pid_back, real Kp, real Ki,  real Kd)
 extern "C"
 void cuda_compute_forcing(void)
 {
@@ -3207,9 +3233,12 @@ else
     else if(fabs(ttime*gradP.ya) > fabs(gradP.ym)) gradP.y = gradP.ym;
     else gradP.y = ttime*gradP.ya;
 
+    // turn off if PID controller is being used
+    if(!(Kp > 0 || Ki > 0 || Kd > 0)) {
     if(gradP.za == 0) gradP.z = gradP.zm;
     else if(fabs(ttime*gradP.za) > fabs(gradP.zm)) gradP.z = gradP.zm;
     else gradP.z = ttime*gradP.za;
+     }
 
     if(g.xa == 0) g.x = g.xm;
     else if(fabs(ttime*g.xa) > fabs(g.xm)) g.x = g.xm;
@@ -3222,6 +3251,36 @@ else
     if(g.za == 0) g.z = g.zm;
     else if(fabs(ttime*g.za) > fabs(g.zm)) g.z = g.zm;
     else g.z = ttime*g.za;
+
+   //Adverse gradient to balance particle drag duo to buoyancy.   TODO: make this into a kernel function
+    if(lpt_twoway > 0) {
+      cuda_point_pull();
+      real volp = 0;
+      real massp = 0;
+
+//Modify buoyancy effect
+      real massf = 0;
+      real force_buoy=0;
+//      real acc_buoy=0;
+      real volp_buf=0;
+      for(int i = 0; i < npoints; i++) {
+        volp_buf = points[i].r*points[i].r*points[i].r;
+        volp += volp_buf;
+        massp += points[i].rho*volp_buf;
+        massp += points[i].ms;
+	massf += rho_f*volp_buf;
+      }
+      volp *= 4./3.*PI;
+      massp *= 4./3.*PI;
+      massf *= 4./3.*PI;
+      force_buoy=(massp-massf)*g.z;
+
+      real domVol=Dom.xl * Dom.yl * Dom.zl;
+//      real volfrac = volp / domVol;
+//      real rho_avg = massp/volp*volfrac + rho_f*(1.-volfrac);
+      gradP.z = force_buoy/domVol;
+    }
+
 
     forcing_add_x_const<<<numBlocks_x, dimBlocks_x>>>(-gradP.x / rho_f,
       _f_x[dev], _dom[dev]);

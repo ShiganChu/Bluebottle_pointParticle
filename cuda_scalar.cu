@@ -43,10 +43,13 @@ void cuda_scalar_malloc(void)
   cpumem += nsubdom * sizeof(real*);
   _scSrc = (real**) malloc(nsubdom * sizeof(real*));
   cpumem += nsubdom * sizeof(real*);
-
+  _scSrc0 = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
 
 
   _epsp = (real**) malloc(nsubdom * sizeof(real*));
+  cpumem += nsubdom * sizeof(real*);
+  _epsp0 = (real**) malloc(nsubdom * sizeof(real*));
   cpumem += nsubdom * sizeof(real*);
 
 
@@ -82,9 +85,15 @@ void cuda_scalar_malloc(void)
     checkCudaErrors(cudaMalloc((void**) &(_scSrc[dev]),
       sizeof(real) * dom[dev].Gcc.s3b));
     gpumem += dom[dev].Gcc.s3b * sizeof(real);
+    checkCudaErrors(cudaMalloc((void**) &(_scSrc0[dev]),
+      sizeof(real) * dom[dev].Gcc.s3b));
+    gpumem += dom[dev].Gcc.s3b * sizeof(real);
 
 
     checkCudaErrors(cudaMalloc((void**) &(_epsp[dev]),
+      sizeof(real) * dom[dev].Gcc.s3b));
+    gpumem += dom[dev].Gcc.s3b * sizeof(real);
+    checkCudaErrors(cudaMalloc((void**) &(_epsp0[dev]),
       sizeof(real) * dom[dev].Gcc.s3b));
     gpumem += dom[dev].Gcc.s3b * sizeof(real);
 
@@ -115,7 +124,9 @@ void cuda_scalar_free(void)
     checkCudaErrors(cudaFree(_conv0_sc[dev]));
     checkCudaErrors(cudaFree(_conv_sc[dev]));
     checkCudaErrors(cudaFree(_scSrc[dev]));
+    checkCudaErrors(cudaFree(_scSrc0[dev]));
     checkCudaErrors(cudaFree(_epsp[dev]));
+    checkCudaErrors(cudaFree(_epsp0[dev]));
 
 
   }
@@ -129,7 +140,9 @@ void cuda_scalar_free(void)
     free(_conv0_sc);
     free(_conv_sc);
     free(_scSrc);
+    free(_scSrc0);
     free(_epsp);
+    free(_epsp0);
 
 
 }
@@ -534,6 +547,10 @@ void cuda_store_scalar(void)
     checkCudaErrors(cudaMemcpy(_sc0[dev], _sc[dev], 
       dom[dev].Gcc.s3b*sizeof(real), cudaMemcpyDeviceToDevice));
 
+    checkCudaErrors(cudaMemcpy(_scSrc0[dev], _scSrc[dev],
+      dom[dev].Gcc.s3b*sizeof(real), cudaMemcpyDeviceToDevice));
+    checkCudaErrors(cudaMemcpy(_epsp0[dev], _epsp[dev],
+      dom[dev].Gcc.s3b*sizeof(real), cudaMemcpyDeviceToDevice));
   }
 }
 
@@ -634,7 +651,6 @@ cudaEventRecord(start);
 
 //advance scalar TODO add boundary condition to sc in the kernel!,  takes 2.6 ms compared to 5 ms by u_star_2
 if(dt0 > 0.) {
-
 advance_sc_upwind_1st<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 fflush(stdout);
 
@@ -646,8 +662,6 @@ advance_sc_upwind_1st_init<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[de
 
 //advance_sc_init<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 }
-
-
 
 /*
 //Using MacCormack scheme to advance scalar
@@ -723,7 +737,6 @@ real cuda_find_dt_sc(real dt)
     dts[dev] += (w_max + 2 * DIFF_eq / dom[dev].dz) / dom[dev].dz;
     dts[dev] = CFL / dts[dev];
 
-getLastCudaError("Kernel execution failed.");
 
   }
 
@@ -735,13 +748,13 @@ getLastCudaError("Kernel execution failed.");
   // clean up
   free(dts);
 //Make the 1st time step smaller
-//  if(dt0<=0) dt=0.01f*dt;
+ // if(dt0<=0) dt=0.01f*dt;
+//  if(dt>1e-5) dt=1e-5;
  
   if(max>dt) max=dt; 
 
   return max;
 }
-
 
 
 extern "C"
@@ -824,37 +837,68 @@ void cuda_scalar_helmholtz(void)
     scalar_coeffs_init<<<numBlocks_x, dimBlocks_x>>>(_dom[dev],
       _A_scalar->values.pitch,
       thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
-    scalar_coeffs<<<numBlocks_x, dimBlocks_x>>>(DIFF, dt_try, _dom[dev],
+    /*
+    scalar_coeffs<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, dt_try, _dom[dev],
       _A_scalar->values.pitch,
       thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
+*/
+    scalar_coeffs<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, dt_try, _dom[dev],
+      _A_scalar->values.pitch,
+      thrust::raw_pointer_cast(&_A_scalar->values.values[0]),
+      _flag_u[dev],_flag_v[dev],_flag_w[dev],_epsp[dev]);
 
+/*
     // account for boundary conditions
     if(sc_bc.scW == PERIODIC)
-      scalar_coeffs_periodic_W<<<numBlocks_x, dimBlocks_x>>>(DIFF, dt_try, _dom[dev],
+      scalar_coeffs_periodic_W<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
         thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
     if(sc_bc.scE == PERIODIC)
-      scalar_coeffs_periodic_E<<<numBlocks_x, dimBlocks_x>>>(DIFF, dt_try, _dom[dev],
+      scalar_coeffs_periodic_E<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
         thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
     if(sc_bc.scS == PERIODIC)
-      scalar_coeffs_periodic_S<<<numBlocks_y, dimBlocks_y>>>(DIFF, dt_try, _dom[dev],
+      scalar_coeffs_periodic_S<<<numBlocks_y, dimBlocks_y>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
         thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
     if(sc_bc.scN == PERIODIC)
-      scalar_coeffs_periodic_N<<<numBlocks_y, dimBlocks_y>>>(DIFF, dt_try, _dom[dev],
+      scalar_coeffs_periodic_N<<<numBlocks_y, dimBlocks_y>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
         thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
     if(sc_bc.scB == PERIODIC)
-      scalar_coeffs_periodic_B<<<numBlocks_z, dimBlocks_z>>>(DIFF, dt_try, _dom[dev],
+      scalar_coeffs_periodic_B<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
         thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
     if(sc_bc.scT == PERIODIC)
-      scalar_coeffs_periodic_T<<<numBlocks_z, dimBlocks_z>>>(DIFF, dt_try, _dom[dev],
+      scalar_coeffs_periodic_T<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
         thrust::raw_pointer_cast(&_A_scalar->values.values[0]));
-
-getLastCudaError("Kernel execution failed.");
+*/
+   // account for boundary conditions
+    if(sc_bc.scW == PERIODIC)
+      scalar_coeffs_periodic_W<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+    if(sc_bc.scE == PERIODIC)
+      scalar_coeffs_periodic_E<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+    if(sc_bc.scS == PERIODIC)
+      scalar_coeffs_periodic_S<<<numBlocks_y, dimBlocks_y>>>(DIFF_eq, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+    if(sc_bc.scN == PERIODIC)
+      scalar_coeffs_periodic_N<<<numBlocks_y, dimBlocks_y>>>(DIFF_eq, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+    if(sc_bc.scB == PERIODIC)
+      scalar_coeffs_periodic_B<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+    if(sc_bc.scT == PERIODIC)
+      scalar_coeffs_periodic_T<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, dt_try, _dom[dev],
+        _A_scalar->values.pitch,
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
     // create CUSP pointer to right-hand side
     thrust::device_ptr<real> _ptr_scalar(_scalar_noghost);
     cusp::array1d<real, cusp::device_memory> *_scalar_rhs;
@@ -893,10 +937,9 @@ getLastCudaError("Kernel execution failed.");
     delete(_A_scalar);
     checkCudaErrors(cudaFree(_scalar_noghost));
 
-getLastCudaError("Kernel execution failed.");
-
   }
 }
+
 
 
 
@@ -934,12 +977,13 @@ void cuda_scalar_rhs(int dev)
 */
   scalar_rhs_upwind_1st<<<numBlocks, dimBlocks>>>(rho_f, DIFF_eq,
 			 _u[dev], _v[dev], _w[dev],
-			 _epsp[dev], _scSrc[dev],
+			 _epsp[dev],_epsp0[dev],
+			 _scSrc[dev],_scSrc0[dev],
 			 _conv0_sc[dev],_conv_sc[dev],_diff_sc[dev],
 			_sc0[dev],_sc[dev], 
 			_dom[dev], dt_try, dt0_try);
 
-fflush(stdout);
+//fflush(stdout);
 getLastCudaError("Kernel execution failed.");
 }
 

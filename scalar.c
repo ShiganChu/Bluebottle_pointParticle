@@ -57,7 +57,7 @@ DIFF_eq=1.f;
     sc_bc.scWD = 0;
   }
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -73,7 +73,7 @@ DIFF_eq=1.f;
   }
 
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -89,7 +89,7 @@ DIFF_eq=1.f;
   }
 
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -104,7 +104,7 @@ DIFF_eq=1.f;
     sc_bc.scND = 0;
   }
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -119,7 +119,7 @@ DIFF_eq=1.f;
     sc_bc.scBD = 0;
   }
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -145,7 +145,7 @@ DIFF_eq=1.f;
     sc_bc.scWD = 0;
   }
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -160,7 +160,7 @@ DIFF_eq=1.f;
     sc_bc.scED = 0;
   }
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -176,7 +176,7 @@ DIFF_eq=1.f;
   }
 
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -191,7 +191,7 @@ DIFF_eq=1.f;
     sc_bc.scND = 0;
   }
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -206,7 +206,7 @@ DIFF_eq=1.f;
     sc_bc.scBD = 0;
   }
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -224,7 +224,7 @@ DIFF_eq=1.f;
 #endif
 
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "scalar.config read error.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");

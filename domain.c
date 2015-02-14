@@ -103,7 +103,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.pW = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.pW.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -113,7 +113,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.pE = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.pE.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -123,7 +123,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.pS = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.pS.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -133,7 +133,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.pN = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.pN.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -143,7 +143,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.pB = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.pB.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -153,7 +153,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.pT = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.pT.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -171,7 +171,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.uW = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.uW.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -186,7 +186,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.uE = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.uE.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -201,7 +201,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.uS = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.uS.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -216,7 +216,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.uN = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.uN.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -231,7 +231,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.uB = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.uB.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -246,7 +246,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.uT = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.uT.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -264,7 +264,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.vW = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.vW.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -279,7 +279,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.vE = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.vE\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -294,7 +294,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.vS = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error: bc.vS\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -309,7 +309,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.vN = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.vN\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -324,7 +324,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.vB = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:bc.vB\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -339,7 +339,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.vT = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error: bc.vT\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -357,7 +357,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.wW = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:  bc.wW\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -372,7 +372,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.wE = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error.: bc.wE\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -387,7 +387,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.wS = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error.: bc.wS\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -402,7 +402,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.wN = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:  bc.wN\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -417,7 +417,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.wB = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error: bc.wB.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -432,7 +432,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "NEUMANN") == 0)
     bc.wT = NEUMANN;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error: bc.wT.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -484,7 +484,7 @@ void turb_read_input(void)
   else if(strcmp(buf, "HOMOGENEOUS") == 0)
     out_plane = HOMOGENEOUS;
   else {
-    fprintf(stderr, "turb.config read error.\n");
+    fprintf(stderr, "turb.config read error:SOLVABILITY ENFORCEMENT PLANE.\n");
     exit(EXIT_FAILURE);
   }
   fret = fscanf(infile, "\n");
@@ -526,8 +526,23 @@ void turb_read_input(void)
   g.z = 0;
 #endif
 
+/*
+  fret = fscanf(infile, "\n");
+  fret = fscanf(infile, "\n");
 
-//add by shigan 10_8_2014
+  fret = fscanf(infile, "PID CONTROLLER GAINS\n");
+#ifdef DOUBLE
+  fret = fscanf(infile, "Kp %lf\n", &Kp);
+  fret = fscanf(infile, "Ki %lf\n", &Ki);
+  fret = fscanf(infile, "Kd %lf\n", &Kd);
+#else
+  fret = fscanf(infile, "Kp %f\n", &Kp);
+  fret = fscanf(infile, "Ki %f\n", &Ki);
+  fret = fscanf(infile, "Kd %f\n", &Kd);
+#endif
+*/
+
+  //add by shigan 10_8_2014
   fret = fscanf(infile, "\n");
 #ifdef DOUBLE
   fret = fscanf(infile, "Add mass %lf\n", &C_add);
@@ -858,6 +873,18 @@ void domain_show_config(void)
   printf("  g.z = %f\n", g.z);
   printf("  g.zm = %f\n", g.zm);
   printf("  g.za = %f\n", g.za);
+
+/*
+ printf("PID CONTROLLER GAINS\n");
+ printf(" Kp %f\n",Kp);
+ printf(" Ki %f\n",Ki);
+ printf(" Kd %f\n",Kd);
+*/
+
+ printf("Particle force coefficients\n");
+ printf(" Add mass %f\n",C_add);
+ printf(" Fluid stress %f\n",C_stress);
+ printf(" Drag force %f\n",C_drag);
 }
 
 
@@ -1500,8 +1527,8 @@ else if(init_cond == BULK) {
         }
       }
     }
-printf("\nInitial Velocity U,V,W %f %f %f\n",bc.uWDm,bc.vSDm,bc.wBDm);
-fflush(stdout);
+//printf("\nInitial Velocity U,V,W %f %f %f\n",bc.uWDm,bc.vSDm,bc.wBDm);
+//fflush(stdout);
   }
 
 
@@ -2098,6 +2125,13 @@ fprintf(rest, "\n");
 
  }
   fprintf(rest, "\n");
+
+  fprintf(rest, "%e %e %e %e %e\n", rec_flow_field_ttime_out,
+    rec_paraview_ttime_out, rec_point_particle_ttime_out, rec_restart_ttime_out,
+    rec_scalar_ttime_out);
+  fprintf(rest, "\n");
+  fprintf(rest, "%e %e %e\n", pid_int, pid_back, gradP.z);
+
   // close the file
   fclose(rest);
 }
@@ -2452,6 +2486,25 @@ void in_restart(void)
 #endif
   }
   fret = fscanf(infile, "\n");
+
+#ifdef DOUBLE
+  fret = fscanf(infile, "%le %le %le %le %le\n", &rec_flow_field_ttime_out,
+    &rec_paraview_ttime_out, &rec_point_particle_ttime_out, &rec_restart_ttime_out,
+    &rec_scalar_ttime_out);
+#else
+  fret = fscanf(infile, "%e %e %e %e %e\n", &rec_flow_field_ttime_out,
+    &rec_paraview_ttime_out, &rec_point_particle_ttime_out, &rec_restart_ttime_out,
+    &rec_scalar_ttime_out);
+#endif
+
+  fret = fscanf(infile, "\n");
+#ifdef DOUBLE
+  fret = fscanf(infile, "%le %le %le\n", &pid_int, &pid_back, &gradP.z);
+#else
+  fret = fscanf(infile, "%e %e %e\n", &pid_int, &pid_back, &gradP.z);
+#endif
+
+
   // close file
   fclose(infile);
 }

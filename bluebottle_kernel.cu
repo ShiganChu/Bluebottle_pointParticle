@@ -1253,6 +1253,9 @@ __global__ void project_w(real *w_star, real *p, real rho_f, real dt,
         - p[ti + tj*dom->Gcc._s1b + (k-1)*dom->Gcc._s2b]);
       w[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b] = w_star[ti + tj*dom->Gfz._s1b
         + k*dom->Gfz._s2b] - dt / rho_f * gradPhi;
+
+//if(fabs(dt / rho_f * gradPhi)>0.1f) printf("\nproject id %d %d %d %f %f %f\n",ti,tj,k,w_star[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b],gradPhi, dt / rho_f * gradPhi);
+
     }
   }
 }
@@ -1818,6 +1821,7 @@ __global__ void w_star_2(real rho_f, real nu,
 
       // velocity term sums into right-hand side
       s_w_star[ti + tj*blockDim.x] += w111;
+//if(fabs(s_f[ti + tj*blockDim.x])>0.1f) printf("\nw_star %d %d %d %f %f %f\n",i,j,k, s_f[ti + tj*blockDim.x],w111,s_w_star[ti + tj*blockDim.x]);
     }
 
     // make sure all threads complete computations
