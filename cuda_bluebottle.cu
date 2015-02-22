@@ -3090,6 +3090,7 @@ real cuda_find_dt(void)
 
 //if(max>1e-5) max=1e-5f;
 //if(dt0>0&&max<1) max=1;
+
   return max;
 }
 

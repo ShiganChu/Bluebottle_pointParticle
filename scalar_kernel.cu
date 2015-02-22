@@ -43,7 +43,7 @@ __global__ void scalar_coeffs_init(dom_struct *dom, int pitch, real *values)
     }
   }
 }
-
+//This coeff matrix depend on the flow boundary condition rather than the scalar BC!!!
 __global__ void scalar_coeffs(real DIFF, real dt, dom_struct *dom, int pitch,
   real *values,  int *flag_u, int *flag_v, int *flag_w,real *epsp)
 {
@@ -82,9 +82,9 @@ __global__ void scalar_coeffs(real DIFF, real dt, dom_struct *dom, int pitch,
       values[C + pitch * 3]  -= (real)abs(flag_v[S]) *0.5f*DIFF*dt*ddy*iepsf;
       values[C + pitch * 5]  -= (real)abs(flag_u[W]) *0.5f*DIFF*dt*ddx*iepsf;
       values[C + pitch * 6]  += 1.;
-      values[C + pitch * 6]  += (real)(abs(flag_u[W]) + abs(flag_u[E])) *DIFF*dt*ddx*iepsf;
-      values[C + pitch * 6]  += (real)(abs(flag_v[S]) + abs(flag_v[N])) *DIFF*dt*ddy*iepsf;
-      values[C + pitch * 6]  += (real)(abs(flag_w[B]) + abs(flag_w[T])) *DIFF*dt*ddz*iepsf;
+      values[C + pitch * 6]  += (real)(abs(flag_u[W]) + abs(flag_u[E]))*0.5f *DIFF*dt*ddx*iepsf;
+      values[C + pitch * 6]  += (real)(abs(flag_v[S]) + abs(flag_v[N]))*0.5f *DIFF*dt*ddy*iepsf;
+      values[C + pitch * 6]  += (real)(abs(flag_w[B]) + abs(flag_w[T]))*0.5f *DIFF*dt*ddz*iepsf;
       values[C + pitch * 7]  -= (real)abs(flag_u[E]) *0.5f*DIFF*dt*ddx*iepsf;
       values[C + pitch * 9]  -= (real)abs(flag_v[N]) *0.5f*DIFF*dt*ddy*iepsf;
       values[C + pitch * 11] -= (real)abs(flag_w[T]) *0.5f*DIFF*dt*ddz*iepsf;
@@ -312,8 +312,7 @@ s_rhs[ti + tj*blockDim.x] +=sc_c[ti + tj*blockDim.x];
       C = i + j*dom->Gcc._s1b + k*dom->Gcc._s2b;
       sc_rhs[C] = s_rhs[ti + tj*blockDim.x];
       conv[C] = s_c[ti + tj*blockDim.x];
-      diff[C] =2*s_d[ti + tj*blockDim.x];
-
+      diff[C] =s_d[ti + tj*blockDim.x];
     }
   }
 }

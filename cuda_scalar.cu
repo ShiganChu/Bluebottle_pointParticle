@@ -616,7 +616,7 @@ int valType=1;
 
 //lpt_mollify_sc_optH(coordiSys,valType,dev,_epsp[dev]);
 
-lpt_mollify_delta_scH(coordiSys,valType,dev,_epsp[dev]);
+//lpt_mollify_delta_scH(coordiSys,valType,dev,_epsp[dev]);
 getLastCudaError("Kernel execution failed.");
 
 /*
@@ -649,6 +649,7 @@ float milliseconds = 0;
 cudaEventRecord(start);
 */
 
+/*
 //advance scalar TODO add boundary condition to sc in the kernel!,  takes 2.6 ms compared to 5 ms by u_star_2
 if(dt0 > 0.) {
 advance_sc_upwind_1st<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
@@ -662,6 +663,7 @@ advance_sc_upwind_1st_init<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[de
 
 //advance_sc_init<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 }
+*/
 
 /*
 //Using MacCormack scheme to advance scalar
@@ -671,7 +673,7 @@ fflush(stdout);
 
 //advance_sc_QUICK<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt_try);
 
-// cuda_scalar_helmholtz();
+ cuda_scalar_helmholtz();
 
 getLastCudaError("Kernel execution failed.");
 
