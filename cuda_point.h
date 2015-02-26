@@ -37,11 +37,12 @@ void gaussian_array_initH();
 void domInfo_array_initH();
 void lpt_point_source_mollify_final();
 
-//extern "C"
-//real cuda_find_dt_points(real dt);
 
 //mathch point velocity with the flow interpolated velocity at the particle position
 __global__ void point_vel_specify(real *ug,real *vg,real *wg,point_struct *points,int npoints);
+
+//calculate particle diameter
+__global__ void points_dp(point_struct *points, real *dp, int npoints);
 
 //Initialize particle ms when injecting scalar field
 __global__ void point_ms_initD(point_struct *points, int npoints,int percent);
@@ -58,6 +59,9 @@ __global__ void print_kernel_array_real(real *cell,int lenCell);
 __global__ void copy_points_dt(real *pdt,point_struct *points,int npoints);
 
 void sortParticles(int *dGridParticleHash, int *dGridParticleIndex, int npoints);
+
+/* The base function of the maximum search algorithm. */
+int find_max_int(int size, int *d_iarr);
 
 /*
 The following two subroutines are for mollifying point source with a Gaussian kernel
@@ -84,6 +88,12 @@ __device__ void calcGridPos_opt(int &ip,int &jp,int &kp,real xp,real yp,real zp,
 //Gausian kernel to calculate weight coefficient of the filter
 __device__ real lpt_integrate_mol_opt(int ic,int jc,int kc,real xp,real yp,real zp, dom_struct *dom, int coordiSys);
 
+
+/* The GPU kernel that performs the power-of-two maximum value search
+ * algorithm.
+ */   
+__global__ void entrySearch_max_int_kernel(int *g_iarr, int *g_max_intarr,
+  int size);
 
 __global__ void gaussian_array_initD(float * GaussianKernel,real dg2_sig2,real dg,real norm);
 
@@ -125,9 +135,11 @@ void lpt_mollify_sc_ksi_optD(dom_struct *dom,
 	      real *Ksi,
               int   *cellStart,
               int   *cellEnd,
+              int   *gridFlowHash,
               int   *gridParticleIndex,
-              int    npoints,
+              int    npoints,int maxPointsPerCell,
               int coordiSys,int valType);
+
 //This method will work with higher efficiency for thousands of particles
 __global__
 void lpt_mollify_sc_optD(dom_struct *dom,
@@ -138,9 +150,20 @@ void lpt_mollify_sc_optD(dom_struct *dom,
 	      real *Weight,
               int   *cellStart,
               int   *cellEnd,
+              int   *gridFlowHash,
               int   *gridParticleIndex,
               int    npoints,
               int coordiSys,int valType);
+
+__global__
+void calcGridFlowHash_optD(dom_struct *dom,
+              int *gridFlowHash,
+              int coordiSys);
+
+//calculate the maximum number of particles in a single grid cell
+__global__ void calcMaxPointsPerCell_optD(dom_struct *dom, int *cellStart, int *cellEnd,int *pointsNum, int coordiSys);
+
+
 
 __global__ void calcHash_optD(int   *gridParticleHash,  // output
                int   *gridParticleIndex, // output
@@ -162,6 +185,18 @@ __global__ void findCellStart_optD(   int   *cellStart,        // output: cell s
                                   int   *gridParticleIndex,   // input: sorted particle indices
 				  real *posX,real *posY,real *posZ,
 				  real *posXold,real *posYold,real *posZold,
+                                  int    npoints);
+
+// rearrange particle data into sorted order, and find the start of each cell in the sorted hash array
+// cellStart[hash+1]=cellEnd[hash]; 
+__global__ void findCellStart_val_optD(int   *cellStart,        // output: cell start pp
+                                  int   *cellEnd,          // output: cell end pp
+                                  int   *gridParticleHash, // input: sorted grid hashes
+                                  int   *gridParticleIndex,   // input: sorted particle indices
+                                  real *posX,real *posY,real *posZ,
+                                  real *posXold,real *posYold,real *posZold,
+                                  real *lptSourceVal,
+                                  real *lptSourceValOld,
                                   int    npoints);
 
 
@@ -254,7 +289,7 @@ void block_thread_cell(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordi
 
 void block_thread_cell_noOverLap(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordiSys,int valType);
 //About Swap, and reference, dirc is the system direction, get 3d blocks and threads
-void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordiSys);
+void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coordiSys,int incGhost);
 
 //Allocate block and thread for npoints
 void block_thread_point(dim3 &dimBlocks,dim3 &numBlocks,int npoints);

@@ -28,8 +28,8 @@
 #include "vtk.h"
 
 
-#define MAX_THREADS_DIM3 10
-
+#define MAX_THREADS_DIM3 16
+#define MAX_THREADS_BLOCK 1024
 
 //used in and lpt_integrate_mol and lpt_source_scalar_serial
 #define LEN_GAUSSIAN_ARRAY 5000
@@ -39,6 +39,8 @@
 #define STENCIL3 STENCIL2*STENCIL
 
 #define EPSP_CLIP 0.8
+#define EPSP_TYPE 1
+#define SCALAR_TYPE 0
 
 extern int rec_scalar_stepnum_out;
 extern real rec_scalar_field_dt;
@@ -69,6 +71,7 @@ extern real **_sc_SN;
 extern real **_sc_BT;
 extern real DIFF;//Diffusion coefficient for oil drop-ambient flow mass transfer
 extern real DIFF_eq;//Diffusion coefficient for scalar diffusion equation
+extern real DIFF_dt;//For source diffusion after mollification, see Cappecelo*Desjadins(2012)
 
 //source for scalar diffusion, on host on device
 extern real *scSrc;
@@ -138,6 +141,17 @@ void cuda_scalar_advance(void);
 //solve scalar equation implicitly
 void cuda_scalar_rhs(int dev);
 void cuda_scalar_helmholtz(void);
+
+void cuda_diffScalar_rhs_CN(int dev,real *scSrc,real *scSrc0,real theta);
+void cuda_diffScalar_helmholtz_CN(int coordiSys,int dev, real *scSrc);
+
+
+void cuda_diffScalar_sub_explicitH(int coordiSys,int dev, real *scSrc);
+
+void cuda_diffScalar_helmholtz(int coordiSys,int dev, real *scSrc);
+
+void cuda_diffScalar_sub_helmholtz(int coordiSys,int dev, real *scSrc);
+
 
 //Find the maximum time-step for scalar field, dt is the time-step of flow field for comparison
 real cuda_find_dt_sc(real dt);

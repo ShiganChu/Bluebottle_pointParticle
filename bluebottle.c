@@ -23,6 +23,7 @@ real **lpt_dudt,**lpt_dvdt,**lpt_dwdt;//device pointer of the fluid accleration 
 
 float *GaussianKernel; //Gaussian kernel weight contributed by each point particle 
 int *_DomInfo;
+int *DomInfo;
 
 //Temp array for particle integration
 real **ug,**vg,**wg;//device pointer of the fluid velocity at the particle position
@@ -38,6 +39,8 @@ real **Weight; //Gaussian kernel weight contributed by each point particle
 real **Ksi; //Gaussian kernel weight contributed by each point particle 
 int  **cellStart;
 int  **cellEnd;
+int  **pointNumInCell;
+int  **gridFlowHash;
 int  **gridParticleIndex;
 int  **gridParticleHash;
 
@@ -226,6 +229,9 @@ real nu;
 real DIFF;
 real DIFF_eq;
 
+//For source diffusion after mollification, see Cappecelo*Desjadins(2012)
+real DIFF_dt;
+
 BC bc;
 int init_cond;
 gradP_struct gradP;
@@ -385,6 +391,7 @@ int main(int argc, char *argv[]) {
       if(runrestart != 1||runPointScalar_restart==1||runBubbleScalar_restart==1||runScalar_restart==1) {
         recorder_bicgstab_init("solver_flow.rec");
         recorder_bicgstab_init("solver_helmholtz_scalar.rec");
+        recorder_bicgstab_init("solver_helmholtz_diffScalar.rec");
       }
 /*
       int domain_init_flag = domain_init();
@@ -524,6 +531,10 @@ fflush(stdout);
         dt_point = cuda_find_dt_points(dt_sc);
 	dt_sc=dt_point;
 
+	//Find maximum particle diameter to determine the length scale of the source diffusion after mollification process
+        cuda_find_DIFF_dt_points();
+
+
         // share this with the precursor domain
         //expd_compare_dt(np, status);
 
@@ -624,7 +635,7 @@ if(npoints>0&&lpt_twoway>0)    	   lpt_point_twoway_forcing();
             cuda_dom_BC();
 
 //For nvvp profiler
-  cudaProfilerStart();
+//  cudaProfilerStart();
 
 	//Calculate fluid stress on particles at time t_n
             if(npoints>0)  cuda_flow_stress();
@@ -665,7 +676,7 @@ while(dt_done<dt)
   }      
 
 //For nvvp profiler
- cudaProfilerStop();
+// cudaProfilerStop();
       // store u, conv, and coeffs for use in next timestep
             cuda_store_u();
         

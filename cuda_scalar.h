@@ -39,6 +39,34 @@ real *u, real *v, real *w,
  real dt, real dt0);
 
 
+
+
+
+
+
+__global__ void diffScalar_coeffs_init(dom_struct *dom, int pitch, real *values,int coordiSys);
+//This kernel only works for diffusion of a scalar kernel.
+//This coeff matrix depend on the flow boundary condition rather than the diffScalar BC!!!
+//Diff_dt is the length scale square; and it is equall to (delta_f^2-dx^2)/16/ln2
+__global__ void diffScalar_coeffs(real DIFF_dt, dom_struct *dom, int pitch,
+  real *values,  int *flag_u, int *flag_v, int *flag_w,int coordiSys);
+__global__ void copy_diffSc_noghost(real *sc_noghost, real *sc_ghost, dom_struct *dom,int coordiSys);
+
+__global__ void diffScalar_rhs_CN(real DIFF_dt, 
+ real *sc0, real *sc_rhs, dom_struct *dom, real theta);
+//Diff_dt is the length scale square; and it is equall to (delta_f^2-dx^2)/16/ln2
+__global__ void diffScalar_coeffs_CN(real DIFF_dt, dom_struct *dom, int pitch,
+  real *values,  int *flag_u, int *flag_v, int *flag_w,int coordiSys,real theta);
+
+
+
+//Using central difference scheme in space, and adam-bashforth scheme in time.
+__global__ void diffScalar_explicitD(real *sc,real *sc0,
+				dom_struct *dom, real DIFF_dt);
+
+
+
+
 __global__ void scalar_coeffs_periodic_W(real DIFF, real dt, dom_struct *dom,
   int pitch, real *values, real *epsp);
 __global__ void scalar_coeffs_periodic_E(real DIFF, real dt, dom_struct *dom,
@@ -51,6 +79,23 @@ __global__ void scalar_coeffs_periodic_B(real DIFF, real dt, dom_struct *dom,
   int pitch, real *values, real *epsp);
 __global__ void scalar_coeffs_periodic_T(real DIFF, real dt, dom_struct *dom,
   int pitch, real *values, real *epsp);
+
+
+//For Diffusion of source after mollification
+__global__ void diffScalar_coeffs_periodic_W(real DIFF_dt, dom_struct *dom,
+  int pitch, real *values, int coordiSys);
+__global__ void diffScalar_coeffs_periodic_E(real DIFF_dt, dom_struct *dom,
+  int pitch, real *values, int coordiSys);
+__global__ void diffScalar_coeffs_periodic_S(real DIFF_dt, dom_struct *dom,
+  int pitch, real *values, int coordiSys);
+__global__ void diffScalar_coeffs_periodic_N(real DIFF_dt, dom_struct *dom,
+  int pitch, real *values, int coordiSys);
+__global__ void diffScalar_coeffs_periodic_B(real DIFF_dt, dom_struct *dom,
+  int pitch, real *values, int coordiSys);
+__global__ void diffScalar_coeffs_periodic_T(real DIFF_dt, dom_struct *dom,
+  int pitch, real *values, int coordiSys);
+
+
 
 /*
 __global__ void scalar_coeffs_periodic_W(real DIFF, real dt, dom_struct *dom,

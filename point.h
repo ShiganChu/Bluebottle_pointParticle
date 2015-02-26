@@ -65,7 +65,8 @@ extern real **_omega_z;
 
 
 extern float *GaussianKernel; //Gaussian kernel weight contributed by each point particle 
-extern int *_DomInfo; //Gaussian kernel weight contributed by each point particle 
+extern int *_DomInfo; 
+extern int *DomInfo; 
 
 //Temp array for particle integration
 extern real **ug,**vg,**wg;//device pointer of the fluid velocity at the particle position
@@ -79,6 +80,8 @@ extern real **Weight; //Gaussian kernel weight contributed by each point particl
 extern real **Ksi; //Gaussian kernel weight contributed by each point particle 
 extern int  **cellStart;
 extern int  **cellEnd;
+extern int  **pointNumInCell;
+extern int  **gridFlowHash;
 extern int  **gridParticleIndex;
 extern int  **gridParticleHash;
 
@@ -101,6 +104,8 @@ void lpt_point_twoway_momentum();
 void cuda_flow_stress(void);
 
 real cuda_find_dt_points(real dt);
+
+void cuda_find_DIFF_dt_points(void);
 
 /****d* point_particle/NNODES
  * NAME

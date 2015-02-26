@@ -6,8 +6,50 @@
 
 //#include "bluebottle.h"
 #include "cuda_point.h"
+#include "scalar.h"
 #include "entrySearch.h"
 
+
+//Find the maximum diameter of particles, return the 3*max_dp for poly-disperse particles. Return max_dp for mono-disperse particles.
+extern "C"
+void cuda_find_DIFF_dt_points(void)
+{
+  // results from all devices
+//  real *pdt;
+ if(npoints<=0) return ;
+  real *dp; 
+
+  checkCudaErrors(cudaMalloc((void**) &(dp),sizeof(real) * npoints));
+
+  dim3 dimBlocks_p,numBlocks_p;
+  block_thread_point(dimBlocks_p,numBlocks_p,npoints);
+
+  points_dp<<<numBlocks_p,dimBlocks_p>>>(_points[0],dp,npoints);
+    
+  real max_dp,min_dp;
+  max_dp = find_max(npoints, dp); 
+  min_dp = find_min(npoints, dp); 
+    
+  cudaFree(dp);
+ 
+  real obj_dp;
+
+  if((max_dp-min_dp)/max_dp<EPSILON) 
+	obj_dp=3*max_dp;
+  else 
+	obj_dp=max_dp;
+
+real dx=Dom.dx;real dy=Dom.dy;real dz=Dom.dz;
+real min_meshsize=min(min(dx,dy),dz);
+real max_meshsize=max(max(dx,dy),dz);
+
+DIFF_dt=(obj_dp*obj_dp-min_meshsize*min_meshsize)/16.f/logf(2.f);
+
+/*
+printf("\nDIFF_dt %f %f %f\n",DIFF_dt,obj_dp,min_meshsize);
+fflush(stdout);
+*/
+}
 
 //TODO should be moved to the sub-timestep of scalar&&point
 extern "C"
@@ -50,6 +92,55 @@ real cuda_find_dt_points(real dt)
 }
 
 
+/* The base function of the maximum search algorithm. */
+int find_max_int(int size, int *d_iarr)
+{
+  int blocks = 0;
+  int threads = 0;
+
+  getNumBlocksAndThreads(size, blocks, threads);
+
+  // create minarr on device
+  int h_bytes = blocks * sizeof(int);
+  int *d_max_intarr = NULL;
+  checkCudaErrors(cudaMalloc((void**)&d_max_intarr, h_bytes));
+  gpumem += h_bytes;
+
+  cudaThreadSynchronize();
+
+  dim3 dimBlock(threads, 1, 1);
+  dim3 dimGrid(blocks, 1, 1);
+  int smemSize = threads * sizeof(int);
+
+  // run kernel
+  entrySearch_max_int_kernel<<<dimGrid, dimBlock, smemSize>>>(d_iarr,
+    d_max_intarr, size);
+
+  getLastCudaError("Kernel execution failed.");
+  cudaThreadSynchronize();
+
+  // if there was more than one block, re-run the kernel on the maximum values 
+  // from each of the blocks, which now reside in the first block_number indices
+  // in d_minarr
+  while(blocks > 1) {
+    // use only the first block_number indices in min_arr
+    size = blocks;
+    getNumBlocksAndThreads(size, blocks, threads);
+
+    entrySearch_max_int_kernel<<<dimGrid, dimBlock, smemSize>>>(d_max_intarr,
+      d_max_intarr, size);
+
+    getLastCudaError("Kernel execution failed.");
+    cudaThreadSynchronize();
+  }
+
+  // grab final answer
+  int max;
+  checkCudaErrors(cudaMemcpy(&max, d_max_intarr, sizeof(int),
+    cudaMemcpyDeviceToHost));
+  checkCudaErrors(cudaFree(d_max_intarr));
+  return max;
+}
 
 
 
@@ -511,7 +602,7 @@ int planeDirc=3;//parallel x-y or y-z or x-z plane
 
 //block_thread_cell(dimBlocks_z,numBlocks_z,dom[dev],coordiSys,planeDirc);
 block_thread_cell_noOverLap(dimBlocks_w,numBlocks_w,dom[dev],coordiSys,planeDirc);
-//block_thread_cell_3D(dimBlocks_3d,numBlocks_3d,dom[dev],coordiSys);
+//incGhost=1;block_thread_cell_3D(dimBlocks_3d,numBlocks_3d,dom[dev],coordiSys,incGhost);
 block_thread_point(dimBlocks_p,numBlocks_p,npoints);
 //block_thread_point(dimBlocks_p,numBlocks_st,npoints*STENCIL3);
 
@@ -533,6 +624,7 @@ checkCudaErrors(cudaMemset(gridParticleIndex[dev],-1,npoints*sizeof(int)));
 
 checkCudaErrors(cudaMemset(cellStart[dev],-1,lenCell*sizeof(int)));
 checkCudaErrors(cudaMemset(cellEnd[dev],-1,lenCell*sizeof(int)));
+
 
 /*
 cudaEvent_t start, stop;
@@ -614,6 +706,7 @@ if(npoints<=0) return;
 
     dim3 dimBlocks_3d,numBlocks_3d;
     dim3 dimBlocks_w,numBlocks_w;
+    dim3 dimBlocks_z,numBlocks_z;
     dim3 dimBlocks_p,numBlocks_p;
 //    dim3 numBlocks_st;
 
@@ -621,9 +714,10 @@ if(npoints<=0) return;
 
 //int coordiSys=0;//coordinate systerm, cell-center or face center
 int planeDirc=3;//parallel x-y or y-z or x-z plane
-
+int incGhost=0;
 block_thread_cell(dimBlocks_w,numBlocks_w,dom[dev],coordiSys,planeDirc);
-block_thread_cell_3D(dimBlocks_3d,numBlocks_3d,dom[dev],coordiSys);
+block_thread_cell_noOverLap(dimBlocks_z,numBlocks_z,dom[dev],coordiSys,planeDirc);
+block_thread_cell_3D(dimBlocks_3d,numBlocks_3d,dom[dev],coordiSys,incGhost);
 block_thread_point(dimBlocks_p,numBlocks_p,npoints);
 //block_thread_point(dimBlocks_p,numBlocks_st,npoints*STENCIL3);
 
@@ -646,7 +740,8 @@ checkCudaErrors(cudaMemset(gridParticleIndex[dev],-1,npoints*sizeof(int)));
 
 checkCudaErrors(cudaMemset(cellStart[dev],-1,lenCell*sizeof(int)));
 checkCudaErrors(cudaMemset(cellEnd[dev],-1,lenCell*sizeof(int)));
-
+checkCudaErrors(cudaMemset(pointNumInCell[dev],-1,lenCell*sizeof(int)));
+checkCudaErrors(cudaMemset(gridFlowHash[dev],-1,lenCell*sizeof(int)));
 
 cudaEvent_t start, stop;
 cudaEventCreate(&start);
@@ -657,7 +752,8 @@ getLastCudaError("Kernel execution failed.");
 
 
 //printf("\ngridDim_p %d %d %d\n",numBlocks_p.x,dimBlocks_p.x,npoints);
-//printf("\ngridDim_3d %d %d %d %d\n",numBlocks_3d.x,numBlocks_3d.y,numBlocks_3d.z,lenCell);
+//printf("\nnumBlocks_3d %d %d %d %d %d\n",numBlocks_3d.x,numBlocks_3d.y,numBlocks_3d.z,lenCell,Dom.Gcc.in);
+//printf("\ndimBlocks_3d %d %d %d\n",dimBlocks_3d.x,dimBlocks_3d.y,dimBlocks_3d.z);
 
 //array_init<<<numBlocks_st, dimBlocks_p>>>(Ksi[dev],_dom[dev],npoints*STENCIL3, 0.);
 /*
@@ -672,17 +768,23 @@ array_init<<<numBlocks_p, dimBlocks_p>>>(Weight[dev],_dom[dev],npoints, 0.f);
 
 lpt_point_position<<<numBlocks_p,dimBlocks_p>>>(_points[dev],posXold[dev],posYold[dev],posZold[dev],npoints);
 
+/*
+lpt_delta_point_position<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],
+posXold[dev],posYold[dev],posZold[dev],
+lptSourceValOld[dev],npoints,coordiSys,valType);
+*/
 calcHash_optD<<<numBlocks_p,dimBlocks_p>>>(gridParticleHash[dev],
 					gridParticleIndex[dev],
 					_dom[dev],
 					posXold[dev],posYold[dev],posZold[dev],
 					npoints,coordiSys);
 
-
 sortParticles(gridParticleHash[dev],gridParticleIndex[dev],npoints);
 
+/*
 milliseconds = 0;
 cudaEventRecord(start);
+*/
 findCellStart_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 						cellEnd[dev],
 						gridParticleHash[dev],
@@ -691,13 +793,28 @@ findCellStart_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 						posXold[dev],posYold[dev],posZold[dev],
 						npoints);
 
+/*
+findCellStart_val_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
+                                                cellEnd[dev],
+                                                gridParticleHash[dev],
+                                                gridParticleIndex[dev],
+                                                posX[dev],posY[dev],posZ[dev],
+                                                posXold[dev],posYold[dev],posZold[dev],
+                                                lptSourceVal[dev], 
+						lptSourceValOld[dev],
+                                                npoints);
+*/
+
+/*
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-//printf("\ntime_reoder %f\n",milliseconds);
+printf("\ntime_reoder %f\n",milliseconds);
 fflush(stdout);
 milliseconds = 0;
 cudaEventRecord(start);
+*/
+
 //particle volume fraction 1 or other cell-centerred parameter 0
 //lpt_point_weight<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],posX[dev],posY[dev],posZ[dev],Weight[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 
@@ -706,21 +823,62 @@ fflush(stdout);
 
 getLastCudaError("Kernel execution failed.");
 
+/*
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+cudaEventElapsedTime(&milliseconds, start, stop);
+printf("\ntime_weight %f\n",milliseconds);
+fflush(stdout);
+*/
+
+milliseconds = 0;
+cudaEventRecord(start);
+
+calcGridFlowHash_optD<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],gridFlowHash[dev],coordiSys);
 
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-//printf("\ntime_weight %f\n",milliseconds);
+printf("\ntime_FlowHash %f\n",milliseconds);
 fflush(stdout);
 
 milliseconds = 0;
 cudaEventRecord(start);
 
-//lpt_mollify_sc_optD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,posX[dev],posY[dev],posZ[dev],Weight[dev],cellStart[dev],cellEnd[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
+calcMaxPointsPerCell_optD<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],cellStart[dev],cellEnd[dev],pointNumInCell[dev],coordiSys);
 
-//lpt_mollify_sc_ksi_optD<<<numBlocks_3d,dimBlocks_3d>>>(_dom[dev],scSrc,posX[dev],posY[dev],posZ[dev],Ksi[dev],cellStart[dev],cellEnd[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
+int maxPointsPerCell=find_max_int(lenCell,pointNumInCell[dev]);
 
-lpt_mollify_sc_ksi_optD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,posX[dev],posY[dev],posZ[dev],Ksi[dev],cellStart[dev],cellEnd[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+cudaEventElapsedTime(&milliseconds, start, stop);
+printf("\ntime_maxPointsPerCell %f\n",milliseconds);
+fflush(stdout);
+/*
+lpt_mollify_sc_optD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,
+posX[dev],posY[dev],posZ[dev],
+Weight[dev],
+cellStart[dev],cellEnd[dev],gridFlowHash[dev],
+gridParticleIndex[dev],npoints,coordiSys,valType);
+*/
+
+/*
+
+lpt_mollify_sc_ksi_optD<<<numBlocks_3d,dimBlocks_3d>>>(_dom[dev],scSrc,
+posX[dev],posY[dev],posZ[dev],
+Ksi[dev],cellStart[dev],cellEnd[dev],gridFlowHash[dev],
+gridParticleIndex[dev],npoints,coordiSys,valType);
+
+*/
+
+milliseconds = 0;
+cudaEventRecord(start);
+//Some problems in this kernel
+lpt_mollify_sc_ksi_optD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,
+posX[dev],posY[dev],posZ[dev],
+Ksi[dev],cellStart[dev],cellEnd[dev],gridFlowHash[dev],
+gridParticleIndex[dev],npoints,maxPointsPerCell,
+coordiSys,valType);
 
 getLastCudaError("Kernel execution failed.");
 
@@ -728,10 +886,43 @@ fflush(stdout);
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-//printf("\ntime_mollify %f\n",milliseconds);
+printf("\ntime_mollify %f\n",milliseconds);
 fflush(stdout);
 
 //print_kernel_array_int<<<numBlocks_print,dimBlocks_print>>>(cellEnd[dev],lenCell);
+
+milliseconds = 0;
+cudaEventRecord(start);
+
+//Diffuse the scalar after gaussian mollification
+//cuda_diffScalar_helmholtz(coordiSys,dev,scSrc);
+
+//Not stable for arbitrary time step
+cuda_diffScalar_helmholtz_CN(coordiSys,dev,scSrc);
+
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+cudaEventElapsedTime(&milliseconds, start, stop);
+printf("\ntime_impDiff %f\n",milliseconds);
+fflush(stdout);
+
+//cuda_diffScalar_sub_helmholtz(coordiSys,dev,scSrc);
+/*
+milliseconds = 0;
+cudaEventRecord(start);
+*/
+
+//Takes 4 times longer than one time implicit solver
+//cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc);
+
+/*
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+cudaEventElapsedTime(&milliseconds, start, stop);
+printf("\ntime_exp_diff %f\n",milliseconds);
+fflush(stdout);
+*/
+
 }
 
 
@@ -924,7 +1115,7 @@ default: break;
 
 //About Swap, and reference, dirc is the system direction, get 3d blocks and threads
 //This method is faster than blockDim=16*16*4 by 10%
-void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int dirc)
+void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int dirc,int incGhost)
 {
 
     int threads_x = 0;
@@ -948,10 +1139,19 @@ case 3:G=dom.Gfz;break;
 default: break;
 }
 
+
+if(incGhost==1)
+{
 		lenX=G._inb;
 		lenY=G._jnb;
 		lenZ=G._knb;
-
+}
+else
+{
+		lenX=G._in;
+                lenY=G._jn;
+                lenZ=G._kn;
+}
 
     if(lenX < MAX_THREADS_DIM3)
       threads_x = lenX;
@@ -963,11 +1163,20 @@ default: break;
     else
       threads_y = MAX_THREADS_DIM3;
 
+
+int maxThread_z=floor(MAX_THREADS_BLOCK/(1.f*threads_y)/(1.f*threads_x));
+    if(lenZ < maxThread_z)
+      threads_z = lenZ;
+    else
+      threads_z = maxThread_z;
+
+
+/*
     if(lenZ < MAX_THREADS_DIM3)
       threads_z = lenZ;
     else
       threads_z = MAX_THREADS_DIM3;
-
+*/
     blocks_x = (int)ceil((real) lenX / (real) (threads_x));
     blocks_y = (int)ceil((real) lenY / (real) (threads_y));
     blocks_z = (int)ceil((real) lenZ / (real) (threads_z));
@@ -1305,7 +1514,7 @@ cuda_malloc_array_real(lpt_dwdt,npoints);
 }
 
 cuda_malloc_array_real(scg,npoints);
-cuda_malloc_array_real(Weight,npoints);
+//cuda_malloc_array_real(Weight,npoints);
 cuda_malloc_array_real(Ksi,npoints*STENCIL3);
 
 cuda_malloc_array_int(gridParticleIndex,npoints);
@@ -1322,6 +1531,8 @@ if(lenCell<len2) lenCell=len2;
 //lenCell=max(max(len1,len2),max(len3,lenCell));
 cuda_malloc_array_int(cellStart,lenCell);
 cuda_malloc_array_int(cellEnd,lenCell);
+cuda_malloc_array_int(pointNumInCell,lenCell);
+cuda_malloc_array_int(gridFlowHash,lenCell);
 
 
   // allocate device memory on device
@@ -1333,6 +1544,7 @@ cuda_malloc_array_int(cellEnd,lenCell);
     //Initialize those two arrays since they will be initialized with smaller length later in lpt_mollify_scH
     checkCudaErrors(cudaMemset(cellStart[dev],-1,lenCell*sizeof(int)));
     checkCudaErrors(cudaMemset(cellEnd[dev],-1,lenCell*sizeof(int)));
+    checkCudaErrors(cudaMemset(gridFlowHash[dev],-1,lenCell*sizeof(int)));
   }
 
 gaussian_array_initH();
@@ -1352,8 +1564,7 @@ int hostDeviceLen=2; //0~1 correspond to host,device
 int coordiSysLen=4; //0~3 correspond to Gcc,Gfx,Gfy,Gfz.
 int domInfo_array_len=coordiSysLen*hostDeviceLen*indexDirLen*incGhostLen*indexTypeLen;
  
-int *DomInfo;
-
+//allocate memory for DomInfo and _DomInfo
 DomInfo=(int *) malloc(sizeof(int) * domInfo_array_len);
 checkCudaErrors(cudaMalloc((void**) &(_DomInfo),sizeof(int) * domInfo_array_len));
 
@@ -1445,7 +1656,6 @@ checkCudaErrors(cudaMemcpy(_DomInfo, DomInfo, sizeof(int) * domInfo_array_len,
       cudaMemcpyHostToDevice));
 cudaBindTexture(0,texRefDomInfo,_DomInfo,sizeof(int)*domInfo_array_len);
 
-free(DomInfo);
 }
 
 void gaussian_array_initH()
@@ -1463,6 +1673,9 @@ void gaussian_array_initH()
 real dx=Dom.dx;real dy=Dom.dy;real dz=Dom.dz;    
 real min_meshsize=min(min(dx,dy),dz);
 real max_meshsize=max(max(dx,dy),dz);
+
+
+
 
 //real min_meshsize=min(min(dx,dy),dz);
 //2.0f*sqrt(2.0f*log(2.0f))=2.3548f;
@@ -1490,6 +1703,7 @@ void lpt_point_source_mollify_final()
 cudaFree(GaussianKernel);
 cudaUnbindTexture(texRefGaussian);
 
+free(DomInfo);
 cudaFree(_DomInfo);
 cudaUnbindTexture(texRefDomInfo);
 
@@ -1510,7 +1724,7 @@ cuda_free_array_real(wg);
 
 cuda_free_array_real(scg);
 cuda_free_array_real(Ksi);
-cuda_free_array_real(Weight);
+//cuda_free_array_real(Weight);
 
 cuda_free_array_real(lpt_stress_u);
 cuda_free_array_real(lpt_stress_v);
@@ -1525,6 +1739,9 @@ cuda_free_array_real(lpt_dwdt);
 
 cuda_free_array_int(cellStart);
 cuda_free_array_int(cellEnd);
+cuda_free_array_int(pointNumInCell);
+cuda_free_array_int(gridFlowHash);
+
 cuda_free_array_int(gridParticleIndex);
 cuda_free_array_int(gridParticleHash);
 }

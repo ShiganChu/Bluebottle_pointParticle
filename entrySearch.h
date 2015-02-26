@@ -34,6 +34,7 @@ extern "C"
 #include "scalar.h"
 }
 
+void getNumBlocksAndThreads(int n, int &blocks, int &threads);
 
 /****f* entrySearch/find_min()
  * NAME
