@@ -2041,6 +2041,9 @@ void cuda_dom_turb_planes_push(int *bc_configs);
  */
 
 
+void cuda_dom_pull_simple(void);
+void cuda_dom_push_simple(void);
+
 
 /****f* bluebottle/cuda_dom_pull()
  * NAME

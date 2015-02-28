@@ -522,7 +522,7 @@ inCellTag=(index<end_index[kt])&&inCellTag;
 				forceCell +=inCellTag*Ksi[ksi_ind+index*inCellTag*STENCIL3];
 			//	forceCell += ksi;
 
-
+if(inCellTag>0) printf("\nKsi %d %d %d %f\n",di,dj,dk,Ksi[ksi_ind+index*inCellTag*STENCIL3]);
 //				forceCell +=lpt_integrate_mol_opt(i,j,k,xp,yp,zp,dom,coordiSys)*Weight[index];
 		//printf("\nstartEndIndex %d %d %d %f %f\n",start_index[kt],end_index[kt],index,test,Weight[index]);
 		//printf("\nposition %f %f %f %d %d\n",xp,yp,zp,index,start_index[kt]);
@@ -849,6 +849,7 @@ for(int di=began;di<end;di++)
 			{
 		is=di-began;js=dj-began;ks=dk-began;
 		ksi[is][js][ks]=ksi[is][js][ks]/buf;
+//printf("\nksi %d %d %d %f %f %f\n",di,dj,dk,ksi[is][js][ks],buf,Ap);
                 //Add gausssian weight between cell center and partisle position to object
 		Ksi[is+js*STENCIL+ks*STENCIL2+index*STENCIL3]=ksi[is][js][ks]*Ap;
 			}
@@ -1308,8 +1309,8 @@ clock_t time15 = clock();
 
 real val1=val/pow(sqrt(2*PI)*sig,3);
 real diff=val1-val3;
+ printf("\nval1,val2,diff %f %f %f %f\n",val1,val3,diff,sqrt(r2)*idg2);
 //if(fabs(diff*pow(sqrt(2*PI)*sig,3))>0.001) printf("\nval1,val2,diff %f %f %f %f\n",val1,val3,diff,sqrt(r2)*idg2);
-
 
 int dt11=(int) (time12-time11);
 int dt12=(int) (time13-time12);
@@ -1318,8 +1319,17 @@ int dt14=(int) (time15-time14);
 // printf("\nlpt_integrate_mol: %d %d %d %d\n",dt11,dt12,dt13,dt14);
 // printf("\nfsqrt: %f %f %f %f %f\n",__fsqrt_rd(3.f),__fsqrt_rn(3.f),__fsqrt_ru(3.f),__fsqrt_rz(3.f));
 */
+
+/*
+real min_meshsize=min(min(dx,dy),dz);
+real max_meshsize=max(max(dx,dy),dz);
+//2.0f*sqrt(2.0f*log(2.0f))=2.3548;
+real sig= min_meshsize/2.3548f;
+real val = exp(-r2/(2.0f*sig*sig));
+*/
 real idg2=(real) tex1Dfetch(texRefGaussian,LEN_GAUSSIAN_ARRAY-1);
 real val=(real) tex1Dfetch(texRefGaussian,r2*idg2);
+// printf("\nxr,yr,zr %f %f %f %f\n",xr,yr,zr,sqrt(r2));
 return val;
 }
 

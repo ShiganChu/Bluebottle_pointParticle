@@ -467,7 +467,7 @@ void cgns_flow_field(real dtout)
         int CC0 = i + j*Dom.Gfx.s1b + k*Dom.Gfx.s2b;
         int CC1 = (i+1) + j*Dom.Gfx.s1b + k*Dom.Gfx.s2b;
         uout[C] = 0.5*(u[CC1] + u[CC0]);
-        fxout[C] = 0.5*(f_x[CC1] + f_x[CC0]);
+//        fxout[C] = 0.5*(f_x[CC1] + f_x[CC0]);
       }
     }
   }
@@ -482,10 +482,9 @@ void cgns_flow_field(real dtout)
         int CC0 = i + j*Dom.Gfy.s1b + k*Dom.Gfy.s2b;
         int CC1 = i + (j+1)*Dom.Gfy.s1b + k*Dom.Gfy.s2b;
         vout[C] = 0.5*(v[CC1] + v[CC0]);
-        fyout[C] = 0.5*(f_y[CC1] + f_y[CC0]);
+ //       fyout[C] = 0.5*(f_y[CC1] + f_y[CC0]);
 
-//if(isnan(fyout[C])||isinf(fyout[C])) printf("\nfy %d %d %d %f %f\n",i,j,k,f_y[CC1],f_y[CC0]);
-      }
+     }
     }
   }
   cg_field_write(fn, bn, zn, sn, RealDouble, "VelocityY", vout, &fnv);
@@ -499,7 +498,7 @@ void cgns_flow_field(real dtout)
         int CC0 = i + j*Dom.Gfz.s1b + k*Dom.Gfz.s2b;
         int CC1 = i + j*Dom.Gfz.s1b + (k+1)*Dom.Gfz.s2b;
         wout[C] = 0.5*(w[CC1] + w[CC0]);
-        fzout[C] = 0.5*(f_z[CC1] + f_z[CC0]);
+  //      fzout[C] = 0.5*(f_z[CC1] + f_z[CC0]);
       }
     }
   }
@@ -520,10 +519,52 @@ void cgns_flow_field(real dtout)
 */
 
 
+
+int copyExtra=-1;
+if(copyExtra>0)
+{
+// cpumem += Dom.Gcc.s3 * sizeof(real);
+  for(int k = Dom.Gfx.ks; k < Dom.Gfx.ke; k++) {
+    for(int j = Dom.Gfx.js; j < Dom.Gfx.je; j++) {
+      for(int i = Dom.Gfx.is; i < Dom.Gfx.ie-1; i++) {
+        int C = (i-DOM_BUF) + (j-DOM_BUF)*Dom.Gcc.s1 + (k-DOM_BUF)*Dom.Gcc.s2;
+        int CC0 = i + j*Dom.Gfx.s1b + k*Dom.Gfx.s2b;
+        int CC1 = (i+1) + j*Dom.Gfx.s1b + k*Dom.Gfx.s2b;
+        fxout[C] = 0.5*(f_x[CC1] + f_x[CC0]);
+      }
+    }
+  }
+ 
+   // cpumem += Dom.Gcc.s3 * sizeof(real);
+  for(int k = Dom.Gfy.ks; k < Dom.Gfy.ke; k++) {
+    for(int j = Dom.Gfy.js; j < Dom.Gfy.je-1; j++) {
+      for(int i = Dom.Gfy.is; i < Dom.Gfy.ie; i++) {
+        int C = (i-DOM_BUF) + (j-DOM_BUF)*Dom.Gcc.s1 + (k-DOM_BUF)*Dom.Gcc.s2;
+        int CC0 = i + j*Dom.Gfy.s1b + k*Dom.Gfy.s2b;
+        int CC1 = i + (j+1)*Dom.Gfy.s1b + k*Dom.Gfy.s2b;
+        fyout[C] = 0.5*(f_y[CC1] + f_y[CC0]);
+
+      }
+    }
+  }
+  
+   // cpumem += Dom.Gcc.s3 * sizeof(real);
+  for(int k = Dom.Gfz.ks; k < Dom.Gfz.ke-1; k++) {
+    for(int j = Dom.Gfz.js; j < Dom.Gfz.je; j++) {
+      for(int i = Dom.Gfz.is; i < Dom.Gfz.ie; i++) {
+        int C = (i-DOM_BUF) + (j-DOM_BUF)*Dom.Gcc.s1 + (k-DOM_BUF)*Dom.Gcc.s2;
+        int CC0 = i + j*Dom.Gfz.s1b + k*Dom.Gfz.s2b;
+        int CC1 = i + j*Dom.Gfz.s1b + (k+1)*Dom.Gfz.s2b;
+         fzout[C] = 0.5*(f_z[CC1] + f_z[CC0]);
+      }
+    }
+  }
+
  cg_field_write(fn, bn, zn, sn, RealDouble, "f_x", fxout, &fnw);
  cg_field_write(fn, bn, zn, sn, RealDouble, "f_y", fyout, &fnw);
  cg_field_write(fn, bn, zn, sn, RealDouble, "f_z", fzout, &fnw);
 
+}
 
   cg_user_data_write("Etc");
   cg_goto(fn, bn, "Zone_t", zn, "Etc", 0, "end");

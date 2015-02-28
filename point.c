@@ -131,7 +131,12 @@ void scalar_inject(void)
 	dt0=0.f;	
 	dt=0.f;
 //write initial field 
+
+if(OUT_SIMPLE>0)
+          cuda_dom_pull_simple();
+else
           cuda_dom_pull();
+
           if(rec_flow_field_dt > 0) {
             cgns_grid();
             cgns_flow_field(rec_flow_field_dt);
@@ -188,6 +193,9 @@ if(npoints>0) cuda_flow_stress();
 	dt0=0.f;
 	dt=0.f;
 //write initial field 
+if(OUT_SIMPLE>0)
+          cuda_dom_pull_simple();
+else
           cuda_dom_pull();
           if(rec_flow_field_dt > 0) {
             cgns_grid();
@@ -261,6 +269,9 @@ if(npoints>0) cuda_flow_stress();
 	dt0=0.f;
 	dt=0.f;
 //write initial field 
+if(OUT_SIMPLE>0)
+          cuda_dom_pull_simple();
+else
           cuda_dom_pull();
           if(rec_flow_field_dt > 0) {
             cgns_grid();
@@ -322,6 +333,9 @@ if(npoints>0) cuda_flow_stress();
 	dt0=0.f;
 	dt=0.f;
 //write initial field 
+if(OUT_SIMPLE>0)
+          cuda_dom_pull_simple();
+else
           cuda_dom_pull();
           if(rec_flow_field_dt > 0) {
             cgns_grid();

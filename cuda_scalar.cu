@@ -16,6 +16,134 @@
 #include <cusp/krylov/cg.h>
 #include <cusp/print.h>
 
+
+
+extern "C"
+void cuda_diffScalar_sub_explicitH(int coordiSys,int dev, real *scSrc)
+{
+//Find the characteristic length scale for the diffusion equation
+if(DIFF_dt<=0) return;
+/*
+printf("\ndiff s3 %d %d \n",s3,dom[dev].Gcc.s3);
+fflush(stdout);
+*/
+int index=coordiSys*48 +2;
+int in=DomInfo[index];
+int jn=DomInfo[index+6];
+int kn=DomInfo[index+12];
+
+ index=coordiSys*48 +23;
+int s3b=DomInfo[index];
+
+// write coefficients using kernel
+int threads_x = 0;
+int threads_y = 0;
+int threads_z = 0;
+int blocks_x = 0;
+int blocks_y = 0;
+int blocks_z = 0;
+if(in < MAX_THREADS_DIM)
+threads_x = in;
+else
+threads_x = MAX_THREADS_DIM;
+if(jn < MAX_THREADS_DIM)
+threads_y = jn;
+else
+threads_y = MAX_THREADS_DIM;
+if(kn < MAX_THREADS_DIM)
+threads_z = kn;
+else
+threads_z = MAX_THREADS_DIM;
+blocks_x = (int)ceil((real) in / (real) threads_x);
+blocks_y = (int)ceil((real) jn / (real) threads_y);
+blocks_z = (int)ceil((real) kn / (real) threads_z);
+dim3 dimBlocks_x(threads_y, threads_z);
+dim3 numBlocks_x(blocks_y, blocks_z);
+dim3 dimBlocks_y(threads_z, threads_x);
+dim3 numBlocks_y(blocks_z, blocks_x);
+dim3 dimBlocks_z(threads_x, threads_y);
+dim3 numBlocks_z(blocks_x, blocks_y);
+dim3 dimBlocks,numBlocks;
+switch(coordiSys)
+{
+case 0:
+dimBlocks.x=dimBlocks_x.x;
+dimBlocks.y=dimBlocks_x.y;
+numBlocks.x=numBlocks_x.x;
+numBlocks.y=numBlocks_x.y;
+break;
+case 1:
+dimBlocks.x=dimBlocks_x.x;
+dimBlocks.y=dimBlocks_x.y;
+numBlocks.x=numBlocks_x.x;
+numBlocks.y=numBlocks_x.y;
+break;
+case 2:
+dimBlocks.x=dimBlocks_y.x;
+dimBlocks.y=dimBlocks_y.y;
+numBlocks.x=numBlocks_y.x;
+numBlocks.y=numBlocks_y.y;
+break;
+case 3:
+dimBlocks.x=dimBlocks_z.x;
+dimBlocks.y=dimBlocks_z.y;
+numBlocks.x=numBlocks_z.x;
+numBlocks.y=numBlocks_z.y;
+break;
+default:break;
+}
+real dx=Dom.dx;
+real dy=Dom.dx;
+real dz=Dom.dz;
+real ddx=1/dx/dx;
+real ddy=1/dy/dy;
+real ddz=1/dz/dz;
+real DIFF_dt_done=0;
+//real DIFF_dt_sub=dt_sc;
+real DIFF_dt_diffScalar=min(0.5*CFL/(ddx+ddy+ddz),DIFF_dt);
+
+//create buffer array
+    real *scSrc_buf;
+    checkCudaErrors(cudaMalloc((void**) &scSrc_buf, sizeof(real) * s3b));
+
+//real niter=10.f;
+//if( DIFF_dt_diffScalar*niter>DIFF_dt)  DIFF_dt_diffScalar=DIFF_dt/niter;
+
+int iter=0;
+real DIFF_dt_sub;
+while(DIFF_dt_done<DIFF_dt)
+{
+//DIFF_dt_sub=min(dt_sc,DIFF_dt-DIFF_dt_done);
+DIFF_dt_sub=min(DIFF_dt_diffScalar,DIFF_dt-DIFF_dt_done);
+//DIFF_dt_sub=DIFF_dt;
+DIFF_dt_done +=DIFF_dt_sub;
+
+iter +=1;
+printf("\niter %d %f %f %f %f\n",iter,DIFF_dt,DIFF_dt_done,DIFF_dt_diffScalar,DIFF_dt_sub);
+fflush(stdout);
+
+BC_sc_W_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_E_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_T_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_S_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_B_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_N_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+
+checkCudaErrors(cudaMemcpy(scSrc_buf, scSrc, dom[dev].Gcc.s3b*sizeof(real), cudaMemcpyDeviceToDevice));
+diffScalar_explicitD<<<numBlocks, dimBlocks>>>(scSrc,scSrc_buf,_dom[dev],DIFF_dt_sub);
+/*
+BC_sc_W_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_E_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_T_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_S_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_B_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+BC_sc_N_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
+*/
+}
+
+    checkCudaErrors(cudaFree(scSrc_buf));
+}
+
 extern "C"
 void cuda_diffScalar_helmholtz_CN(int coordiSys,int dev, real *scSrc)
 {
@@ -23,46 +151,70 @@ void cuda_diffScalar_helmholtz_CN(int coordiSys,int dev, real *scSrc)
 //Find the characteristic length scale for the diffusion equation
 if(DIFF_dt<=0) return;
 
-//DIFF_dt=1;
-
   // CPU thread for multi-GPU
 int index=coordiSys*48        +20;
 int s3=DomInfo[index];
 int s2=DomInfo[index-1];
 int s1=DomInfo[index-2];
 
-/*
-printf("\ndiff s3 %d %d \n",s3,dom[dev].Gcc.s3);
-fflush(stdout);
-*/
+int s3b=DomInfo[index+3];
 
 index=coordiSys*48        +2;
 int in=DomInfo[index];
 int jn=DomInfo[index+6];
 int kn=DomInfo[index+12];
 
-real dx=Dom.dx;
-real dy=Dom.dx;
-real dz=Dom.dz;
-real ddx=1/dx/dx;
-real ddy=1/dy/dy;
-real ddz=1/dz/dz;
+real dx2=Dom.dx*Dom.dx;
+real dy2=Dom.dy*Dom.dy;
+real dz2=Dom.dz*Dom.dz;
+real ddx=1/dx2;
+real ddy=1/dy2;
+real ddz=1/dz2;
  
-real theta=max(1-0.5/DIFF_dt/(ddx+ddy+ddz),0.f);
 
-
-    // write right-hand side
-    cuda_diffScalar_rhs_CN(dev,_scSrc0[dev],scSrc,theta);
-
-    checkCudaErrors(cudaMemcpy(scSrc, _scSrc0[dev], dom[dev].Gcc.s3b*sizeof(real), cudaMemcpyDeviceToDevice));
-
-    // create temporary U* without ghost cells for bicgstab result
-    cusp::array1d<real, cusp::device_memory> diffScalar_tmp(s3, 0.);
+//create buffer array
+    real *scSrc_buf;
+    checkCudaErrors(cudaMalloc((void**) &scSrc_buf, sizeof(real) * s3b));
 
     // create CUSP diagonal matrix for p
     cusp::dia_matrix<int, real, cusp::device_memory> *_A_diffScalar;
     _A_diffScalar = new cusp::dia_matrix<int, real, cusp::device_memory>
       (s3,s3, 0, 13);
+
+    // create temporary diffScalar without ghost cells
+    real *_diffScalar_noghost;
+    checkCudaErrors(cudaMalloc((void**) &_diffScalar_noghost,
+      sizeof(real) * s3));
+
+//When theta=1/2 the scheme becomes Crank-Nicolson; theta=1 correspond to fully implicit diffusion term;theta=1 correspond to fully explicit diffusion term;
+//The choice for this theta is to maitain monoticity while have higher temperal accuracy than fully implicit or explicit scheme!
+//real theta=max(1-0.5f/DIFF_dt/(ddx+ddy+ddz),0.f);
+real theta=0.5f;;
+//real theta=1.f;;
+//real thetaD=DIFF_dt_sub*theta; thetaR=DIFF_dt_sub*(1-theta);
+real thetaD,thetaR;
+real DIFF_dt_done=0;
+real DIFF_dt_diffScalar=min(0.5f/(ddx+ddy+ddz)/(1-theta),DIFF_dt);
+real DIFF_dt_sub;
+int iter=0;
+while(DIFF_dt_done<DIFF_dt)
+{
+DIFF_dt_sub=min(DIFF_dt_diffScalar,DIFF_dt-DIFF_dt_done);
+DIFF_dt_done +=DIFF_dt_sub;
+thetaD=DIFF_dt_sub*theta;
+thetaR=DIFF_dt_sub*(1-theta);
+iter +=1;
+printf("\niter_implicit %d %f %f %f\n",iter,DIFF_dt,DIFF_dt_done,DIFF_dt_diffScalar);
+fflush(stdout);
+  // write right-hand side
+    cuda_diffScalar_rhs_CN(dev,scSrc_buf,scSrc,thetaR);
+    
+ 
+    checkCudaErrors(cudaMemcpy(scSrc,scSrc_buf, s3b*sizeof(real), cudaMemcpyDeviceToDevice));
+
+    // create temporary U* without ghost cells for bicgstab result
+    cusp::array1d<real, cusp::device_memory> diffScalar_tmp(s3, 0.);
+
 
     // set up the coefficient matrix for Crank-Nicolson
     _A_diffScalar->diagonal_offsets[0]  = -s3 + s2;
@@ -153,10 +305,6 @@ break;
 default:break;
 }
 
-    // create temporary diffScalar without ghost cells
-    real *_diffScalar_noghost;
-    checkCudaErrors(cudaMalloc((void**) &_diffScalar_noghost,
-      sizeof(real) * s3));
     // copy u_star into noghost structure for Helmholtz right-hand side
     copy_diffSc_noghost<<<numBlocks, dimBlocks>>>(_diffScalar_noghost, scSrc,
       _dom[dev],coordiSys);
@@ -168,10 +316,10 @@ default:break;
       _A_diffScalar->values.pitch,
       thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
   
-    diffScalar_coeffs_CN<<<numBlocks, dimBlocks>>>(DIFF_dt, _dom[dev],
+    diffScalar_coeffs_CN<<<numBlocks, dimBlocks>>>(thetaD,_dom[dev],
       _A_diffScalar->values.pitch,
       thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),
-      _flag_u[dev],_flag_v[dev],_flag_w[dev],coordiSys, theta);
+      _flag_u[dev],_flag_v[dev],_flag_w[dev],coordiSys);
 
 int bcW, bcE, bcS, bcN, bcB, bcT;  // cell locations
 
@@ -216,27 +364,27 @@ default:break;
 
     // account for boundary conditions
     if(bcW == PERIODIC)
-      diffScalar_coeffs_periodic_W<<<numBlocks_x, dimBlocks_x>>>(DIFF_dt, _dom[dev],
+      diffScalar_coeffs_periodic_W<<<numBlocks_x, dimBlocks_x>>>(thetaD,_dom[dev],
         _A_diffScalar->values.pitch,
         thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
     if(bcE == PERIODIC)
-      diffScalar_coeffs_periodic_E<<<numBlocks_x, dimBlocks_x>>>(DIFF_dt, _dom[dev],
+      diffScalar_coeffs_periodic_E<<<numBlocks_x, dimBlocks_x>>>(thetaD,_dom[dev],
         _A_diffScalar->values.pitch,
         thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
     if(bcS == PERIODIC)
-      diffScalar_coeffs_periodic_S<<<numBlocks_y, dimBlocks_y>>>(DIFF_dt, _dom[dev],
+      diffScalar_coeffs_periodic_S<<<numBlocks_y, dimBlocks_y>>>(thetaD,_dom[dev],
         _A_diffScalar->values.pitch,
         thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
     if(bcN == PERIODIC)
-      diffScalar_coeffs_periodic_N<<<numBlocks_y, dimBlocks_y>>>(DIFF_dt, _dom[dev],
+      diffScalar_coeffs_periodic_N<<<numBlocks_y, dimBlocks_y>>>(thetaD,_dom[dev],
         _A_diffScalar->values.pitch,
         thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
     if(bcB == PERIODIC)
-      diffScalar_coeffs_periodic_B<<<numBlocks_z, dimBlocks_z>>>(DIFF_dt, _dom[dev],
+      diffScalar_coeffs_periodic_B<<<numBlocks_z, dimBlocks_z>>>(thetaD,_dom[dev],
         _A_diffScalar->values.pitch,
         thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
     if(bcT == PERIODIC)
-      diffScalar_coeffs_periodic_T<<<numBlocks_z, dimBlocks_z>>>(DIFF_dt, _dom[dev],
+      diffScalar_coeffs_periodic_T<<<numBlocks_z, dimBlocks_z>>>(thetaD,_dom[dev],
         _A_diffScalar->values.pitch,
         thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
 
@@ -270,13 +418,14 @@ default:break;
     cusp::blas::scal(diffScalar_tmp, norm);
 
     // copy solution back to scSrc
-    copy_sc_ghost<<<numBlocks_x, dimBlocks_x>>>(scSrc,
+    copy_sc_ghost<<<numBlocks, dimBlocks>>>(scSrc,
       thrust::raw_pointer_cast(diffScalar_tmp.data()), _dom[dev]);
 
-    // clean up
     delete(_diffScalar_rhs);
-    delete(_A_diffScalar);
+}
+    // clean up
     checkCudaErrors(cudaFree(_diffScalar_noghost));
+    checkCudaErrors(cudaFree(scSrc_buf));
 
 }
 
@@ -285,7 +434,7 @@ default:break;
 
 
 extern "C"
-void cuda_diffScalar_rhs_CN(int dev,real *scSrc,real *scSrc0,real theta)
+void cuda_diffScalar_rhs_CN(int dev,real *scSrc,real *scSrc0,real thetaR)
 {
   int threads_y = 0;
   int threads_z = 0;
@@ -307,143 +456,15 @@ void cuda_diffScalar_rhs_CN(int dev,real *scSrc,real *scSrc0,real theta)
 
   dim3 dimBlocks(threads_y, threads_z);
   dim3 numBlocks(blocks_y, blocks_z);
-  diffScalar_rhs_CN<<<numBlocks, dimBlocks>>>(DIFF_dt,
-			  scSrc0 , scSrc,_dom[dev],theta);
+ // diffScalar_rhs_CN<<<numBlocks, dimBlocks>>>(DIFF_dt,scSrc0 , scSrc,_dom[dev],theta);
+  diffScalar_rhs_CN<<<numBlocks, dimBlocks>>>(thetaR,scSrc0 , scSrc,_dom[dev]);
 
 
 //fflush(stdout);
 getLastCudaError("Kernel execution failed.");
 }
 
-
-extern "C"
-void cuda_diffScalar_sub_explicitH(int coordiSys,int dev, real *scSrc)
-{
-
-//Find the characteristic length scale for the diffusion equation
-if(DIFF_dt<=0) return;
-/*
-printf("\ndiff s3 %d %d \n",s3,dom[dev].Gcc.s3);
-fflush(stdout);
-*/
-
-int index=coordiSys*48        +2;
-int in=DomInfo[index];
-int jn=DomInfo[index+6];
-int kn=DomInfo[index+12];
-
-
-
-    // write coefficients using kernel
-    int threads_x = 0;
-    int threads_y = 0;
-    int threads_z = 0;
-    int blocks_x = 0;
-    int blocks_y = 0;
-    int blocks_z = 0;
-
-    if(in < MAX_THREADS_DIM)
-      threads_x = in;
-    else
-      threads_x = MAX_THREADS_DIM;
-
-    if(jn < MAX_THREADS_DIM)
-      threads_y = jn;
-    else
-      threads_y = MAX_THREADS_DIM;
-
-    if(kn < MAX_THREADS_DIM)
-      threads_z = kn;
-    else
-      threads_z = MAX_THREADS_DIM;
-
-    blocks_x = (int)ceil((real) in / (real) threads_x);
-    blocks_y = (int)ceil((real) jn / (real) threads_y);
-    blocks_z = (int)ceil((real) kn / (real) threads_z);
-
-    dim3 dimBlocks_x(threads_y, threads_z);
-    dim3 numBlocks_x(blocks_y, blocks_z);
-    dim3 dimBlocks_y(threads_z, threads_x);
-    dim3 numBlocks_y(blocks_z, blocks_x);
-    dim3 dimBlocks_z(threads_x, threads_y);
-    dim3 numBlocks_z(blocks_x, blocks_y);
-
-    dim3 dimBlocks,numBlocks;
-
-switch(coordiSys)
-{
-case 0:
-dimBlocks.x=dimBlocks_x.x;
-dimBlocks.y=dimBlocks_x.y;
-numBlocks.x=numBlocks_x.x;
-numBlocks.y=numBlocks_x.y;
-break;
-case 1:
-dimBlocks.x=dimBlocks_x.x;
-dimBlocks.y=dimBlocks_x.y;
-numBlocks.x=numBlocks_x.x;
-numBlocks.y=numBlocks_x.y;
-break;
-case 2:
-dimBlocks.x=dimBlocks_y.x;
-dimBlocks.y=dimBlocks_y.y;
-numBlocks.x=numBlocks_y.x;
-numBlocks.y=numBlocks_y.y;
-break;
-case 3:
-dimBlocks.x=dimBlocks_z.x;
-dimBlocks.y=dimBlocks_z.y;
-numBlocks.x=numBlocks_z.x;
-numBlocks.y=numBlocks_z.y;
-break;
-default:break;
-}
-
  
-real dx=Dom.dx;
-real dy=Dom.dx;
-real dz=Dom.dz;
-real ddx=1/dx/dx;
-real ddy=1/dy/dy;
-real ddz=1/dz/dz;
-
-
-real DIFF_dt_done=0;
-//real DIFF_dt_sub=dt_sc;
-real DIFF_dt_diffScalar=0.5*CFL/(ddx+ddy+ddz);
-//real DIFF_dt_sub=DIFF_dt_diffScalar;
-int iter=0;
-real DIFF_dt_sub;
-while(DIFF_dt_done<DIFF_dt)
-{
-//DIFF_dt_sub=min(dt_sc,DIFF_dt-DIFF_dt_done);
-//DIFF_dt_sub=min(DIFF_dt_diffScalar,DIFF_dt-DIFF_dt_done);
-//DIFF_dt_sub=DIFF_dt;
-DIFF_dt_done +=DIFF_dt_sub;
-//iter +=1;
-/*
-printf("\niter %d\n",iter);
-fflush(stdout);
-*/
-
-    checkCudaErrors(cudaMemcpy(_scSrc0[dev], scSrc, dom[dev].Gcc.s3b*sizeof(real), cudaMemcpyDeviceToDevice));
-   
-    diffScalar_explicitD<<<numBlocks, dimBlocks>>>(scSrc,_scSrc0[dev],_dom[dev],DIFF_dt_sub);
-
-BC_sc_W_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_E_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_T_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_S_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_B_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_N_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
- 
-}
- 
-
- 
-}
-
-
 
 extern "C"
 void cuda_scalar_malloc(void)
@@ -1122,6 +1143,47 @@ fflush(stdout);
 
  
 
+extern "C"
+real cuda_find_dt_implicit(void)
+{
+  // results from all devices
+  real *dts = (real*) malloc(nsubdom * sizeof(real));
+    // cpumem += nsubdom * sizeof(real);
+
+real max_dt=1.f;
+  // parallelize over CPU threads
+  #pragma omp parallel num_threads(nsubdom)
+  {
+    int dev = omp_get_thread_num();
+    checkCudaErrors(cudaSetDevice(dev + dev_start));
+    // search
+    real u_max = find_max_mag(dom[dev].Gfx.s3, _u[dev]);
+    real v_max = find_max_mag(dom[dev].Gfy.s3, _v[dev]);
+    real w_max = find_max_mag(dom[dev].Gfz.s3, _w[dev]);
+
+    dts[dev]= EPSILON/max_dt;
+    dts[dev] +=u_max / dom[dev].dx;
+    dts[dev] +=v_max / dom[dev].dy;
+    dts[dev] +=w_max / dom[dev].dz;
+    dts[dev] = CFL / dts[dev];
+
+ //   dts[dev] = dts[dev]/100.f;
+  }
+  // find max of all devices
+  real dt_buf = -1.;
+  for(int i = 0; i < nsubdom; i++)
+    if(dts[i] > dt_buf) dt_buf = dts[i];
+
+  // clean up
+  free(dts);
+
+  dt_buf=min(dt_buf,max_dt);
+
+  real alpha=0.7f;
+  if(dt_buf>dt0&&dt0>0) dt_buf=alpha*dt_buf+(1-alpha)*dt0;
+
+  return dt_buf;
+}
 
 
 
@@ -1188,525 +1250,7 @@ real cuda_find_dt_sc(real dt)
 }
 
 
-
-extern "C"
-void cuda_diffScalar_sub_helmholtz(int coordiSys,int dev, real *scSrc)
-{
-
-//Find the characteristic length scale for the diffusion equation
-if(DIFF_dt<=0) return;
-
-  // CPU thread for multi-GPU
-int index=coordiSys*48        +20;
-int s3=DomInfo[index];
-int s2=DomInfo[index-1];
-int s1=DomInfo[index-2];
-
-/*
-printf("\ndiff s3 %d %d \n",s3,dom[dev].Gcc.s3);
-fflush(stdout);
-*/
-
-index=coordiSys*48        +2;
-int in=DomInfo[index];
-int jn=DomInfo[index+6];
-int kn=DomInfo[index+12];
-
-    // create temporary U* without ghost cells for bicgstab result
-    cusp::array1d<real, cusp::device_memory> diffScalar_tmp(s3, 0.);
-
-    // create CUSP diagonal matrix for p
-    cusp::dia_matrix<int, real, cusp::device_memory> *_A_diffScalar;
-    _A_diffScalar = new cusp::dia_matrix<int, real, cusp::device_memory>
-      (s3,s3, 0, 13);
-
-    // set up the coefficient matrix for Crank-Nicolson
-    _A_diffScalar->diagonal_offsets[0]  = -s3 + s2;
-    _A_diffScalar->diagonal_offsets[1]  = -s2;
-    _A_diffScalar->diagonal_offsets[2]  = -s2 + s1;
-    _A_diffScalar->diagonal_offsets[3]  = -s1;
-
-if(coordiSys==0)
-{
-    _A_diffScalar->diagonal_offsets[4]  = -s1 + 1;//has to be 2 if use Gfx for staggered grid, 1 for Gcc
-    _A_diffScalar->diagonal_offsets[8]  = s1 - 1;//has to be 2 if use Gfx for staggered grid,1 for Gcc
-}
-else
-{
-    _A_diffScalar->diagonal_offsets[4]  = -s1 + 2;//has to be 2 if use Gfx for staggered grid, 1 for Gcc
-    _A_diffScalar->diagonal_offsets[8]  = s1 - 2;//has to be 2 if use Gfx for staggered grid,1 for Gcc
-}
-    _A_diffScalar->diagonal_offsets[5]  = -1;
-    _A_diffScalar->diagonal_offsets[6]  = 0;
-    _A_diffScalar->diagonal_offsets[7]  = 1;
-    _A_diffScalar->diagonal_offsets[9]  = s1;
-    _A_diffScalar->diagonal_offsets[10] = s2 - s1;
-    _A_diffScalar->diagonal_offsets[11] = s2;
-    _A_diffScalar->diagonal_offsets[12] = s3 - s2;
-
-    // write coefficients using kernel
-    int threads_x = 0;
-    int threads_y = 0;
-    int threads_z = 0;
-    int blocks_x = 0;
-    int blocks_y = 0;
-    int blocks_z = 0;
-
-    if(in < MAX_THREADS_DIM)
-      threads_x = in;
-    else
-      threads_x = MAX_THREADS_DIM;
-
-    if(jn < MAX_THREADS_DIM)
-      threads_y = jn;
-    else
-      threads_y = MAX_THREADS_DIM;
-
-    if(kn < MAX_THREADS_DIM)
-      threads_z = kn;
-    else
-      threads_z = MAX_THREADS_DIM;
-
-    blocks_x = (int)ceil((real) in / (real) threads_x);
-    blocks_y = (int)ceil((real) jn / (real) threads_y);
-    blocks_z = (int)ceil((real) kn / (real) threads_z);
-
-    dim3 dimBlocks_x(threads_y, threads_z);
-    dim3 numBlocks_x(blocks_y, blocks_z);
-    dim3 dimBlocks_y(threads_z, threads_x);
-    dim3 numBlocks_y(blocks_z, blocks_x);
-    dim3 dimBlocks_z(threads_x, threads_y);
-    dim3 numBlocks_z(blocks_x, blocks_y);
-
-    dim3 dimBlocks,numBlocks;
-
-switch(coordiSys)
-{
-case 0:
-dimBlocks.x=dimBlocks_x.x;
-dimBlocks.y=dimBlocks_x.y;
-numBlocks.x=numBlocks_x.x;
-numBlocks.y=numBlocks_x.y;
-break;
-case 1:
-dimBlocks.x=dimBlocks_x.x;
-dimBlocks.y=dimBlocks_x.y;
-numBlocks.x=numBlocks_x.x;
-numBlocks.y=numBlocks_x.y;
-break;
-case 2:
-dimBlocks.x=dimBlocks_y.x;
-dimBlocks.y=dimBlocks_y.y;
-numBlocks.x=numBlocks_y.x;
-numBlocks.y=numBlocks_y.y;
-break;
-case 3:
-dimBlocks.x=dimBlocks_z.x;
-dimBlocks.y=dimBlocks_z.y;
-numBlocks.x=numBlocks_z.x;
-numBlocks.y=numBlocks_z.y;
-break;
-default:break;
-}
-
-    // create temporary diffScalar without ghost cells
-    real *_diffScalar_noghost;
-    checkCudaErrors(cudaMalloc((void**) &_diffScalar_noghost,
-      sizeof(real) * s3));
-
-real DIFF_dt_done=0;
-real DIFF_dt_sub=dt_sc;
-while(DIFF_dt_done<DIFF_dt)
-{
-DIFF_dt_done +=DIFF_dt_sub;
-
-DIFF_dt_sub=min(dt_sc,DIFF_dt-DIFF_dt_done);
-
-
-    // copy u_star into noghost structure for Helmholtz right-hand side
-    copy_diffSc_noghost<<<numBlocks, dimBlocks>>>(_diffScalar_noghost, scSrc,
-      _dom[dev],coordiSys);
-
-
-
-    // build pressure-Poisson coefficient matrix
-    diffScalar_coeffs_init<<<numBlocks, dimBlocks>>>(_dom[dev],
-      _A_diffScalar->values.pitch,
-      thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-  
-    diffScalar_coeffs<<<numBlocks, dimBlocks>>>(DIFF_dt_sub, _dom[dev],
-      _A_diffScalar->values.pitch,
-      thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),
-      _flag_u[dev],_flag_v[dev],_flag_w[dev],coordiSys);
-
-int bcW, bcE, bcS, bcN, bcB, bcT;  // cell locations
-
-
-switch(coordiSys)
-{
-case 0:
-bcW=sc_bc.scW;
-bcE=sc_bc.scE;
-bcS=sc_bc.scS;
-bcN=sc_bc.scN;
-bcB=sc_bc.scB;
-bcT=sc_bc.scT;
-break;
-case 1:
-bcW=bc.uW;
-bcE=bc.uE;
-bcS=bc.uS;
-bcN=bc.uN;
-bcB=bc.uB;
-bcT=bc.uT;
-break;
-case 2:
-bcW=bc.vW;
-bcE=bc.vE;
-bcS=bc.vS;
-bcN=bc.vN;
-bcB=bc.vB;
-bcT=bc.vT;
-break;
-case 3:
-bcW=bc.wW;
-bcE=bc.wE;
-bcS=bc.wS;
-bcN=bc.wN;
-bcB=bc.wB;
-bcT=bc.wT;
-break;
-default:break; 
-}
-
-
-    // account for boundary conditions
-    if(bcW == PERIODIC)
-      diffScalar_coeffs_periodic_W<<<numBlocks_x, dimBlocks_x>>>(DIFF_dt_sub, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcE == PERIODIC)
-      diffScalar_coeffs_periodic_E<<<numBlocks_x, dimBlocks_x>>>(DIFF_dt_sub, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcS == PERIODIC)
-      diffScalar_coeffs_periodic_S<<<numBlocks_y, dimBlocks_y>>>(DIFF_dt_sub, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcN == PERIODIC)
-      diffScalar_coeffs_periodic_N<<<numBlocks_y, dimBlocks_y>>>(DIFF_dt_sub, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcB == PERIODIC)
-      diffScalar_coeffs_periodic_B<<<numBlocks_z, dimBlocks_z>>>(DIFF_dt_sub, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcT == PERIODIC)
-      diffScalar_coeffs_periodic_T<<<numBlocks_z, dimBlocks_z>>>(DIFF_dt_sub, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-
-  
-    // create CUSP pointer to right-hand side
-    thrust::device_ptr<real> _ptr_diffScalar(_diffScalar_noghost);
-    cusp::array1d<real, cusp::device_memory> *_diffScalar_rhs;
-    _diffScalar_rhs = new cusp::array1d<real, cusp::device_memory>(_ptr_diffScalar,
-      _ptr_diffScalar + s3);
-
  
-    // normalize the problem by the right-hand side before sending to CUSP
-    real norm = cusp::blas::nrm2(*_diffScalar_rhs);
-    if(norm == 0)       norm = 1.;
-    cusp::blas::scal(*_diffScalar_rhs, 1. / norm);
-
-    // call BiCGSTAB to solve for diffScalar_tmp
-    cusp::convergence_monitor<real> monitor(*_diffScalar_rhs, pp_max_iter,
-      pp_residual);
-    cusp::precond::diagonal<real, cusp::device_memory> M(*_A_diffScalar);
-    //cusp::krylov::bicgstab(*_A_diffScalar, diffScalar_tmp, *_diffScalar_rhs, monitor, M);
-    cusp::krylov::cg(*_A_diffScalar, diffScalar_tmp, *_diffScalar_rhs, monitor, M);
-    // write convergence data to file
-      recorder_bicgstab("solver_helmholtz_diffScalar.rec", monitor.iteration_count(),monitor.residual_norm());
-    if(!monitor.converged()) {
-      printf("The diffScalar Helmholtz equation did not converge.              \n");
-      exit(EXIT_FAILURE);
-    }
-
-    // unnormalize the solution
-    cusp::blas::scal(diffScalar_tmp, norm);
-
-    // copy solution back to scSrc
-    copy_sc_ghost<<<numBlocks_x, dimBlocks_x>>>(scSrc,
-      thrust::raw_pointer_cast(diffScalar_tmp.data()), _dom[dev]);
-    delete(_diffScalar_rhs);
-}
-
-
-    // clean up
-    delete(_A_diffScalar);
-    checkCudaErrors(cudaFree(_diffScalar_noghost));
-
-}
-
-
-
-
-
-
-
-extern "C"
-void cuda_diffScalar_helmholtz(int coordiSys,int dev, real *scSrc)
-{
-
-//Find the characteristic length scale for the diffusion equation
-if(DIFF_dt<=0) return;
-
-//DIFF_dt=1;
-
-  // CPU thread for multi-GPU
-int index=coordiSys*48        +20;
-int s3=DomInfo[index];
-int s2=DomInfo[index-1];
-int s1=DomInfo[index-2];
-
-/*
-printf("\ndiff s3 %d %d \n",s3,dom[dev].Gcc.s3);
-fflush(stdout);
-*/
-
-index=coordiSys*48        +2;
-int in=DomInfo[index];
-int jn=DomInfo[index+6];
-int kn=DomInfo[index+12];
-
-    // create temporary U* without ghost cells for bicgstab result
-    cusp::array1d<real, cusp::device_memory> diffScalar_tmp(s3, 0.);
-
-    // create CUSP diagonal matrix for p
-    cusp::dia_matrix<int, real, cusp::device_memory> *_A_diffScalar;
-    _A_diffScalar = new cusp::dia_matrix<int, real, cusp::device_memory>
-      (s3,s3, 0, 13);
-
-    // set up the coefficient matrix for Crank-Nicolson
-    _A_diffScalar->diagonal_offsets[0]  = -s3 + s2;
-    _A_diffScalar->diagonal_offsets[1]  = -s2;
-    _A_diffScalar->diagonal_offsets[2]  = -s2 + s1;
-    _A_diffScalar->diagonal_offsets[3]  = -s1;
-
-if(coordiSys==0)
-{
-    _A_diffScalar->diagonal_offsets[4]  = -s1 + 1;//has to be 2 if use Gfx for staggered grid, 1 for Gcc
-    _A_diffScalar->diagonal_offsets[8]  = s1 - 1;//has to be 2 if use Gfx for staggered grid,1 for Gcc
-}
-else
-{
-    _A_diffScalar->diagonal_offsets[4]  = -s1 + 2;//has to be 2 if use Gfx for staggered grid, 1 for Gcc
-    _A_diffScalar->diagonal_offsets[8]  = s1 - 2;//has to be 2 if use Gfx for staggered grid,1 for Gcc
-}
-    _A_diffScalar->diagonal_offsets[5]  = -1;
-    _A_diffScalar->diagonal_offsets[6]  = 0;
-    _A_diffScalar->diagonal_offsets[7]  = 1;
-    _A_diffScalar->diagonal_offsets[9]  = s1;
-    _A_diffScalar->diagonal_offsets[10] = s2 - s1;
-    _A_diffScalar->diagonal_offsets[11] = s2;
-    _A_diffScalar->diagonal_offsets[12] = s3 - s2;
-
-    // write coefficients using kernel
-    int threads_x = 0;
-    int threads_y = 0;
-    int threads_z = 0;
-    int blocks_x = 0;
-    int blocks_y = 0;
-    int blocks_z = 0;
-
-    if(in < MAX_THREADS_DIM)
-      threads_x = in;
-    else
-      threads_x = MAX_THREADS_DIM;
-
-    if(jn < MAX_THREADS_DIM)
-      threads_y = jn;
-    else
-      threads_y = MAX_THREADS_DIM;
-
-    if(kn < MAX_THREADS_DIM)
-      threads_z = kn;
-    else
-      threads_z = MAX_THREADS_DIM;
-
-    blocks_x = (int)ceil((real) in / (real) threads_x);
-    blocks_y = (int)ceil((real) jn / (real) threads_y);
-    blocks_z = (int)ceil((real) kn / (real) threads_z);
-
-    dim3 dimBlocks_x(threads_y, threads_z);
-    dim3 numBlocks_x(blocks_y, blocks_z);
-    dim3 dimBlocks_y(threads_z, threads_x);
-    dim3 numBlocks_y(blocks_z, blocks_x);
-    dim3 dimBlocks_z(threads_x, threads_y);
-    dim3 numBlocks_z(blocks_x, blocks_y);
-
-    dim3 dimBlocks,numBlocks;
-
-switch(coordiSys)
-{
-case 0:
-dimBlocks.x=dimBlocks_x.x;
-dimBlocks.y=dimBlocks_x.y;
-numBlocks.x=numBlocks_x.x;
-numBlocks.y=numBlocks_x.y;
-break;
-case 1:
-dimBlocks.x=dimBlocks_x.x;
-dimBlocks.y=dimBlocks_x.y;
-numBlocks.x=numBlocks_x.x;
-numBlocks.y=numBlocks_x.y;
-break;
-case 2:
-dimBlocks.x=dimBlocks_y.x;
-dimBlocks.y=dimBlocks_y.y;
-numBlocks.x=numBlocks_y.x;
-numBlocks.y=numBlocks_y.y;
-break;
-case 3:
-dimBlocks.x=dimBlocks_z.x;
-dimBlocks.y=dimBlocks_z.y;
-numBlocks.x=numBlocks_z.x;
-numBlocks.y=numBlocks_z.y;
-break;
-default:break;
-}
-
-    // create temporary diffScalar without ghost cells
-    real *_diffScalar_noghost;
-    checkCudaErrors(cudaMalloc((void**) &_diffScalar_noghost,
-      sizeof(real) * s3));
-    // copy u_star into noghost structure for Helmholtz right-hand side
-    copy_diffSc_noghost<<<numBlocks, dimBlocks>>>(_diffScalar_noghost, scSrc,
-      _dom[dev],coordiSys);
-
-
-
-    // build pressure-Poisson coefficient matrix
-    diffScalar_coeffs_init<<<numBlocks, dimBlocks>>>(_dom[dev],
-      _A_diffScalar->values.pitch,
-      thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-  
-    diffScalar_coeffs<<<numBlocks, dimBlocks>>>(DIFF_dt, _dom[dev],
-      _A_diffScalar->values.pitch,
-      thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),
-      _flag_u[dev],_flag_v[dev],_flag_w[dev],coordiSys);
-
-int bcW, bcE, bcS, bcN, bcB, bcT;  // cell locations
-
-
-switch(coordiSys)
-{
-case 0:
-bcW=sc_bc.scW;
-bcE=sc_bc.scE;
-bcS=sc_bc.scS;
-bcN=sc_bc.scN;
-bcB=sc_bc.scB;
-bcT=sc_bc.scT;
-break;
-case 1:
-bcW=bc.uW;
-bcE=bc.uE;
-bcS=bc.uS;
-bcN=bc.uN;
-bcB=bc.uB;
-bcT=bc.uT;
-break;
-case 2:
-bcW=bc.vW;
-bcE=bc.vE;
-bcS=bc.vS;
-bcN=bc.vN;
-bcB=bc.vB;
-bcT=bc.vT;
-break;
-case 3:
-bcW=bc.wW;
-bcE=bc.wE;
-bcS=bc.wS;
-bcN=bc.wN;
-bcB=bc.wB;
-bcT=bc.wT;
-break;
-default:break; 
-}
-
-
-    // account for boundary conditions
-    if(bcW == PERIODIC)
-      diffScalar_coeffs_periodic_W<<<numBlocks_x, dimBlocks_x>>>(DIFF_dt, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcE == PERIODIC)
-      diffScalar_coeffs_periodic_E<<<numBlocks_x, dimBlocks_x>>>(DIFF_dt, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcS == PERIODIC)
-      diffScalar_coeffs_periodic_S<<<numBlocks_y, dimBlocks_y>>>(DIFF_dt, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcN == PERIODIC)
-      diffScalar_coeffs_periodic_N<<<numBlocks_y, dimBlocks_y>>>(DIFF_dt, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcB == PERIODIC)
-      diffScalar_coeffs_periodic_B<<<numBlocks_z, dimBlocks_z>>>(DIFF_dt, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-    if(bcT == PERIODIC)
-      diffScalar_coeffs_periodic_T<<<numBlocks_z, dimBlocks_z>>>(DIFF_dt, _dom[dev],
-        _A_diffScalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_diffScalar->values.values[0]),coordiSys);
-
-  
-    // create CUSP pointer to right-hand side
-    thrust::device_ptr<real> _ptr_diffScalar(_diffScalar_noghost);
-    cusp::array1d<real, cusp::device_memory> *_diffScalar_rhs;
-    _diffScalar_rhs = new cusp::array1d<real, cusp::device_memory>(_ptr_diffScalar,
-      _ptr_diffScalar + s3);
-
- 
-    // normalize the problem by the right-hand side before sending to CUSP
-    real norm = cusp::blas::nrm2(*_diffScalar_rhs);
-    if(norm == 0)       norm = 1.;
-    cusp::blas::scal(*_diffScalar_rhs, 1. / norm);
-
-    // call BiCGSTAB to solve for diffScalar_tmp
-    cusp::convergence_monitor<real> monitor(*_diffScalar_rhs, pp_max_iter,
-      pp_residual);
-    cusp::precond::diagonal<real, cusp::device_memory> M(*_A_diffScalar);
-    //cusp::krylov::bicgstab(*_A_diffScalar, diffScalar_tmp, *_diffScalar_rhs, monitor, M);
-    cusp::krylov::cg(*_A_diffScalar, diffScalar_tmp, *_diffScalar_rhs, monitor, M);
-    // write convergence data to file
-      recorder_bicgstab("solver_helmholtz_diffScalar.rec", monitor.iteration_count(),monitor.residual_norm());
-    if(!monitor.converged()) {
-      printf("The diffScalar Helmholtz equation did not converge.              \n");
-      exit(EXIT_FAILURE);
-    }
-
-    // unnormalize the solution
-    cusp::blas::scal(diffScalar_tmp, norm);
-
-    // copy solution back to scSrc
-    copy_sc_ghost<<<numBlocks_x, dimBlocks_x>>>(scSrc,
-      thrust::raw_pointer_cast(diffScalar_tmp.data()), _dom[dev]);
-
-    // clean up
-    delete(_diffScalar_rhs);
-    delete(_A_diffScalar);
-    checkCudaErrors(cudaFree(_diffScalar_noghost));
-
-}
-
-
-
-
-
  
 
 extern "C"
@@ -1830,27 +1374,27 @@ void cuda_scalar_helmholtz(void)
     if(sc_bc.scW == PERIODIC)
       scalar_coeffs_periodic_W<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev],_flag_u[dev]);
     if(sc_bc.scE == PERIODIC)
       scalar_coeffs_periodic_E<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev],_flag_u[dev]);
     if(sc_bc.scS == PERIODIC)
       scalar_coeffs_periodic_S<<<numBlocks_y, dimBlocks_y>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev],_flag_v[dev]);
     if(sc_bc.scN == PERIODIC)
       scalar_coeffs_periodic_N<<<numBlocks_y, dimBlocks_y>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev],_flag_v[dev]);
     if(sc_bc.scB == PERIODIC)
       scalar_coeffs_periodic_B<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev],_flag_w[dev]);
     if(sc_bc.scT == PERIODIC)
       scalar_coeffs_periodic_T<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, dt_try, _dom[dev],
         _A_scalar->values.pitch,
-        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev]);
+        thrust::raw_pointer_cast(&_A_scalar->values.values[0]), _epsp[dev],_flag_w[dev]);
     // create CUSP pointer to right-hand side
     thrust::device_ptr<real> _ptr_scalar(_scalar_noghost);
     cusp::array1d<real, cusp::device_memory> *_scalar_rhs;

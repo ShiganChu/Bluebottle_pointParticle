@@ -895,33 +895,18 @@ milliseconds = 0;
 cudaEventRecord(start);
 
 //Diffuse the scalar after gaussian mollification
-//cuda_diffScalar_helmholtz(coordiSys,dev,scSrc);
+//Explicit solver Takes 4 times longer than one time implicit solver
+//cuda_diffScalar_helmholtz_CN(coordiSys,dev,scSrc);
 
-//Not stable for arbitrary time step
-cuda_diffScalar_helmholtz_CN(coordiSys,dev,scSrc);
+cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc);
 
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_impDiff %f\n",milliseconds);
+//printf("\ntime_impDiff %f\n",milliseconds);
+printf("\ntime_expDiff %f\n",milliseconds);
 fflush(stdout);
 
-//cuda_diffScalar_sub_helmholtz(coordiSys,dev,scSrc);
-/*
-milliseconds = 0;
-cudaEventRecord(start);
-*/
-
-//Takes 4 times longer than one time implicit solver
-//cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc);
-
-/*
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_exp_diff %f\n",milliseconds);
-fflush(stdout);
-*/
 
 }
 
@@ -1469,7 +1454,6 @@ if(npoints<=0) return;
     checkCudaErrors(cudaSetDevice(dev + dev_start));
 
     checkCudaErrors(cudaMemcpy(_points[dev], points, sizeof(point_struct) * npoints,cudaMemcpyHostToDevice));
-  //  checkCudaErrors(cudaMemcpy(points,_points[dev],sizeof(point_struct) * npoints,cudaMemcpyDeviceToHost));
  }
 }
 
@@ -1480,7 +1464,6 @@ if(npoints<=0) return;
   // all devices have the same point_particle data for now, so just copy one of them
   checkCudaErrors(cudaMemcpy(points, _points[0], sizeof(point_struct) * npoints,
     cudaMemcpyDeviceToHost));
-
 }
 
 

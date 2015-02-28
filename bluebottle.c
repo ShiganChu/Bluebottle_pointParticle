@@ -550,7 +550,11 @@ fflush(stdout);
 
         // write initial fields
         if(runrestart != 1) {
+if(OUT_SIMPLE>0)
+          cuda_dom_pull_simple();
+else
           cuda_dom_pull();
+
           cuda_point_pull();
           cuda_scalar_pull();
 
@@ -619,7 +623,6 @@ if(npoints>0&&lpt_twoway>0)    	   lpt_point_twoway_forcing();
             // solve for U_star
             cuda_U_star_2();
             // apply boundary conditions to U_star
-  
             cuda_dom_BC_star();
             // enforce solvability condition
             cuda_solvability();
@@ -664,7 +667,6 @@ while(dt_done<dt)
             compute_scalar_BC();
             cuda_scalar_advance();
             cuda_scalar_BC();
-    
 	    cuda_store_scalar();
 
 	//Store old time step
@@ -728,6 +730,10 @@ while(dt_done<dt)
           if(rec_flow_field_dt > 0) {
             if(rec_flow_field_ttime_out >= rec_flow_field_dt) {
               // pull back data and write fields
+
+if(OUT_SIMPLE>0)
+	      cuda_dom_pull_simple();
+else
               cuda_dom_pull();
               #ifndef BATCHRUN
                 printf("  Writing flow field file t = %e...                  \r", ttime);

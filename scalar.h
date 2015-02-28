@@ -27,6 +27,8 @@
 #include "recorder.h"
 #include "vtk.h"
 
+//using simple pull&push suboutine for flow field
+#define OUT_SIMPLE 1
 
 #define MAX_THREADS_DIM3 16
 #define MAX_THREADS_BLOCK 1024
@@ -155,7 +157,9 @@ void cuda_diffScalar_sub_helmholtz(int coordiSys,int dev, real *scSrc);
 
 //Find the maximum time-step for scalar field, dt is the time-step of flow field for comparison
 real cuda_find_dt_sc(real dt);
+real cuda_find_dt_sc_implicit(void);
 
+real cuda_find_dt_implicit(void);
 
 
 
