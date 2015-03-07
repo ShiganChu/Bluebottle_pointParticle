@@ -829,10 +829,6 @@ calcHash_optD<<<numBlocks_p,dimBlocks_p>>>(gridParticleHash[dev],
 
 sortParticles(gridParticleHash[dev],gridParticleIndex[dev],npoints);
 
-/*
-milliseconds = 0;
-cudaEventRecord(start);
-*/
 findCellStart_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 						cellEnd[dev],
 						gridParticleHash[dev],
@@ -842,68 +838,22 @@ findCellStart_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 						npoints);
 
 
-/*
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_reoder %f\n",milliseconds);
-fflush(stdout);
-milliseconds = 0;
-cudaEventRecord(start);
-*/
 
 //valType=1 for particle volume fraction; valType =0 for other cell-centerred parameter 
-
 lpt_point_ksi_opt<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],posX[dev],posY[dev],posZ[dev],Ksi[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 fflush(stdout);
 
 getLastCudaError("Kernel execution failed.");
 
-/*
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_weight %f\n",milliseconds);
-fflush(stdout);
-*/
-
-/*
-milliseconds = 0;
-cudaEventRecord(start);
-*/
 
 //Store the grid hash index
 calcGridFlowHash_optD<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],gridFlowHash[dev],coordiSys);
 
-/*
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_FlowHash %f\n",milliseconds);
-fflush(stdout);
-*/
-
-/*
-milliseconds = 0;
-cudaEventRecord(start);
-*/
 
 //Find the maximum number of particles inside grid cell
 calcMaxPointsPerCell_optD<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],cellStart[dev],cellEnd[dev],pointNumInCell[dev],coordiSys);
 int maxPointsPerCell=find_max_int(lenCell,pointNumInCell[dev]);
 
-/*
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_maxPointsPerCell %f\n",milliseconds);
-fflush(stdout);
-*/
-
-/*
-milliseconds = 0;
-cudaEventRecord(start);
-*/
 
 //Gaussian mollfication
 lpt_mollify_sc_ksi_optD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc_buf,
@@ -914,14 +864,6 @@ coordiSys,valType);
 
 getLastCudaError("Kernel execution failed.");
 
-/*
-fflush(stdout);
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-printf("\ntime_mollify %f\n",milliseconds);
-fflush(stdout);
-*/
 
 //print_kernel_array_int<<<numBlocks_print,dimBlocks_print>>>(cellEnd[dev],lenCell);
 
@@ -933,29 +875,18 @@ boundary_face_value_periodic_end<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc_bu
 cuda_scSrc_BC(coordiSys,SCALAR_TYPE, scSrc_buf,dev);
 
 //Difuse the buf value based on Cappeccelo&Desjadins(2012)
-//cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc_buf);
+cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc_buf);
 
+////Diffuse the scalar after gaussian mollification
+////Explicit solver Takes 4 times longer than one time implicit solver
+////cuda_diffScalar_helmholtz_CN(coordiSys,dev,scSrc);
 
 //Add the buf value to the source
 scSrc_value_add<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc,scSrc_buf,coordiSys);
 
-/*
-milliseconds = 0;
-cudaEventRecord(start);
-*/
 
-//Diffuse the scalar after gaussian mollification
-//Explicit solver Takes 4 times longer than one time implicit solver
-//cuda_diffScalar_helmholtz_CN(coordiSys,dev,scSrc);
 
-/*
-cudaEventRecord(stop);
-cudaEventSynchronize(stop);
-cudaEventElapsedTime(&milliseconds, start, stop);
-//printf("\ntime_impDiff %f\n",milliseconds);
-printf("\ntime_expDiff %f\n",milliseconds);
-fflush(stdout);
-*/
+    checkCudaErrors(cudaFree(scSrc_buf));
 
 }
 
