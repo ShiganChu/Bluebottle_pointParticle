@@ -44,6 +44,9 @@ __global__ void point_vel_specify(real *ug,real *vg,real *wg,point_struct *point
 //calculate particle diameter
 __global__ void points_dp(point_struct *points, real *dp, int npoints);
 
+//calculate particle total force Fz
+__global__ void points_Fz(point_struct *points, real *Fz, int npoints);
+
 //Initialize particle ms when injecting scalar field
 __global__ void point_ms_initD(point_struct *points, int npoints,int percent);
 
@@ -100,6 +103,15 @@ __global__ void gaussian_array_initD(float * GaussianKernel,real dg2_sig2,real d
 __global__ void lpt_point_position(point_struct *points,real *posX,real *posY,real *posZ, int npoints);
 
 
+
+__global__ void scSrc_value_init(dom_struct *dom,real *scSrc,real a,int coordiSys);
+__global__ void scSrc_value_add(dom_struct *dom,real *scSrc,real *scSrc_buf,int coordiSys);
+__global__ void boundary_face_value_periodic_start(dom_struct *dom,real *scSrc,int coordiSys);
+__global__ void boundary_face_value_periodic_end(dom_struct *dom,real *scSrc,int coordiSys);
+__global__ void boundary_face_value_homo_end(dom_struct *dom,real *scSrc,int coordiSys);
+
+
+
 __global__ void lpt_delta_point_position(point_struct *points,
 dom_struct *dom,
 real *posX,real *posY,real *posZ,
@@ -140,20 +152,6 @@ void lpt_mollify_sc_ksi_optD(dom_struct *dom,
               int    npoints,int maxPointsPerCell,
               int coordiSys,int valType);
 
-//This method will work with higher efficiency for thousands of particles
-__global__
-void lpt_mollify_sc_optD(dom_struct *dom,
-              real *A,
-	      real *posX,
-	      real *posY,
-	      real *posZ,
-	      real *Weight,
-              int   *cellStart,
-              int   *cellEnd,
-              int   *gridFlowHash,
-              int   *gridParticleIndex,
-              int    npoints,
-              int coordiSys,int valType);
 
 __global__
 void calcGridFlowHash_optD(dom_struct *dom,
@@ -172,12 +170,6 @@ __global__ void calcHash_optD(int   *gridParticleHash,  // output
                int    npoints,
 	       int coordiSys);
 
-__global__ void lpt_point_weight(point_struct *points,
-				 dom_struct *dom,
-				 real *posX,real *posY,real *posZ, 
-				 real *Weight,
-				 int   *gridParticleIndex,
-				 int npoints,int coordiSys, int valType);
 
 __global__ void findCellStart_optD(   int   *cellStart,        // output: cell start pp
                                   int   *cellEnd,          // output: cell end pp
@@ -187,17 +179,6 @@ __global__ void findCellStart_optD(   int   *cellStart,        // output: cell s
 				  real *posXold,real *posYold,real *posZold,
                                   int    npoints);
 
-// rearrange particle data into sorted order, and find the start of each cell in the sorted hash array
-// cellStart[hash+1]=cellEnd[hash]; 
-__global__ void findCellStart_val_optD(int   *cellStart,        // output: cell start pp
-                                  int   *cellEnd,          // output: cell end pp
-                                  int   *gridParticleHash, // input: sorted grid hashes
-                                  int   *gridParticleIndex,   // input: sorted particle indices
-                                  real *posX,real *posY,real *posZ,
-                                  real *posXold,real *posYold,real *posZold,
-                                  real *lptSourceVal,
-                                  real *lptSourceValOld,
-                                  int    npoints);
 
 
 __global__ void lpt_point_ksi_opt(point_struct *points,

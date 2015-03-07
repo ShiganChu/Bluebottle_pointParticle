@@ -1,6 +1,245 @@
 #include "cuda_scalar.h"
 #include "cuda_point.h"
 
+__global__ void scSrc_value_init(dom_struct *dom,real *scSrc,real a,int coordiSys)
+{
+int i,j,k,C;
+    i = blockIdx.x*blockDim.x + threadIdx.x;
+    j = blockIdx.y*blockDim.y + threadIdx.y;
+int   index=coordiSys*48	+21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+int is,js,ks,ie,je,ke;
+//get domain start and end index
+int incGhost=1;
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+for(k=ks;k<ke;k++)
+{
+if(i<ie&&j<je)
+{
+C=i+j*s1b+k*s2b;
+scSrc[C] =a;
+}
+}
+
+
+}
+
+__global__ void scSrc_value_add(dom_struct *dom,real *scSrc,real *scSrc_buf,int coordiSys)
+{
+int i,j,k,C;
+
+    i = blockIdx.x*blockDim.x + threadIdx.x;
+    j = blockIdx.y*blockDim.y + threadIdx.y;
+int   index=coordiSys*48	+21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+int is,js,ks,ie,je,ke;
+//get domain start and end index
+int incGhost=1;
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+for(k=ks;k<ke;k++)
+{
+if(i<ie&&j<je)
+{
+C=i+j*s1b+k*s2b;
+scSrc[C] +=scSrc_buf[C];
+}
+}
+}
+
+
+__global__ void boundary_face_value_periodic_start(dom_struct *dom,real *scSrc,int coordiSys)
+{
+int i,j,k;
+/*
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    int j = blockIdx.y*blockDim.y + threadIdx.y;
+*/
+int   index=coordiSys*48	+21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+int is,js,ks,ie,je,ke;
+//get domain start and end index
+int incGhost=0;
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+int C1,C2;
+switch(coordiSys)
+{
+case 1:
+     k = blockIdx.x*blockDim.x + threadIdx.x;
+     j = blockIdx.y*blockDim.y + threadIdx.y;
+if(k>=ks&&k<ke &&j>=js&&j<je)
+{
+C1=is+j*s1b+k*s2b;
+C2=ie-1+j*s1b+k*s2b;
+scSrc[C1] +=scSrc[C2];
+}
+break;
+case 2:
+     k = blockIdx.x*blockDim.x + threadIdx.x;
+     i = blockIdx.y*blockDim.y + threadIdx.y;
+if(i>=is&&i<ie &&k>=ks&&k<ke)
+{
+C1=i+js*s1b+k*s2b;
+C2=i+(je-1)*s1b+k*s2b;
+scSrc[C1] +=scSrc[C2];
+}
+break;
+case 3:
+     i = blockIdx.x*blockDim.x + threadIdx.x;
+     j = blockIdx.y*blockDim.y + threadIdx.y;
+if(i>=is&&i<ie &&j>=js&&j<je)
+{
+C1=i+j*s1b+ks*s2b;
+C2=i+j*s1b+(ke-1)*s2b;
+
+//if(fabs(scSrc[C1])>EPSILON) printf("\nscSrc %f %f %d %d %d\n",scSrc[C1],scSrc[C2],i,j,ks);
+
+scSrc[C1] +=scSrc[C2];
+}
+break;
+default: break;
+}
+}
+
+
+__global__ void boundary_face_value_periodic_end(dom_struct *dom,real *scSrc,int coordiSys)
+{
+
+int i,j,k;
+/*
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    int j = blockIdx.y*blockDim.y + threadIdx.y;
+*/
+int   index=coordiSys*48	+21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+int is,js,ks,ie,je,ke;
+//get domain start and end index
+int incGhost=0;
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+int C1,C2;
+//int C3,C4,C5,C6;
+switch(coordiSys)
+{
+case 1:
+     k = blockIdx.x*blockDim.x + threadIdx.x;
+     j = blockIdx.y*blockDim.y + threadIdx.y;
+if(k>=ks&&k<ke &&j>=js&&j<je)
+{
+C1=is+j*s1b+k*s2b;
+C2=ie-1+j*s1b+k*s2b;
+scSrc[C2] =scSrc[C1];
+
+/*
+//Periodic BC
+C3=is-1+j*s1b+k*s2b;
+C4=ie+j*s1b+k*s2b;
+C5=is+1+j*s1b+k*s2b;
+C6=ie-2+j*s1b+k*s2b;
+scSrc[C3]=scSrc[C6];
+scSrc[C4]=scSrc[C5];
+*/
+}
+break;
+case 2:
+     k = blockIdx.x*blockDim.x + threadIdx.x;
+     i = blockIdx.y*blockDim.y + threadIdx.y;
+if(i>=is&&i<ie &&k>=ks&&k<ke)
+{
+C1=i+js*s1b+k*s2b;
+C2=i+(je-1)*s1b+k*s2b;
+scSrc[C2] =scSrc[C1];
+
+/*
+//Periodic BC
+C3=i+(js-1)*s1b+k*s2b;
+C4=i+je*s1b+k*s2b;
+C5=i+(js+1)*s1b+k*s2b;
+C6=i+(je-2)*s1b+k*s2b;
+scSrc[C3]=scSrc[C6];
+scSrc[C4]=scSrc[C5];
+*/
+}
+break;
+case 3:
+     i = blockIdx.x*blockDim.x + threadIdx.x;
+     j = blockIdx.y*blockDim.y + threadIdx.y;
+if(i>=is&&i<ie &&j>=js&&j<je)
+{
+C1=i+j*s1b+ks*s2b;
+C2=i+j*s1b+(ke-1)*s2b;
+scSrc[C2] =scSrc[C1];
+
+/*
+//Periodic BC
+C3=i+j*s1b+(ks-1)*s2b;
+C4=i+j*s1b+ke*s2b;
+C5=i+j*s1b+(ks+1)*s2b;
+C6=i+j*s1b+(ke-2)*s2b;
+
+scSrc[C3]=scSrc[C6];
+scSrc[C4]=scSrc[C5];
+*/
+}
+break;
+default: break;
+}
+}
+
+__global__ void boundary_face_value_homo_end(dom_struct *dom,real *scSrc,int coordiSys)
+{
+
+int i,j,k;
+int   index=coordiSys*48	+21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+int is,js,ks,ie,je,ke;
+//get domain start and end index
+int incGhost=0;
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+int C1,C2,C3;
+if(coordiSys==3)
+{
+     i = blockIdx.x*blockDim.x + threadIdx.x;
+     j = blockIdx.y*blockDim.y + threadIdx.y;
+if(i>=is-1&&i<ie+1 &&j>=js-1&&j<je+1)
+{
+C1=i+j*s1b+ke*s2b;
+C2=i+j*s1b+(ke-1)*s2b;
+C3=i+j*s1b+(ks-1)*s2b;
+scSrc[C1] =0;
+scSrc[C2] =0;
+scSrc[C3] =0;
+}
+
+     i = blockIdx.x*blockDim.x + threadIdx.x;
+     k = blockIdx.y*blockDim.y + threadIdx.y;
+if(i>=is-1&&i<ie+1 &&k>=ks-1&&k<ke+1)
+{
+C1=i+(js-1)*s1b+k*s2b;
+C2=i+je*s1b+k*s2b;
+scSrc[C1] =0;
+scSrc[C2] =0;
+}
+
+     j = blockIdx.x*blockDim.x + threadIdx.x;
+     k = blockIdx.y*blockDim.y + threadIdx.y;
+if(j>=js-1&&j<je+1 &&k>=ks-1&&k<ke+1)
+{
+C1=is-1+j*s1b+k*s2b;
+C2=ie+j*s1b+k*s2b;
+scSrc[C1] =0;
+scSrc[C2] =0;
+}
+}
+}
 __global__ void array_init(real *A,dom_struct *dom, int n, real a)
 {
 int indx =  threadIdx.x + blockIdx.x*blockDim.x;
@@ -47,6 +286,16 @@ dp[pp]=2*rp;
 }
 }
 
+//calculate particle diameter
+__global__ void points_Fz(point_struct *points, real *dp, int npoints)
+
+{
+  int pp = threadIdx.x + blockIdx.x*blockDim.x;
+if(pp<npoints) 
+{
+dp[pp]=points[pp].Fz;
+}
+}
 __global__
 void copy_points_dt(real *pdt,point_struct *points,int npoints)
 {
@@ -124,156 +373,6 @@ if(k==LEN_GAUSSIAN_ARRAY-1) GaussianKernel[k]=1/dg2;
 //if(GaussianKernel[k]<EPSILON) printf("\nk %d %f\n",k,GaussianKernel[k]);
 }
 
- 
-
- 
-
-/* 
-//With print
-__global__
-void lpt_mollify_sc_ksi_optD(dom_struct *dom,
-              real *A,
-	      real *posX,
-	      real *posY,
-	      real *posZ,
-	      real *Ksi,
-              int   *cellStart,
-              int   *cellEnd,
-              int   *gridParticleIndex,
-              int    npoints,
-              int coordiSys,int valType)
-{
-
-int is,js,ks,ie,je,ke;
-
-//get domain start and end index
-int incGhost=0;
-dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
-
-
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-    int k = blockIdx.z*blockDim.z + threadIdx.z;
-
-__syncthreads();
-
-clock_t time1 = clock();
-
-if(i<ie&&i>=is && j<je&&j>=js &&k<ke&&k>=ks)
-{
-//TODO reduce Repeat calculation of gridHash
-
-//int gridHash=calcGridHash(i,j,k,dom,coordiSys);
-clock_t time2 = clock();
-	real xp,yp,zp;
-	int it,jt,kt;
-        int ip,jp,kp;//index of particle cell
-	int tip,tjp;
-//	real force=0.f;
-	real forceCell = 0.f;
-	real ksi;
-	int startIndex,endIndex;
-	int gridHash;
- 	int index_ksi;
-//if(gridHash<npoints*STENCIL3) real test=Ksi[gridHash];//takes 58 ms
-//Make the sum_ksi_cell a device kernel will save half time of the calculation
-for(int di=-1;di<2;di++)
-for(int dj=-1;dj<2;dj++)
-for(int dk=-1;dk<2;dk++)
-{
-	
-			it=di+1;jt=dj+1;kt=dk+1;
-			ip=i-di;jp=j-dj;kp=k-dk;
-			index_ksi=it+jt*STENCIL+kt*STENCIL2;
-clock_t time10 = clock();	 
-	// store grid hash and partisle pp
-	gridHash=calcGridHash(ip,jp,kp,dom,coordiSys);
-clock_t time11 = clock();	 
-	startIndex= cellStart[gridHash];
-clock_t time12 = clock();	 
-
-	if(startIndex>=0)
-      		{ 
-
-clock_t time13 = clock();	 
-      				endIndex=cellEnd[gridHash];
-clock_t time14 = clock();	 
-	 			
-				for (int index=startIndex; index<endIndex; index++)
-        			{
-				//Read of Global memory, how to coalesce it???
-				//int pp=gridParticleIndex[index]; 
-				//Try to avoid bank conflicts here, if we have shared memory
-				//forceCell += Ksi[it+jt*STENCIL+kt*STENCIL2+pp*STENCIL3];//calc index for Ksi takes no timea.
-
-clock_t time15 = clock();	 
-      			//Reading the position takes little time, about 160 ct(clock_t)
-      		//	xp=posX[index];
-      		//	yp=posY[index];
-      		//	zp=posZ[index];
-      			
-//clock_t time16 = clock();	 
- //    			ksi=Ksi[it+jt*STENCIL+kt*STENCIL2+index*STENCIL3];
-     		//	ksi=Ksi[index_ksi+index*STENCIL3];
-     			forceCell +=Ksi[index_ksi+index*STENCIL3];
-clock_t time16 = clock();	 
-	//				forceCell += ksi;
-	//			forceCell =__fadd_rd(forceCell,ksi);
-//				forceCell +=lpt_integrate_mol_opt(i,j,k,xp,yp,zp,dom,coordiSys)*Weight[index];
-		//printf("\nstartEndIndex %d %d %d %f %f\n",start_index[kt],end_index[kt],index,test,Weight[index]);
-		//printf("\nposition %f %f %f %d %d\n",xp,yp,zp,index,start_index[kt]);
-//if(it+jt*STENCIL+kt*STENCIL2>STENCIL3-1)	printf("\nposition %f %f %f %d %d\n",xp,yp,zp,index,start_index[kt]);
-
-//clock_t time18 = clock();
-
-int dt10=(int) (time11-time10);
-int dt11=(int) (time12-time11);
-int dt12=(int) (time13-time12);
-int dt13=(int) (time14-time13);
-int dt14=(int) (time15-time14);
-int dt15=(int) (time16-time15);
-//int dt16=(int) (time17-time16);
-//int dt17=(int) (time18-time17);
-if(i==33&&j==33&&k==33) printf("\ninner time:  %d %d %d %d %d %d %d %d %d\n",dt10,dt11,dt12,dt13,dt14,dt15,di,dj,dk);
-// printf("\ninner time:  %d %d %d %d %d %d %d %d %d\n",dt10,dt11,dt12,dt13,dt14,dt15,dt16,dt17,di,dj,dk);
-				}
-			}
-
-
-
-}
-
-//The above are cheap, takes 1 ms or so.  The following has significant thread divergence
-		// Any operation inside will be expensive
-//		force+= forceCell;
-//		force+= point_cell_ksi(gridHash,is,js,ks,Ksi,cellStart,cellEnd,gridParticleIndex);
-	
-
-clock_t time3 = clock();	 
-    int hash=calcGridHash(i,j,k,dom,coordiSys);
-clock_t time4 = clock();
-
- 
-		 // examine neighbouring cells
-		 A[hash]=forceCell;
-//if(forceCell>EPSILON) printf("\nforceCell %f %f %f %f %d %d %d\n",xp,yp,zp,forceCell,i,j,k,gridHash);
-//	 A[gridHash]=sum_ksi_cell(i,j,k,points,dom,Ksi,cellStart,cellEnd,gridParticleIndex,coordiSys,valType);
-	 
-clock_t time5 = clock();
-
-int dt1=(int) (time2-time1);
-int dt2=(int) (time3-time2);
-int dt3=(int) (time4-time3);
-int dt4=(int) (time5-time4);
-
-if(i==30&&j==30&&k==30) printf("\ntime 1~4 %d %d %d %d\n",dt1,dt2,dt3,dt4);
-
-	 }
-}
-
-*/
-
- 
 
 //This method will work with higher efficiency for thousands of particles
 __global__
@@ -301,7 +400,7 @@ __shared__ int cell_end[MAX_THREADS_DIM * MAX_THREADS_DIM];
     int tj = threadIdx.y;
 
 //get domain start and end index
-int incGhost=1;
+int incGhost=0;
 dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
 //if(i==2&&j==3) printf("\ncoordi %d %d %d %d %d\n",is,ie,je,ke,coordiSys);
 
@@ -314,8 +413,6 @@ int gridHash=calcGridHash(i,j,k,dom,coordiSys);
 if(i<ie&&i>=is && j<je&&j>=js)
 {
 //TODO reduce Repeat calculation of gridHash
-
-
 cell_start[ti+tj*blockDim.x]=cellStart[gridHash];
 cell_end[ti+tj*blockDim.x]=cellEnd[gridHash];
 }
@@ -347,17 +444,21 @@ if(start_index>=0)
 			}
 		}
 
-
- 
-	
     __syncthreads();
 
     if((j >= js && j < je)
      && (i >= is && i < ie))
 		{
 		 // examine neighbouring cells
-		 flowSource[gridHash]=forceCell;
-//if(coordiSys==3||coordiSys==0)
+		// flowSource[gridHash] +=forceCell;
+		 flowSource[gridHash] =forceCell;
+/*
+if(fabs(forceCell)>EPSILON) 
+{
+printf("\nforceCell %f %d %d %d\n",forceCell,i,j,k);
+//printf("\nke %d %d\n",ke,coordiSys);
+}
+*/
 //if(coordiSys==0) if(fabs(forceCell)>EPSILON)  printf("\nflowSource %d %d %d %d %d %f\n",gridHash,coordiSys,i,j,k,forceCell);
 		}
 
@@ -366,8 +467,7 @@ if(start_index>=0)
 
 
 
-
-//This method will work with higher efficiency for thousands of particles
+//Use periodic BC for the particle source; Use cache to read layer by layer
 __global__
 void lpt_mollify_sc_ksi_optD(dom_struct *dom,
               real *A,
@@ -430,6 +530,7 @@ if(i<ieb&&i>=isb && j<jeb&&j>=jsb)
  gridHash1=gridFlowHash[i+j*s1b+s2b*ks];
  gridHash2=gridFlowHash[i+j*s1b+s2b*(ks+1)];
 
+//representing three layers
 cell_start0[ti+tj*blockDim.x]=cellStart[gridHash0];
 cell_start1[ti+tj*blockDim.x]=cellStart[gridHash1];
 cell_start2[ti+tj*blockDim.x]=cellStart[gridHash2];
@@ -448,6 +549,7 @@ if(k>ks&&i<ieb&&i>=isb && j<jeb&&j>=jsb)
 {
 gridHash2=gridFlowHash[i+j*s1b+s2b*(k+1)];
 
+//Read one layer each time
 cell_start0[ti+tj*blockDim.x]=cell_start1[ti+tj*blockDim.x];
 cell_start1[ti+tj*blockDim.x]=cell_start2[ti+tj*blockDim.x];
 cell_start2[ti+tj*blockDim.x]=cellStart[gridHash2];
@@ -460,13 +562,10 @@ cell_end2[ti+tj*blockDim.x]=cellEnd[gridHash2];
 
 
    __syncthreads();
-//	real xp,yp,zp;
 	int it,jt,kt;
 	int tip,tjp;
 	int ksi_ind;
-//	real force=0.f;
 	real forceCell = 0.f;
-//	real ksi;
 	int start_index[3];
 	int end_index[3];
 //should not contain boundary here
@@ -499,8 +598,6 @@ for(int dj=-1;dj<2;dj++)
 ksi_ind=it+jt*STENCIL+kt*STENCIL2;
 
 		//		for (int index=start_index[kt]; index<end_index[kt]; index++)
-//if(di==0&&dj==0&&dk==0)	printf("\nmaxP %d\n",maxPointsPerCell);
-
 int inCellTag=(start_index[kt]>=0);
 				for (int count=0; count<maxPointsPerCell; count++)
         			{
@@ -521,8 +618,6 @@ inCellTag=(index<end_index[kt])&&inCellTag;
 			//	ksi=inCellTag*Ksi[ksi_ind+index*inCellTag*STENCIL3];
 				forceCell +=inCellTag*Ksi[ksi_ind+index*inCellTag*STENCIL3];
 			//	forceCell += ksi;
-
-if(inCellTag>0) printf("\nKsi %d %d %d %f\n",di,dj,dk,Ksi[ksi_ind+index*inCellTag*STENCIL3]);
 //				forceCell +=lpt_integrate_mol_opt(i,j,k,xp,yp,zp,dom,coordiSys)*Weight[index];
 		//printf("\nstartEndIndex %d %d %d %f %f\n",start_index[kt],end_index[kt],index,test,Weight[index]);
 		//printf("\nposition %f %f %f %d %d\n",xp,yp,zp,index,start_index[kt]);
@@ -552,7 +647,8 @@ if(inCellTag>0) printf("\nKsi %d %d %d %f\n",di,dj,dk,Ksi[ksi_ind+index*inCellTa
       && (tj > 0 && tj < (blockDim.y-1)))
 		{
 		 // examine neighbouring cells
-		 A[gridHash]=forceCell;
+		 //A[gridHash] +=forceCell;
+		 A[gridHash] =forceCell;
 //if(forceCell>EPSILON) printf("\nforceCell %f %f %f %f %d %d %d\n",xp,yp,zp,forceCell,i,j,k,gridHash);
 //	 A[gridHash]=sum_ksi_cell(i,j,k,points,dom,Ksi,cellStart,cellEnd,gridParticleIndex,coordiSys,valType);
 		}
@@ -561,158 +657,6 @@ if(inCellTag>0) printf("\nKsi %d %d %d %f\n",di,dj,dk,Ksi[ksi_ind+index*inCellTa
 }
 
 
-/*
-//without print
-//This method will work with higher efficiency for thousands of particles
-__global__
-void lpt_mollify_sc_optD(dom_struct *dom,
-              real *A,
-	      real *posX,
-	      real *posY,
-	      real *posZ,
-	      real *Weight,
-              int   *cellStart,
-              int   *cellEnd,
-              int   *gridParticleIndex,
-              int    npoints,
-              int coordiSys,int valType)
-{
-
-int is,js,ks,ie,je,ke;
-
-//get domain start and end index
-int incGhost=1;
-dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
-
-__shared__ int cell_start0[MAX_THREADS_DIM * MAX_THREADS_DIM];
-__shared__ int cell_start1[MAX_THREADS_DIM * MAX_THREADS_DIM];
-__shared__ int cell_start2[MAX_THREADS_DIM * MAX_THREADS_DIM];
-
-__shared__ int cell_end0[MAX_THREADS_DIM * MAX_THREADS_DIM];
-__shared__ int cell_end1[MAX_THREADS_DIM * MAX_THREADS_DIM];
-__shared__ int cell_end2[MAX_THREADS_DIM * MAX_THREADS_DIM];
-
- 
-for(int k=ks;k<ke;k++)
-{
-    // subdomain indices
-    // the extra 2*blockIdx.X terms implement the necessary overlapping of
-    // shared memory blocks in the subdomain
-    int i = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
-
-    // shared memory indices
-    int ti = threadIdx.x;
-    int tj = threadIdx.y;
-
-
-if(i<ie&&i>=is && j<je&&j>=js)
-{
-//TODO reduce Repeat calculation of gridHash
-int gridHash0=calcGridHash(i,j,k-1,dom,coordiSys);
-int gridHash1=calcGridHash(i,j,k,dom,coordiSys);
-int gridHash2=calcGridHash(i,j,k+1,dom,coordiSys);
-
-cell_start0[ti+tj*blockDim.x]=cellStart[gridHash0];
-cell_start1[ti+tj*blockDim.x]=cellStart[gridHash1];
-cell_start2[ti+tj*blockDim.x]=cellStart[gridHash2];
-cell_end0[ti+tj*blockDim.x]=cellEnd[gridHash0];
-cell_end1[ti+tj*blockDim.x]=cellEnd[gridHash1];
-cell_end2[ti+tj*blockDim.x]=cellEnd[gridHash2];
-}
-
-   __syncthreads();
-
-//Use Shared memory just read the particles around it 
-//Determin int the future, if we need 3D blocks and threads
-
-	real xp,yp,zp;
-	int it,jt,kt;
-        int ip,jp,kp;//index of particle cell
-	int tip,tjp;
-//	real force=0.f;
-	real forceCell = 0.f;
-
-	int start_index[3];
-	int end_index[3];
-
-if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1))
-{
-//if(gridHash<npoints*STENCIL3) real test=Ksi[gridHash];//takes 58 ms
-//Make the sum_ksi_cell a device kernel will save half time of the calculation
-for(int di=-1;di<2;di++)
-for(int dj=-1;dj<2;dj++)
-{
-	
-		//kp=k-dk;
-		// store grid hash and partisle pp
-	//	int gridHash=calcGridHash(ip,jp,kp,dom,coordiSys);
-		tip=ti-di;tjp=tj-dj;
-
-		start_index[0]=cell_start0[tip+tjp*blockDim.x];
-		start_index[1]=cell_start1[tip+tjp*blockDim.x];
-		start_index[2]=cell_start2[tip+tjp*blockDim.x];
-	
-		for(int dk=-1;dk<2;dk++)
-		{
-			it=di+1;jt=dj+1;kt=dk+1;
-			ip=i-di;jp=j-dj;kp=k-dk;
-			if(start_index[kt]>=0)
-			{ 
-				switch(dk)
-				{
-				  case -1: end_index[0]=cell_end0[tip+tjp*blockDim.x];break;
-				  case  0: end_index[1]=cell_end1[tip+tjp*blockDim.x];break;
-				  case  1: end_index[2]=cell_end2[tip+tjp*blockDim.x];break;
-				  default:break;
-				}
-	 			
-				for (int index=start_index[kt]; index<end_index[kt]; index++)
-        			{
-				//Read of Global memory, how to coalesce it???
-				//int pp=gridParticleIndex[index]; 
-				//Try to avoid bank conflicts here, if we have shared memory
-				//forceCell += Ksi[it+jt*STENCIL+kt*STENCIL2+pp*STENCIL3];//calc index for Ksi takes no timea.
-
-	
-				xp=posX[index];
-				yp=posY[index];
-				zp=posZ[index];
-				//i~k could be beyond domain boundary, calculate the contribution of particle (xp,yp,zp) to grid cell (i,j,k).
-				forceCell +=lpt_integrate_mol_opt(i,j,k,xp,yp,zp,dom,coordiSys)*Weight[index];
-		real test=lpt_integrate_mol_opt(i,j,k,xp,yp,zp,dom,coordiSys);
-		//printf("\nstartEndIndex %d %d %d %f %f\n",start_index[kt],end_index[kt],index,test,Weight[index]);
-		//printf("\nposition %f %f %f %d %d\n",xp,yp,zp,index,start_index[kt]);
-
-				}
-			}
-		}
-}
-
-//The above are cheap, takes 1 ms or so.  The following has significant thread divergence
-		// Any operation inside will be expensive
-//		force+= forceCell;
-//		force+= point_cell_ksi(gridHash,is,js,ks,Ksi,cellStart,cellEnd,gridParticleIndex);
-}
-		 
-    int gridHash=calcGridHash(i,j,k,dom,coordiSys);
-
-    __syncthreads();
-
-    if((j >= js && j < je)
-     && (i >= is && i < ie)
-      && (ti > 0 && ti < (blockDim.x-1))
-      && (tj > 0 && tj < (blockDim.y-1)))
-		{
-		 // examine neighbouring cells
-		 A[gridHash]=forceCell;
-//if(forceCell>EPSILON) printf("\nforceCell %f %f %f %f %d %d %d\n",xp,yp,zp,forceCell,i,j,k,gridHash);
-//	 A[gridHash]=sum_ksi_cell(i,j,k,points,dom,Ksi,cellStart,cellEnd,gridParticleIndex,coordiSys,valType);
-		}
-	}
-}
-
-*/
 
 // calculate grid hash value for each particle
 __global__ void calcHash_optD(int   *gridParticleHash,  // output
@@ -863,99 +807,6 @@ A is fluid property located at cell center or face center depending on coordiSys
 coordiSys=0 coresponds to cell-center; coordiSys=1 x-face-center;coordiSys=2 y-face-center;coordiSys=3 z-face-center
 dir
 */
-__global__ void lpt_point_weight(point_struct *points,
-				 dom_struct *dom,
-				 real *posX,real *posY,real *posZ, 
-				 real *Weight,
-				 int   *gridParticleIndex,
-				 int npoints,int coordiSys, int valType)
-{
-
-int index =  threadIdx.x + blockIdx.x*blockDim.x;
-//int ti =  threadIdx.x ;
-if(index>=npoints) return;
-/*
-__shared__ int grid_particle_index[MAX_THREADS_1D];  
-grid_particle_index[ti]=gridParticleIndex[index];
-__syncthreads();
-int pp=grid_particle_index[ti];
-*/
-
-//Define the STENCIL of the Gausian filter, the slpt_mopread length of Gaussian kernel
-real ksi[3][3][3];
-
-/*
-real  xp =  points[pp].x;
-real  yp =  points[pp].y;
-real  zp =  points[pp].z;
-*/
-
-/*
-__shared__ real pos_x[MAX_THREADS_1D];
-__shared__ real pos_y[MAX_THREADS_1D];
-__shared__ real pos_z[MAX_THREADS_1D];
-__shared__ real weight[MAX_THREADS_1D];
-				
-				xp=pos_x[index];
-				yp=pos_y[index];
-				zp=pos_z[index];
-*/
-//TODO how to read the above 4 arrays from global memory???
- 
-
-//could use shared memory for optimization here!!
-real  xp =  posX[index];
-real  yp =  posY[index];
-real  zp =  posZ[index];
-//printf("\npoint_weigth %f\n",xp);
-__syncthreads();
-
-
-// i,j,k should be the start number of cell centelpt_mor, so that xm(i)<=xp<xm(i+1)
-//xm(i)= (i-0.5f)*dom->dx +dom->xs
-//i=floor((xm - dom->xs) * ddx+ 0.5f);
-//i=floor((xm - dom->xs) * ddx- 0.5f) + DOM_BUF;
-  int ip,jp,kp;//index of particle cell
-  int ic,jc,kc;//index of object cell
-  int is,js,ks;
-/*
-ip =  points[pp].i;
-jp =  points[pp].j;
-kp =  points[pp].k;
-*/
-
-//Calculate ip,jp,kp independently
-calcGridPos_opt(ip,jp,kp,xp,yp,zp,dom,coordiSys);
-
-
-real buf=0;
-int began=-1;
-int end=2;
-
-//printf("\ni~j %d %d %d %f %f %f\n",ip,jp,kp,xp,yp,zp);
-
-//Calculate the filter strength from Gaussian kernel
-for(int dk=began;dk<end;dk++)
-for(int dj=began;dj<end;dj++)
-for(int di=began;di<end;di++)
-{
-is=di-began;js=dj-began;ks=dk-began;
-ic=ip+di;jc=jp+dj;kc=kp+dk;
-//ip~kp could be beyond domain boundary
-ksi[is][js][ks]=lpt_integrate_mol_opt(ic,jc,kc,xp,yp,zp,dom,coordiSys);
-//ksi[is][js][ks]=lpt_integrate_mol_opt(ic,jc,kc,xp,yp,zp,coordiSys,xs,ys,zs,dx,dy,dz);
-buf+=ksi[is][js][ks];
-}
-
-//TODO add mask infomation as in lpt_mollify_sc in lpt_interpolator.f90
-
-//This calculation is cheap, takes about 1 ms 
-int pp=gridParticleIndex[index];
-real Ap=lpt_mol_typeVal(points,dom,pp,coordiSys,valType);
-
-Weight[index]=Ap/buf;
-
-}
 
 //calculate the maximum number of particles in a single grid cell
 __global__ void calcMaxPointsPerCell_optD(dom_struct *dom, int *cellStart, int *cellEnd,int *pointsNum, int coordiSys)
@@ -1053,77 +904,6 @@ int ti =  threadIdx.x;
 }
  
 
-// rearrange particle data into sorted order, and find the start of each cell in the sorted hash array
-// cellStart[hash+1]=cellEnd[hash]; 
-__global__ void findCellStart_val_optD(int   *cellStart,        // output: cell start pp
-                                  int   *cellEnd,          // output: cell end pp
-                                  int   *gridParticleHash, // input: sorted grid hashes
-                                  int   *gridParticleIndex,   // input: sorted particle indices
-				  real *posX,real *posY,real *posZ,
-				  real *posXold,real *posYold,real *posZold,
-                                  real *lptSourceVal,
-                                  real *lptSourceValOld,
-                                  int    npoints)
-{
-__shared__ int sharedHash[MAX_THREADS_1D+1]; // blockSize + 1 elements
-
-int pp =  threadIdx.x + blockIdx.x*blockDim.x;
-int ti =  threadIdx.x;
-
-
-    // handle case when no. of particles not multiple of block size
-	if(pp>=npoints) return;
-
-       int hash = gridParticleHash[pp];
-        // Load hash data into shared memory so that we can look
-        // at neighboring particle's hash value without loading
-        // two hash values per thread
-        sharedHash[ti+1] = hash;
-        if (pp > 0 && ti == 0)
-        {
-            // first thread in block must load neighbor particle hash
-            sharedHash[0] = gridParticleHash[pp-1];
-        }
-
-    __syncthreads();
-
-        // If this particle has a different cell pp to the previous
-        // particle then it must be the first particle in the cell,
-        // so store the pp of this particle in the cell.
-        // As it isn't the first particle, it must also be the cell end of
-        // the previous particle's cell
-
-
-        if (pp == 0 || hash != sharedHash[ti])
-        {
-            cellStart[hash] = pp;
-	// printf("\nstart %d %d\n",hash,pp);
-            if (pp > 0)
-              {
-        cellEnd[sharedHash[ti]] = pp;
-	// printf("\nend %d %d\n",sharedHash[ti],pp);
-		}
-        }
-
-        if (pp == npoints - 1)
-        {
-            cellEnd[hash] = pp + 1;
-	//   printf("\nend %d %d\n",hash,pp+1);
-        }
-   
-         __syncthreads();
-
-	int sortedIndex = gridParticleIndex[pp];
-
-//TODO These three commands takes time,try to use shared memory to optimize it
-        posX[pp] = posXold[sortedIndex];
-        posY[pp] = posYold[sortedIndex];
-        posZ[pp] = posZold[sortedIndex];
-	lptSourceVal[pp]=lptSourceValOld[sortedIndex];
-	//printf("\nsorterdIndex %d %d %f\n",pp,sortedIndex,posX[pp]);
-}
-
-
 
 
 // rearrange particle data into sorted order, and find the start of each cell in the sorted hash array
@@ -1219,20 +999,20 @@ case 1:
   jp = floor((yp - ys) * ddy) + DOM_BUF;	   //for y[i]
   kp = floor((zp - zs) * ddz) + DOM_BUF;	   //for z[i]
 
-if(ip>=Ng) ip -=Ng-DOM_BUF;
+//if(ip>=Ng) ip -=Ng-DOM_BUF;
   break;
 case 2:
   ip = floor((xp - xs) * ddx) + DOM_BUF;//for x[i] 
   jp = floor((yp - ys) * ddy + 0.5f) + DOM_BUF;	   //for ym[i+1]
   kp = floor((zp - zs) * ddz) + DOM_BUF;	   //for z[i]
 
-if(jp>=Ng) jp -=Ng-DOM_BUF;
+//if(jp>=Ng) jp -=Ng-DOM_BUF;
   break;
 case 3:
   ip = floor((xp - xs) * ddx) + DOM_BUF;//for x[i] 
   jp = floor((yp - ys) * ddy) + DOM_BUF;	   //for y[i]
   kp = floor((zp - zs) * ddz+ 0.5f) + DOM_BUF;  //for zm[i+1]
-if(kp>=Ng) kp -=Ng-DOM_BUF;
+//if(kp>=Ng) kp -=Ng-DOM_BUF;
   break;
 default:break;
 }
@@ -1621,6 +1401,8 @@ default: break;}
 */	
 }
 
+//Impose periodic BC, and calculate the grid index from (i,j,k) to i+j*s1b+s2b
+//Include ghost boundary
 __global__
 void calcGridFlowHash_optD(dom_struct *dom,
               int *gridFlowHash,
@@ -1648,6 +1430,9 @@ __syncthreads();
 
 if(i<ie&&i>=is && j<je&&j>=js)
 {
+//Impose periodic BC, and calculate the grid index from (i,j,k) to i+j*s1b+s2b
+//periodic eg: gridFlowHash[isb+j*s1b+k*s2b]=gridFlowHash[ie-2+j*s1b+k*s2b]
+//if (i,j,k) is inside the domain,  then gridFlowHash[i+j*s1b+k*s2b]=i+j*s1b+k*s2b
 gridFlowHash[i+j*s1b+k*s2b]=calcGridHash(i,j,k,dom,coordiSys);
 }
 
@@ -1658,7 +1443,8 @@ gridFlowHash[i+j*s1b+k*s2b]=calcGridHash(i,j,k,dom,coordiSys);
 
 
 
-//calculate the grid index, won't change the ic~kc of the input
+//Impose periodic BC, and calculate the grid index from (i,j,k) to i+j*s1b+s2b
+//calculate the grid index, won't change the ic~kc of the input;
 __device__ int calcGridHash(int ic, int jc,int kc,dom_struct *dom,int coordiSys)
 {
 //int hash1;
@@ -1676,6 +1462,7 @@ int s1b=tex1Dfetch(texRefDomInfo,index);
 int s2b=tex1Dfetch(texRefDomInfo,index+1);
 
 int hash=ic+jc*s1b+kc*s2b;
+return hash;
 
 /*
 clock_t time12 = clock();	 
@@ -1700,7 +1487,6 @@ int dt11=(int) (time12-time11);
 int dt12=(int) (time13-time12);
 printf("\ninner calcGridHash: %d %d %d %d\n",dt10,dt11,dt12,hash-hash1);
 */
-return hash;
 }
 
 
@@ -3093,12 +2879,17 @@ real acc_z=rhs_z/total_m;
 //This is in fact momentum back reaction in particle sub-timestep, it will be accumulated during the sub-step, and then been added to fluid source force.
 //Usually we use this one
 
+points[pp].Fx=rhs_x*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
+points[pp].Fy=rhs_y*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
+points[pp].Fz=rhs_z*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
+/*
 points[pp].Fx=(rhs_x-mp*g.x)*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
 points[pp].Fy=(rhs_y-mp*g.y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
 points[pp].Fz=(rhs_z-mp*g.z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
+*/
 
 
-//TODO periodic BC for particles, may need to change in future
+///TODO periodic BC for particles, may need to change in future
 periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
 //update old values
       points[pp].x0 = points[pp].x;
@@ -3382,7 +3173,10 @@ real volume=1./6. * PI * dia*dia*dia;
 
 //Including soluble part:rhod*volume  and insoluble part: ms
 real ms =  points[pp].ms;
-real mp =  rhod *volume + ms;
+
+//TODO change:Let ms don't influence the momentum for the time being
+//real mp =  rhod *volume + ms;
+real mp =  rhod *volume ;
 //fluid mass in particle volume
 real mf =  rho_f *volume;
 //real gammar=mp/mf;
@@ -3467,7 +3261,7 @@ real msdot= PI*dia*dia*hp*(scg[pp]- rho_sat);
        v1 = ratio*(vp -termVel_y) + termVel_y;
        w1 = ratio*(wp -termVel_z) + termVel_z;
 
-if(pp==0) printf("\ntermVz %f %f %f %f %f %f\n",termVel_z,w1,wp,wf,Rep,ratio);
+//if(pp==0) printf("\ntermVz %f %f %f %f %f %f\n",termVel_z,w1,wp,wf,Rep,ratio);
 
 //if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nrhs %f %f %f\n",rhs_x,total_m,acc_m);
 //if(fabs(points[pp].u)>100||fabs(points[pp].v)>100||fabs(points[pp].w)>100) printf("\nu0~w0 %f %f %f %f\n",rhs_x/total_m,rhs_x/acc_m,points[pp].u0,dt);
@@ -3500,20 +3294,20 @@ real acc_z=rhs_z/total_m;
       points[pp].vdot = (v1-vp)*idt;
       points[pp].wdot = (w1-wp)*idt;
 
-     
-
       points[pp].u = u1;
       points[pp].v = v1;
       points[pp].w = w1;
-
-
-
 
       points[pp].x = x1;
       points[pp].y = y1;
       points[pp].z = z1;
 
+/*
+      points[pp].w = 100;
+      points[pp].z = points[pp].z0+points[pp].w*dt;
+*/
 
+// printf("\npartVel %f %f %f\n",points[pp].z,points[pp].z0,points[pp].w);
 
 /*
 Store the fluid Momentum force on particle including add mass, drag, fluid force and gravity
@@ -3527,18 +3321,30 @@ F=d(mp*u)/dt -mp*g, according to eq 6 from dropDiffusionForceImpleBlue.pdf
 points[pp].Fx=(rhs_x-mp*g.x)*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
 points[pp].Fy=(rhs_y-mp*g.y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
 points[pp].Fz=(rhs_z-mp*g.z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
+
+points[pp].Fx=rhs_x*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
+points[pp].Fy=rhs_y*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
+points[pp].Fz=rhs_z*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
+
 */
 
 points[pp].Fx=(rhs_x-(mp-mf)*g.x)*dt-(C_add*(u1-up)*mf+C_drag*(x1-xp)*mp*itau);
 points[pp].Fy=(rhs_y-(mp-mf)*g.y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
 points[pp].Fz=(rhs_z-(mp-mf)*g.z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
 
-
+/*
+points[pp].ox +=points[pp].Fx;
+points[pp].oy +=points[pp].Fy;
+points[pp].oz +=points[pp].Fz;
 real dx=dom->dx;
 real Vg=dx*dx*dx;
-if(pp==0) printf("\nFz on point %f %f %f %f %f %f\n",add_z,stress_z*volume,drag_z,(mp-mf)*g.z,Fz,rhs_z);
+//if(pp==0) printf("\nFz on point %f %f %f %f %f %f\n",add_z,stress_z*volume,drag_z,(mp-mf)*g.z,Fz,rhs_z);
+//if(pp==0) printf("\nFz on point %f %f %f %f\n",drag_z,(mp-mf)*g.z,Fz,rhs_z);
+if(pp==0) printf("\nFz on point %f %f %f %f\n",drag_z,(mp-mf)*g.z*dt,points[pp].Fz,rhs_z);
 if(pp==0) printf("\nreaction %f %f %f %f %f\n",(rhs_z-mp*g.z)*dt,rhs_z,C_add*(u1-up)*mf,C_drag*(z1-zp)*mp*itau,points[pp].Fz);
 if(pp==0) printf("\nvelPredic %f %f %f\n",points[pp].Fz/Vg,points[pp].Fz,Vg);
+*/
+
 //if(pp==0) printf("\nposition %f %f %f %f %f\n",x1-xp,x1,z1-zp,z1,zp);
 //if(pp==0) printf("\npart vel %f %f %f %f %f %f\n",w1-wp,w1,u1,u1-up,dt,rhs_z);
 

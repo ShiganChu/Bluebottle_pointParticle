@@ -2442,6 +2442,28 @@ __global__ void forcing_add_z_const(real val, real *fz, dom_struct *dom)
 }
 
 
+__global__ void forcing_add_z_gravity_pressure(real val, real *fz, dom_struct *dom)
+{
+  int ti = blockIdx.x * blockDim.x + threadIdx.x;
+  int tj = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if(ti < dom->Gfz._ie && tj < dom->Gfz._je) {
+     fz[ti + tj*dom->Gfz._s1b + dom->Gfz._ks *dom->Gfz._s2b] += val/2.f;
+     fz[ti + tj*dom->Gfz._s1b + (dom->Gfz._ke-1) *dom->Gfz._s2b] += val/2.f;
+/*
+     fz[ti + tj*dom->Gfz._s1b + dom->Gfz._ks *dom->Gfz._s2b] += val;
+     fz[ti + tj*dom->Gfz._s1b + (dom->Gfz._ke-1) *dom->Gfz._s2b] += val;
+*/
+ }
+  for(int k = dom->Gfz._ks+1; k < dom->Gfz._ke-1; k++) {
+    if(ti < dom->Gfz._ie && tj < dom->Gfz._je) {
+      fz[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b] += val;
+    }
+  }
+}
+
+
+
 __global__ void forcing_add_x_field(real scale, real *val, real *fx,
   dom_struct *dom)
 {
@@ -2480,6 +2502,11 @@ __global__ void forcing_add_z_field(real scale, real *val, real *fz,
     if(ti < dom->Gfz._inb && tj < dom->Gfz._jnb) {
       fz[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b]
         += scale * val[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b];
+
+//if(fabs(val[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b])>EPSILON) printf("scale \n%f %f %f %d %d %d\n",val[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b],fz[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b],scale,ti,tj,k);
+
+
+//if(fabs(val[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b])>EPSILON) printf("\nscale %f %d %d %d\n",fz[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b],ti,tj,k);
     }
   }
 }

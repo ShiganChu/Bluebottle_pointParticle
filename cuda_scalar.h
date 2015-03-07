@@ -115,6 +115,26 @@ __global__ void scalar_coeffs_periodic_T(real DIFF, real dt, dom_struct *dom,
 
 
 
+__global__ void BC_scSrc_W_P(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_W_N(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_E_P(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_E_N(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_S_P(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_S_N(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_N_P(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_N_N(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_B_P(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_B_N(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_T_P(int coordiSys, real *scSrc, dom_struct *dom);
+__global__ void BC_scSrc_T_N(int coordiSys, real *scSrc, dom_struct *dom);
+
+
+__global__ void BC_scSrc_W_D(int coordiSys, real *scSrc, dom_struct *dom, real bc);
+__global__ void BC_scSrc_E_D(int coordiSys, real *scSrc, dom_struct *dom, real bc);
+__global__ void BC_scSrc_S_D(int coordiSys, real *scSrc, dom_struct *dom, real bc);
+__global__ void BC_scSrc_N_D(int coordiSys, real *scSrc, dom_struct *dom, real bc);
+__global__ void BC_scSrc_B_D(int coordiSys, real *scSrc, dom_struct *dom, real bc);
+__global__ void BC_scSrc_T_D(int coordiSys, real *scSrc, dom_struct *dom, real bc);
 
 
 

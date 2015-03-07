@@ -28,7 +28,7 @@
 #include "vtk.h"
 
 //using simple pull&push suboutine for flow field
-#define OUT_SIMPLE 1
+#define OUT_SIMPLE -1
 
 #define MAX_THREADS_DIM3 16
 #define MAX_THREADS_BLOCK 1024
@@ -43,6 +43,10 @@
 #define EPSP_CLIP 0.8
 #define EPSP_TYPE 1
 #define SCALAR_TYPE 0
+#define PRESSURE_TYPE 1
+#define VEL_X_TYPE 2
+#define VEL_Y_TYPE 3
+#define VEL_Z_TYPE 4
 
 extern int rec_scalar_stepnum_out;
 extern real rec_scalar_field_dt;
@@ -297,6 +301,7 @@ void cuda_scalar_free(void);
  ******
  */
 
+void cuda_scSrc_BC(int coordiSys,int valType, real *scSrc, int dev);
 
 /****f* bluebottle/cuda_dom_BC()
  * NAME

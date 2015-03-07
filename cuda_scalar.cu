@@ -109,7 +109,7 @@ real DIFF_dt_diffScalar=min(0.5*CFL/(ddx+ddy+ddz),DIFF_dt);
 //real niter=10.f;
 //if( DIFF_dt_diffScalar*niter>DIFF_dt)  DIFF_dt_diffScalar=DIFF_dt/niter;
 
-int iter=0;
+//int iter=0;
 real DIFF_dt_sub;
 while(DIFF_dt_done<DIFF_dt)
 {
@@ -117,11 +117,11 @@ while(DIFF_dt_done<DIFF_dt)
 DIFF_dt_sub=min(DIFF_dt_diffScalar,DIFF_dt-DIFF_dt_done);
 //DIFF_dt_sub=DIFF_dt;
 DIFF_dt_done +=DIFF_dt_sub;
-
+/*
 iter +=1;
 printf("\niter %d %f %f %f %f\n",iter,DIFF_dt,DIFF_dt_done,DIFF_dt_diffScalar,DIFF_dt_sub);
 fflush(stdout);
-
+*/
 BC_sc_W_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
 BC_sc_E_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
 BC_sc_T_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
@@ -1484,6 +1484,323 @@ getLastCudaError("Kernel execution failed.");
 }
 
 
+
+
+extern "C"
+void cuda_scSrc_BC(int coordiSys,int valType, real *scSrc, int dev)
+{
+  // CPU threading for multi-GPU
+    int threads_x = 0;
+    int threads_y = 0;
+    int threads_z = 0;
+    int blocks_x = 0;
+    int blocks_y = 0;
+    int blocks_z = 0;
+
+int   index=coordiSys*48        +5;
+int inb=DomInfo[index];
+int jnb=DomInfo[index+6];
+int knb=DomInfo[index+12];
+
+
+int scSrcW,scSrcE,scSrcS,scSrcN,scSrcT,scSrcB;
+real scSrcWD,scSrcED,scSrcSD,scSrcND,scSrcTD,scSrcBD;
+switch(coordiSys)
+{
+case 0:
+	switch(valType)
+	{
+	case PRESSURE_TYPE:
+	scSrcW=bc.pW;
+	scSrcE=bc.pE;
+	scSrcS=bc.pS;
+	scSrcN=bc.pN;
+	scSrcT=bc.pT;
+	scSrcB=bc.pB;
+	break;
+	case SCALAR_TYPE:
+	scSrcW=sc_bc.scW;
+	scSrcE=sc_bc.scE;
+	scSrcS=sc_bc.scS;
+	scSrcN=sc_bc.scN;
+	scSrcT=sc_bc.scT;
+	scSrcB=sc_bc.scB;
+
+	scSrcWD=sc_bc.scWD;	
+	scSrcED=sc_bc.scED;
+	scSrcTD=sc_bc.scTD;
+	scSrcBD=sc_bc.scBD;
+	scSrcSD=sc_bc.scSD;
+	scSrcND=sc_bc.scND;
+
+	break;
+	default:break;
+	}
+break;
+case 1:
+	scSrcW=bc.uW;
+	scSrcE=bc.uE;
+	scSrcS=bc.uS;
+	scSrcN=bc.uN;
+	scSrcT=bc.uT;
+	scSrcB=bc.uB;
+
+	scSrcWD=bc.uWD;	
+	scSrcED=bc.uED;
+	scSrcTD=bc.uTD;
+	scSrcBD=bc.uBD;
+	scSrcSD=bc.uSD;
+	scSrcND=bc.uND;
+
+	break;
+case 2:
+	scSrcW=bc.vW;
+	scSrcE=bc.vE;
+	scSrcS=bc.vS;
+	scSrcN=bc.vN;
+	scSrcT=bc.vT;
+	scSrcB=bc.vB;
+
+	scSrcWD=bc.vWD;	
+	scSrcED=bc.vED;
+	scSrcTD=bc.vTD;
+	scSrcBD=bc.vBD;
+	scSrcSD=bc.vSD;
+	scSrcND=bc.vND;
+
+	break;
+case 3:
+	scSrcW=bc.wW;
+	scSrcE=bc.wE;
+	scSrcS=bc.wS;
+	scSrcN=bc.wN;
+	scSrcT=bc.wT;
+	scSrcB=bc.wB;
+
+	scSrcWD=bc.wWD;	
+	scSrcED=bc.wED;
+	scSrcTD=bc.wTD;
+	scSrcBD=bc.wBD;
+	scSrcSD=bc.wSD;
+	scSrcND=bc.wND;
+
+	break;
+default: break;
+}
+
+
+
+
+    // check whether each subdomain boundary (E, W, N, S, T, B) is
+    // an external boundary
+    if(dom[dev].W == -1) {
+      // set up kernel call
+      // pressure
+      if(jnb < MAX_THREADS_DIM)
+        threads_y = jnb;
+      else
+        threads_y = MAX_THREADS_DIM;
+
+      if(knb < MAX_THREADS_DIM)
+        threads_z = knb;
+      else
+        threads_z = MAX_THREADS_DIM;
+
+      blocks_y = (int)ceil((real) jnb / (real) threads_y);
+      blocks_z = (int)ceil((real) knb / (real) threads_z);
+
+      dim3 dimBlocks_p(threads_y, threads_z);
+      dim3 numBlocks_p(blocks_y, blocks_z);
+
+      // apply BC to all fields for this face
+      switch(scSrcW) {
+        case PERIODIC:
+          BC_scSrc_W_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_scSrc_W_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+         case DIRICHLET:
+          BC_scSrc_W_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcWD);
+          break;
+  
+    }
+ }
+   if(dom[dev].E == -1) {
+      // set up kernel call
+      // pressure
+      if(jnb < MAX_THREADS_DIM)
+        threads_y = jnb;
+      else
+        threads_y = MAX_THREADS_DIM;
+
+      if(knb < MAX_THREADS_DIM)
+        threads_z = knb;
+      else
+        threads_z = MAX_THREADS_DIM;
+
+      blocks_y = (int)ceil((real) jnb / (real) threads_y);
+      blocks_z = (int)ceil((real) knb / (real) threads_z);
+
+      dim3 dimBlocks_p(threads_y, threads_z);
+      dim3 numBlocks_p(blocks_y, blocks_z);
+
+      // apply BC to all fields for this face
+       switch(scSrcE) {
+        case PERIODIC:
+          BC_scSrc_E_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_scSrc_E_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_scSrc_E_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcED);
+          break;
+
+    }
+
+}
+    if(dom[dev].S == -1) {
+      // set up kernel call
+      // pressure
+      if(knb < MAX_THREADS_DIM)
+        threads_z = knb;
+      else
+        threads_z = MAX_THREADS_DIM;
+
+      if(inb < MAX_THREADS_DIM)
+        threads_x = inb;
+      else
+        threads_x = MAX_THREADS_DIM;
+
+      blocks_z = (int)ceil((real) knb / (real) threads_z);
+      blocks_x = (int)ceil((real) inb / (real) threads_x);
+
+      dim3 dimBlocks_p(threads_z, threads_x);
+      dim3 numBlocks_p(blocks_z, blocks_x);
+
+     
+ // apply BC to all fields for this face
+          switch(scSrcS) {
+        case PERIODIC:
+          BC_scSrc_S_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_scSrc_S_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_scSrc_S_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcSD);
+          break;
+    }
+}
+    if(dom[dev].N == -1) {
+      // set up kernel call
+      // pressure
+      if(knb < MAX_THREADS_DIM)
+        threads_z = knb;
+      else
+        threads_z = MAX_THREADS_DIM;
+
+      if(inb < MAX_THREADS_DIM)
+        threads_x = inb;
+      else
+        threads_x = MAX_THREADS_DIM;
+
+      blocks_z = (int)ceil((real) knb / (real) threads_z);
+      blocks_x = (int)ceil((real) inb / (real) threads_x);
+
+      dim3 dimBlocks_p(threads_z, threads_x);
+      dim3 numBlocks_p(blocks_z, blocks_x);
+
+
+
+      // apply BC to all fields for this face
+      switch(scSrcN) {
+        case PERIODIC:
+          BC_scSrc_N_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_scSrc_N_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_scSrc_N_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcND);
+          break;
+
+    }
+}
+    if(dom[dev].B == -1) {
+      // set up kernel call
+      // pressure
+      if(inb < MAX_THREADS_DIM)
+        threads_x = inb;
+      else
+        threads_x = MAX_THREADS_DIM;
+
+      if(jnb < MAX_THREADS_DIM)
+        threads_y = jnb;
+      else
+        threads_y = MAX_THREADS_DIM;
+
+      blocks_x = (int)ceil((real) inb / (real) threads_x);
+      blocks_y = (int)ceil((real) jnb / (real) threads_y);
+
+      dim3 dimBlocks_p(threads_x, threads_y);
+      dim3 numBlocks_p(blocks_x, blocks_y);
+
+
+
+      // apply BC to all fields for this face
+           switch(scSrcB) {
+        case PERIODIC:
+          BC_scSrc_B_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_scSrc_B_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_scSrc_B_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcBD);
+          break;
+
+    }
+}
+    if(dom[dev].T == -1) {
+      // set up kernel call
+      // pressure
+      if(inb < MAX_THREADS_DIM)
+        threads_x = inb;
+      else
+        threads_x = MAX_THREADS_DIM;
+
+      if(jnb < MAX_THREADS_DIM)
+        threads_y = jnb;
+      else
+        threads_y = MAX_THREADS_DIM;
+
+      blocks_x = (int)ceil((real) inb / (real) threads_x);
+      blocks_y = (int)ceil((real) jnb / (real) threads_y);
+
+      dim3 dimBlocks_p(threads_x, threads_y);
+      dim3 numBlocks_p(blocks_x, blocks_y);
+
+
+      // apply BC to all fields for this face
+            switch(scSrcT) {
+        case PERIODIC:
+          BC_scSrc_T_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_scSrc_T_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_scSrc_T_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcTD);
+          break;
+
+   	 	}
+
+    	}
+getLastCudaError("Kernel execution failed.");
+
+}
 
 extern "C"
 void cuda_scalar_BC(void)

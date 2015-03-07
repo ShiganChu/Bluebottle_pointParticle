@@ -518,8 +518,8 @@ __global__ void scalar_coeffs(real DIFF, real dt, dom_struct *dom, int pitch,
 //TODO the iepsf should be changed to face values correspondingly	
 	epsf=1-epsp[CC];
         iepsf=__fdiv_rd(1.f,epsf);
+/*
         real buf=0.f;
-
       values[C + pitch * 1]  -= (real)abs(flag_w[B]) *0.5f*DIFF*dt*ddz*iepsf;
       values[C + pitch * 3]  -= (real)abs(flag_v[S]) *0.5f*DIFF*dt*ddy*iepsf;
       values[C + pitch * 5]  -= (real)abs(flag_u[W]) *0.5f*DIFF*dt*ddx*iepsf;
@@ -529,6 +529,17 @@ __global__ void scalar_coeffs(real DIFF, real dt, dom_struct *dom, int pitch,
       buf  += (real)(abs(flag_w[B]) + abs(flag_w[T]))*0.5f *DIFF*dt*ddz*iepsf;
       values[C + pitch * 6]  += buf;
 
+      values[C + pitch * 7]  -= (real)abs(flag_u[E]) *0.5f*DIFF*dt*ddx*iepsf;
+      values[C + pitch * 9]  -= (real)abs(flag_v[N]) *0.5f*DIFF*dt*ddy*iepsf;
+      values[C + pitch * 11] -= (real)abs(flag_w[T]) *0.5f*DIFF*dt*ddz*iepsf;
+*/
+      values[C + pitch * 1]  -= (real)abs(flag_w[B]) *0.5f*DIFF*dt*ddz*iepsf;
+      values[C + pitch * 3]  -= (real)abs(flag_v[S]) *0.5f*DIFF*dt*ddy*iepsf;
+      values[C + pitch * 5]  -= (real)abs(flag_u[W]) *0.5f*DIFF*dt*ddx*iepsf;
+      values[C + pitch * 6]  += 1;
+      values[C + pitch * 6]  += (real)(abs(flag_u[W]) + abs(flag_u[E]))*0.5f *DIFF*dt*ddx*iepsf;
+      values[C + pitch * 6]  += (real)(abs(flag_v[S]) + abs(flag_v[N]))*0.5f *DIFF*dt*ddy*iepsf;
+      values[C + pitch * 6]  += (real)(abs(flag_w[B]) + abs(flag_w[T]))*0.5f *DIFF*dt*ddz*iepsf;
       values[C + pitch * 7]  -= (real)abs(flag_u[E]) *0.5f*DIFF*dt*ddx*iepsf;
       values[C + pitch * 9]  -= (real)abs(flag_v[N]) *0.5f*DIFF*dt*ddy*iepsf;
       values[C + pitch * 11] -= (real)abs(flag_w[T]) *0.5f*DIFF*dt*ddz*iepsf;
@@ -1417,6 +1428,382 @@ __global__ void BC_sc_T_D(real *sc, dom_struct *dom, real bc)
   if((ti < dom->Gcc._inb) && (tj < dom->Gcc._jnb))
     sc[ti + tj*s1b + (dom->Gcc._keb-1)*s2b] = 2 * bc - sc[ti + tj*s1b + (dom->Gcc._ke-1)*s2b];
 }
+
+
+
+ 
+
+// u-velocity; west; periodic
+__global__ void BC_scSrc_W_P(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int tj = blockDim.x*blockIdx.x + threadIdx.x;
+  int tk = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((tj < jeb) && (tk < keb)) {
+    scSrc[isb + tj*s1b + tk*s2b] = scSrc[((ieb-1)-2) + tj*s1b + tk*s2b];
+    //scSrc[((ieb-1)-1) + tj*s1b + tk*s2b]=scSrc[(isb+1) + tj*s1b + tk*s2b];
+  }
+}
+
+// u-velocity; west; Dirichlet
+__global__ void BC_scSrc_W_D(int coordiSys, real *scSrc, dom_struct *dom, real bc)
+{
+  int tj = blockDim.x*blockIdx.x + threadIdx.x;
+  int tk = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((tj < jeb) && (tk < keb)) {
+    scSrc[isb + tj*s1b + tk*s2b] = 2 * bc
+      - scSrc[((isb+1)+1) + tj*s1b + tk*s2b];
+    scSrc[(isb+1) + tj*s1b + tk*s2b] = bc;
+  }
+}
+
+// u-velocity; west; Neumann
+__global__ void BC_scSrc_W_N(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int tj = blockDim.x*blockIdx.x + threadIdx.x;
+  int tk = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((tj < jeb) && (tk < keb))
+    scSrc[isb + tj*s1b + tk*s2b] = scSrc[(isb+1) + tj*s1b + tk*s2b];
+}
+
+ 
+// u-velocity; east; periodic
+__global__ void BC_scSrc_E_P(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int tj = blockDim.x*blockIdx.x + threadIdx.x;
+  int tk = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((tj < jeb) && (tk < keb)) {
+    scSrc[(ieb-1) + tj*s1b + tk*s2b] = scSrc[((isb+1)+1) + tj*s1b + tk*s2b];
+    //scSrc[((ieb-1)-1) + tj*s1b + tk*s2b] = scSrc[(isb+1) + tj*s1b + tk*s2b];
+  }
+}
+
+// u-velocity; east; Dirichlet
+__global__ void BC_scSrc_E_D(int coordiSys, real *scSrc, dom_struct *dom, real bc)
+{
+  int tj = blockDim.x*blockIdx.x + threadIdx.x;
+  int tk = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((tj < jeb) && (tk < keb)) {
+    scSrc[(ieb-1) + tj*s1b + tk*s2b] = 2 * bc - scSrc[((ieb-1)-2)
+      + tj*s1b + tk*s2b];
+    scSrc[((ieb-1)-1) + tj*s1b + tk*s2b] = bc;
+  }
+}
+
+// u-velocity; east; Neumann
+__global__ void BC_scSrc_E_N(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int tj = blockDim.x*blockIdx.x + threadIdx.x;
+  int tk = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((tj < jeb) && (tk < keb))
+    scSrc[(ieb-1) + tj*s1b + tk*s2b] = scSrc[((ieb-1)-1)
+      + tj*s1b + tk*s2b];
+}
+
+ 
+
+// u-velocity; south; periodic
+__global__ void BC_scSrc_S_P(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int tk = blockDim.x*blockIdx.x + threadIdx.x;
+  int ti = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tk < keb)) {
+    scSrc[ti + jsb*s1b + tk*s2b] = scSrc[ti + ((jeb-1)-1)*s1b + tk*s2b];
+  }
+}
+
+// u-velocity; south; Dirichlet
+__global__ void BC_scSrc_S_D(int coordiSys, real *scSrc, dom_struct *dom, real bc)
+{
+  int tk = blockDim.x*blockIdx.x + threadIdx.x;
+  int ti = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tk < keb))
+    scSrc[ti + jsb*s1b + tk*s2b] = 2 * bc
+      - scSrc[ti + (jsb+1)*s1b + tk*s2b];
+}
+
+// u-velocity; south; Neumann
+__global__ void BC_scSrc_S_N(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int tk = blockDim.x*blockIdx.x + threadIdx.x;
+  int ti = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tk < keb))
+    scSrc[ti + jsb*s1b + tk*s2b] = scSrc[ti + (jsb+1)*s1b + tk*s2b];
+}
+
+ 
+// u-velocity; north; periodic
+__global__ void BC_scSrc_N_P(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int tk = blockDim.x*blockIdx.x + threadIdx.x;
+  int ti = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tk < keb))
+    scSrc[ti + (jeb-1)*s1b + tk*s2b] = scSrc[ti
+      + (jsb+1)*s1b + tk*s2b];
+}
+
+// u-velocity; north; Dirichlet
+__global__ void BC_scSrc_N_D(int coordiSys, real *scSrc, dom_struct *dom, real bc)
+{
+  int tk = blockDim.x*blockIdx.x + threadIdx.x;
+  int ti = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tk < keb))
+    scSrc[ti + (jeb-1)*s1b + tk*s2b] = 2 * bc - scSrc[ti
+      + ((jeb-1)-1)*s1b + tk*s2b];
+}
+
+// u-velocity; north; Neumann
+__global__ void BC_scSrc_N_N(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int tk = blockDim.x*blockIdx.x + threadIdx.x;
+  int ti = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tk < keb))
+    scSrc[ti + (jeb-1)*s1b + tk*s2b] = scSrc[ti
+      + ((jeb-1)-1)*s1b + tk*s2b];
+}
+
+ 
+// u-velocity; bottom; periodic
+__global__ void BC_scSrc_B_P(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int ti = blockDim.x*blockIdx.x + threadIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tj < jeb))
+    scSrc[ti + tj*s1b + ksb*s2b] = scSrc[ti + tj*s1b + ((keb-1)-1)*s2b];
+}
+
+// u-velocity; bottom; Dirichlet
+__global__ void BC_scSrc_B_D(int coordiSys, real *scSrc, dom_struct *dom, real bc)
+{
+  int ti = blockDim.x*blockIdx.x + threadIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tj < jeb))
+    scSrc[ti + tj*s1b + ksb*s2b] = 2 * bc    - scSrc[ti + tj*s1b + (ksb+1)*s2b];
+}
+
+// u-velocity; bottom; Neumann
+__global__ void BC_scSrc_B_N(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int ti = blockDim.x*blockIdx.x + threadIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tj < jeb))
+    scSrc[ti + tj*s1b + ksb*s2b] = scSrc[ti + tj*s1b + (ksb+1)*s2b];
+}
+
+ // u-velocity; top; periodic
+__global__ void BC_scSrc_T_P(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int ti = blockDim.x*blockIdx.x + threadIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tj < jeb))
+    scSrc[ti + tj*s1b + (keb-1)*s2b] = scSrc[ti
+      + tj*s1b + (ksb+1)*s2b];
+}
+
+// u-velocity; top; Dirichlet
+__global__ void BC_scSrc_T_D(int coordiSys, real *scSrc, dom_struct *dom, real bc)
+{
+  int ti = blockDim.x*blockIdx.x + threadIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tj < jeb))
+    scSrc[ti + tj*s1b + (keb-1)*s2b] = 2 * bc - scSrc[ti + tj*s1b +
+      ((keb-1)-1)*s2b];
+}
+
+// u-velocity; top; Neumann
+__global__ void BC_scSrc_T_N(int coordiSys, real *scSrc, dom_struct *dom)
+{
+  int ti = blockDim.x*blockIdx.x + threadIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y;
+
+int   index=coordiSys*48        +21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+//get domain start and end index
+int incGhost=1;
+int isb,jsb,ksb,ieb,jeb,keb;
+dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
+
+  if((ti <ieb) && (tj < jeb))
+    scSrc[ti + tj*s1b + (keb-1)*s2b] = scSrc[ti + tj*s1b + ((keb-1)-1)*s2b];
+}
+
+
+
+
+
+
+
 
 //QUICK scheme, this one only deal with periodic BC, Doesn't use Adam-Bashforth for the time being
 __global__ void advance_sc_QUICK(real DIFF, 

@@ -9,6 +9,30 @@
 #include "scalar.h"
 #include "entrySearch.h"
 
+extern "C"
+real cuda_sum_points_Fz(void)
+{
+  // results from all devices
+//  real *pdt;
+ if(npoints<=0) return 0;
+  real *Fz; 
+
+  checkCudaErrors(cudaMalloc((void**) &(Fz),sizeof(real) * npoints));
+
+  dim3 dimBlocks_p,numBlocks_p;
+  block_thread_point(dimBlocks_p,numBlocks_p,npoints);
+
+  points_Fz<<<numBlocks_p,dimBlocks_p>>>(_points[0],Fz,npoints);
+    
+  real sumFz;
+  sumFz = sum_entries(npoints, Fz); 
+
+    
+  cudaFree(Fz);
+ 
+  return sumFz;
+}
+
 
 //Find the maximum diameter of particles, return the 3*max_dp for poly-disperse particles. Return max_dp for mono-disperse particles.
 extern "C"
@@ -513,8 +537,9 @@ if(npoints<=0) return;
 //At the very first step, we add nothing, since particle has no drag on fluid at all
 if(dt0 > 0.)
 	{
-
 //printf("\nforcing test %f %f\n",dt,dt0);
+//TODO figure out why using dt0 rather than dt, besides why there is pike???
+//real idt=1/dt0;
 real idt=1/dt;
 //The coefficient here should be inverse of the present time step rather than last time step
     forcing_add_x_field<<<numBlocks_x, dimBlocks_x>>>(idt, _lpt_mom_source_x[dev],
@@ -523,7 +548,24 @@ real idt=1/dt;
       _f_y[dev], _dom[dev]);
     forcing_add_z_field<<<numBlocks_z, dimBlocks_z>>>(idt, _lpt_mom_source_z[dev],
       _f_z[dev], _dom[dev]);
+
+/*
+boundary_face_value_homo_end<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],_lpt_mom_source_z[dev],3);
+real mom=sum_entries(Dom.Gfz.s3b,_lpt_mom_source_z[dev]);
+//printf("\nlpt_mom_test %f %f %f %f\n",mom,dt0,dt,mom/dt0);
+real Vcell=powf(Dom.dx,3);
+printf("\nlpt_mom_test %f %f\n",mom*Vcell,mom/dt0);
+fflush(stdout);
+
+ checkCudaErrors(cudaMemcpy(_lpt_mom_source_z[dev],_f_z[dev], sizeof(real) * Dom.Gfz.s3b,cudaMemcpyDeviceToDevice));
+boundary_face_value_homo_end<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],_lpt_mom_source_z[dev],3);
+real fz=sum_entries(Dom.Gfz.s3b,_lpt_mom_source_z[dev]);
+printf("\nfzTotal %f\n",fz*Vcell);
+fflush(stdout);
+*/
 	}
+
+
 
      forcing_reset_x<<<numBlocks_x, dimBlocks_x>>>(_lpt_mom_source_x[dev], _dom[dev]);
      forcing_reset_y<<<numBlocks_y, dimBlocks_y>>>(_lpt_mom_source_y[dev], _dom[dev]);
@@ -547,16 +589,16 @@ if(npoints<=0) return;
 int valType=0;
 
 //Mollify particle back reaction momentum source
+/*
 lpt_mollify_delta_scH(1,valType,dev,_lpt_mom_source_x[dev]);
 lpt_mollify_delta_scH(2,valType,dev,_lpt_mom_source_y[dev]);
 lpt_mollify_delta_scH(3,valType,dev,_lpt_mom_source_z[dev]);
+*/
 
-/*
 //Using Gaussian Kernel
 lpt_mollify_sc_optH(1,valType,dev,_lpt_mom_source_x[dev]);
 lpt_mollify_sc_optH(2,valType,dev,_lpt_mom_source_y[dev]);
 lpt_mollify_sc_optH(3,valType,dev,_lpt_mom_source_z[dev]);
-*/
 
 
      }
@@ -616,6 +658,10 @@ case 2:lenCell=dom[dev].Gfy.s3b;break;
 case 3:lenCell=dom[dev].Gfz.s3b;break;
 default: break;
 }
+
+    real *scSrc_buf;
+    checkCudaErrors(cudaMalloc((void**) &(scSrc_buf),sizeof(real) * lenCell));
+    scSrc_value_init<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc_buf,0.f,coordiSys);
 
 //block_thread_point(dimBlocks_print,numBlocks_print,lenCell);
 
@@ -683,10 +729,21 @@ cudaEventRecord(start);
 
 
 //Note the numBlocks_w doesn't contain overLap for the shared memory. This should vary from kernel to kernel
-lpt_mollify_delta_scD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,lptSourceVal[dev],cellStart[dev],cellEnd[dev],npoints,coordiSys);
+lpt_mollify_delta_scD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc_buf,lptSourceVal[dev],cellStart[dev],cellEnd[dev],npoints,coordiSys);
+
+if(coordiSys>0)
+{
+boundary_face_value_periodic_start<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc_buf,coordiSys);
+boundary_face_value_periodic_end<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc_buf,coordiSys);
+}
+
+cuda_scSrc_BC(coordiSys,SCALAR_TYPE,scSrc_buf,dev);
+
+scSrc_value_add<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,scSrc_buf,coordiSys);
 
 getLastCudaError("Kernel execution failed.");
 
+    checkCudaErrors(cudaFree(scSrc_buf));
 /*
 fflush(stdout);
 cudaEventRecord(stop);
@@ -732,6 +789,10 @@ case 3:lenCell=dom[dev].Gfz.s3b;break;
 default: break;
 }
 
+    real *scSrc_buf;
+    checkCudaErrors(cudaMalloc((void**) &(scSrc_buf),sizeof(real) * lenCell));
+    scSrc_value_init<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc_buf,0.f,coordiSys);
+
 //block_thread_point(dimBlocks_print,numBlocks_print,lenCell);
 getLastCudaError("Kernel execution failed.");
 
@@ -743,11 +804,12 @@ checkCudaErrors(cudaMemset(cellEnd[dev],-1,lenCell*sizeof(int)));
 checkCudaErrors(cudaMemset(pointNumInCell[dev],-1,lenCell*sizeof(int)));
 checkCudaErrors(cudaMemset(gridFlowHash[dev],-1,lenCell*sizeof(int)));
 
+/*
 cudaEvent_t start, stop;
 cudaEventCreate(&start);
 cudaEventCreate(&stop);
 float milliseconds = 0;
-
+*/
 getLastCudaError("Kernel execution failed.");
 
 
@@ -756,23 +818,9 @@ getLastCudaError("Kernel execution failed.");
 //printf("\ndimBlocks_3d %d %d %d\n",dimBlocks_3d.x,dimBlocks_3d.y,dimBlocks_3d.z);
 
 //array_init<<<numBlocks_st, dimBlocks_p>>>(Ksi[dev],_dom[dev],npoints*STENCIL3, 0.);
-/*
-array_init<<<numBlocks_p, dimBlocks_p>>>(posX[dev],_dom[dev],npoints, -10.f);
-array_init<<<numBlocks_p, dimBlocks_p>>>(posY[dev],_dom[dev],npoints, -10.f);
-array_init<<<numBlocks_p, dimBlocks_p>>>(posZ[dev],_dom[dev],npoints, -10.f);
-array_init<<<numBlocks_p, dimBlocks_p>>>(posXold[dev],_dom[dev],npoints, -10.f);
-array_init<<<numBlocks_p, dimBlocks_p>>>(posYold[dev],_dom[dev],npoints, -10.f);
-array_init<<<numBlocks_p, dimBlocks_p>>>(posZold[dev],_dom[dev],npoints, -10.f);
-array_init<<<numBlocks_p, dimBlocks_p>>>(Weight[dev],_dom[dev],npoints, 0.f);
-*/
 
 lpt_point_position<<<numBlocks_p,dimBlocks_p>>>(_points[dev],posXold[dev],posYold[dev],posZold[dev],npoints);
 
-/*
-lpt_delta_point_position<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],
-posXold[dev],posYold[dev],posZold[dev],
-lptSourceValOld[dev],npoints,coordiSys,valType);
-*/
 calcHash_optD<<<numBlocks_p,dimBlocks_p>>>(gridParticleHash[dev],
 					gridParticleIndex[dev],
 					_dom[dev],
@@ -793,17 +841,6 @@ findCellStart_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 						posXold[dev],posYold[dev],posZold[dev],
 						npoints);
 
-/*
-findCellStart_val_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
-                                                cellEnd[dev],
-                                                gridParticleHash[dev],
-                                                gridParticleIndex[dev],
-                                                posX[dev],posY[dev],posZ[dev],
-                                                posXold[dev],posYold[dev],posZold[dev],
-                                                lptSourceVal[dev], 
-						lptSourceValOld[dev],
-                                                npoints);
-*/
 
 /*
 cudaEventRecord(stop);
@@ -815,8 +852,7 @@ milliseconds = 0;
 cudaEventRecord(start);
 */
 
-//particle volume fraction 1 or other cell-centerred parameter 0
-//lpt_point_weight<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],posX[dev],posY[dev],posZ[dev],Weight[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
+//valType=1 for particle volume fraction; valType =0 for other cell-centerred parameter 
 
 lpt_point_ksi_opt<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],posX[dev],posY[dev],posZ[dev],Ksi[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 fflush(stdout);
@@ -831,50 +867,46 @@ printf("\ntime_weight %f\n",milliseconds);
 fflush(stdout);
 */
 
+/*
 milliseconds = 0;
 cudaEventRecord(start);
+*/
 
+//Store the grid hash index
 calcGridFlowHash_optD<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],gridFlowHash[dev],coordiSys);
 
+/*
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
 printf("\ntime_FlowHash %f\n",milliseconds);
 fflush(stdout);
+*/
 
+/*
 milliseconds = 0;
 cudaEventRecord(start);
+*/
 
+//Find the maximum number of particles inside grid cell
 calcMaxPointsPerCell_optD<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],cellStart[dev],cellEnd[dev],pointNumInCell[dev],coordiSys);
-
 int maxPointsPerCell=find_max_int(lenCell,pointNumInCell[dev]);
 
+/*
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
 printf("\ntime_maxPointsPerCell %f\n",milliseconds);
 fflush(stdout);
-/*
-lpt_mollify_sc_optD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,
-posX[dev],posY[dev],posZ[dev],
-Weight[dev],
-cellStart[dev],cellEnd[dev],gridFlowHash[dev],
-gridParticleIndex[dev],npoints,coordiSys,valType);
 */
 
 /*
-
-lpt_mollify_sc_ksi_optD<<<numBlocks_3d,dimBlocks_3d>>>(_dom[dev],scSrc,
-posX[dev],posY[dev],posZ[dev],
-Ksi[dev],cellStart[dev],cellEnd[dev],gridFlowHash[dev],
-gridParticleIndex[dev],npoints,coordiSys,valType);
-
-*/
-
 milliseconds = 0;
 cudaEventRecord(start);
-//Some problems in this kernel
-lpt_mollify_sc_ksi_optD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,
+*/
+
+//Gaussian mollfication
+lpt_mollify_sc_ksi_optD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc_buf,
 posX[dev],posY[dev],posZ[dev],
 Ksi[dev],cellStart[dev],cellEnd[dev],gridFlowHash[dev],
 gridParticleIndex[dev],npoints,maxPointsPerCell,
@@ -882,31 +914,48 @@ coordiSys,valType);
 
 getLastCudaError("Kernel execution failed.");
 
+/*
 fflush(stdout);
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
 printf("\ntime_mollify %f\n",milliseconds);
 fflush(stdout);
+*/
 
 //print_kernel_array_int<<<numBlocks_print,dimBlocks_print>>>(cellEnd[dev],lenCell);
 
+if(coordiSys>0)
+{
+boundary_face_value_periodic_start<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc_buf,coordiSys);
+boundary_face_value_periodic_end<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc_buf,coordiSys);
+}
+cuda_scSrc_BC(coordiSys,SCALAR_TYPE, scSrc_buf,dev);
+
+//Difuse the buf value based on Cappeccelo&Desjadins(2012)
+//cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc_buf);
+
+
+//Add the buf value to the source
+scSrc_value_add<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc,scSrc_buf,coordiSys);
+
+/*
 milliseconds = 0;
 cudaEventRecord(start);
+*/
 
 //Diffuse the scalar after gaussian mollification
 //Explicit solver Takes 4 times longer than one time implicit solver
 //cuda_diffScalar_helmholtz_CN(coordiSys,dev,scSrc);
 
-cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc);
-
+/*
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
 cudaEventElapsedTime(&milliseconds, start, stop);
 //printf("\ntime_impDiff %f\n",milliseconds);
 printf("\ntime_expDiff %f\n",milliseconds);
 fflush(stdout);
-
+*/
 
 }
 

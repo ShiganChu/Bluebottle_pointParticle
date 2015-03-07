@@ -103,6 +103,8 @@ void lpt_point_twoway_momentum();
 //calculate fluid stress du/dt to impose on particles
 void cuda_flow_stress(void);
 
+real cuda_sum_points_Fz(void);
+
 real cuda_find_dt_points(real dt);
 
 void cuda_find_DIFF_dt_points(void);

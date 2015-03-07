@@ -690,7 +690,6 @@ while(dt_done<dt)
 	    dt_sc=dt_point;
             // compare this timestep size to that in the precursor and
             // and synchronize the result
-            //expd_compare_dt(np, status);
 
 
 // write a restart file and exit when the time is appropriate

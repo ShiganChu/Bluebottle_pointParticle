@@ -203,6 +203,7 @@ __global__ void coeffs(dom_struct *dom, int *flag_u, int *flag_v, int *flag_w,
   int tj = blockIdx.x * blockDim.x + threadIdx.x + DOM_BUF;
   int tk = blockIdx.y * blockDim.y + threadIdx.y + DOM_BUF;
 
+ // real buf;
   // loop over slices to set values
   if(tj < dom->Gcc.jn + DOM_BUF && tk < dom->Gcc.kn + DOM_BUF) {
     for(i = dom->Gcc.is; i < dom->Gcc.ie; i++) {
@@ -214,17 +215,38 @@ __global__ void coeffs(dom_struct *dom, int *flag_u, int *flag_v, int *flag_w,
       T = i + tj*dom->Gfz.s1b + (tk+1)*dom->Gfz.s2b;
       C = (i-DOM_BUF) + (tj-DOM_BUF)*dom->Gcc.s1 + (tk-DOM_BUF)*dom->Gcc.s2;
 
-      real buf=0.f;
+/*
+TODO figure out why this subroutine have problem
+buf=0.f;
       values[C + pitch * 1]  += (real)abs(flag_w[B]) * ddz;
       values[C + pitch * 3]  += (real)abs(flag_v[S]) * ddy;
       values[C + pitch * 5]  += (real)abs(flag_u[W]) * ddx;
-      buf  -= (real)(abs(flag_u[W]) + abs(flag_u[E])) * ddx;
-      buf  -= (real)(abs(flag_v[S]) + abs(flag_v[N])) * ddy;
-      buf  -= (real)(abs(flag_w[B]) + abs(flag_w[T])) * ddz;
+      buf  =- (real)(abs(flag_u[W]) + abs(flag_u[E])) * ddx-(real)(abs(flag_v[S]) + abs(flag_v[N])) * ddy-(real)(abs(flag_w[B]) + abs(flag_w[T])) * ddz;
+//      buf  =- (real)(abs(flag_v[S]) + abs(flag_v[N])) * ddy;
+//      buf  =- (real)(abs(flag_w[B]) + abs(flag_w[T])) * ddz;
+if(fabs(buf+ddx*6)>EPSILON)
+ { printf("\nbuf %d %d %d %f %f\n",i,tj,tk,buf,ddx*6);
+  printf("\nflag %d %d %d %d %d %d\n",flag_w[B],flag_w[T],flag_u[W],flag_u[E],flag_v[N],flag_v[S]);}
       values[C + pitch * 6]  -= buf;
+if(fabs(buf+ddx*6)>EPSILON)
+ { printf("\nbuf %d %d %d %f %f\n",i,tj,tk,buf,ddx*6);
+  printf("\nflag %d %d %d %d %d %d\n",flag_w[B],flag_w[T],flag_u[W],flag_u[E],flag_v[N],flag_v[S]);}
+//      values[C + pitch * 6]  -= 622.2;
       values[C + pitch * 7]  += (real)abs(flag_u[E]) * ddx;
       values[C + pitch * 9]  += (real)abs(flag_v[N]) * ddy;
       values[C + pitch * 11] += (real)abs(flag_w[T]) * ddz;
+*/
+
+      values[C + pitch * 1]  += (real)abs(flag_w[B]) * ddz;
+      values[C + pitch * 3]  += (real)abs(flag_v[S]) * ddy;
+      values[C + pitch * 5]  += (real)abs(flag_u[W]) * ddx;
+      values[C+pitch*6]  -= (real)(abs(flag_u[W]) + abs(flag_u[E])) * ddx;
+      values[C+pitch*6]  -= (real)(abs(flag_v[S]) + abs(flag_v[N])) * ddy;
+      values[C+pitch*6]  -= (real)(abs(flag_w[B]) + abs(flag_w[T])) * ddz;
+      values[C + pitch * 7]  += (real)abs(flag_u[E]) * ddx;
+      values[C + pitch * 9]  += (real)abs(flag_v[N]) * ddy;
+      values[C + pitch * 11] += (real)abs(flag_w[T]) * ddz;
+
     }
   }
 }

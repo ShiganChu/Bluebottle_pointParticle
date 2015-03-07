@@ -951,7 +951,8 @@ void cuda_dom_pull(void)
     real *fxx = (real*) malloc(dom[dev].Gfx.s3b * sizeof(real));
     real *fyy = (real*) malloc(dom[dev].Gfy.s3b * sizeof(real));
     real *fzz = (real*) malloc(dom[dev].Gfz.s3b * sizeof(real));
-int copyExtra=-1;
+
+int copyExtra=1;
 if(copyExtra>0)
 {
 
@@ -3508,8 +3509,9 @@ else
     else g.z = ttime*g.za;
 
    //Adverse gradient to balance particle drag duo to buoyancy.   TODO: make this into a kernel function
-    if(lpt_twoway > 0) {
+    if(lpt_twoway>0&dt0>0) {
       cuda_point_pull();
+/*
       real volp = 0;
       real massp = 0;
 
@@ -3518,22 +3520,39 @@ else
       real force_buoy=0;
 //      real acc_buoy=0;
       real volp_buf=0;
+      real Fz=0.f;
       for(int i = 0; i < npoints; i++) {
         volp_buf = points[i].r*points[i].r*points[i].r;
         volp += volp_buf;
         massp += points[i].rho*volp_buf;
-        massp += points[i].ms;
+//        massp += points[i].ms;
 	massf += rho_f*volp_buf;
+	Fz +=points[i].Fz;
       }
-      volp *= 4./3.*PI;
+    //  volp *= 4./3.*PI;
       massp *= 4./3.*PI;
       massf *= 4./3.*PI;
       force_buoy=(massp-massf)*g.z;
-
       real domVol=Dom.xl * Dom.yl * Dom.zl;
+
 //      real volfrac = volp / domVol;
 //      real rho_avg = massp/volp*volfrac + rho_f*(1.-volfrac);
-      gradP.z = force_buoy/domVol;
+ 
+//real     gradP_g = force_buoy/domVol;
+//         gradP_g=-gradP_g*dt0/dt;
+*/
+      real domVol=Dom.xl * Dom.yl * Dom.zl;
+      real Fz=cuda_sum_points_Fz();
+      real gradP_g = Fz/dt/domVol;
+
+
+//printf("\ngradP_g %f %f %f %f\n",force_buoy*dt,gradP_g,force_buoy,dt0/dt);
+//fflush(stdout);
+
+//TODO deal with boundary conditions!!
+ //   forcing_add_z_gravity_pressure<<<numBlocks_z, dimBlocks_z>>>(gradP_g / rho_f, _f_z[dev], _dom[dev]);
+
+    forcing_add_z_const<<<numBlocks_z, dimBlocks_z>>>(gradP_g / rho_f, _f_z[dev], _dom[dev]);
     }
 
 

@@ -1764,6 +1764,10 @@ __global__ void forcing_add_z_const(real val, real *fz, dom_struct *dom);
  ******
  */
 
+__global__ void forcing_add_z_gravity_pressure(real val, real *fz, dom_struct *dom);
+
+
+
 /****f* cuda_bluebottle_kernel/forcing_add_x_field<<<>>>()
  * NAME
  *  forcing_add_x_field<<<>>>()

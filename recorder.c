@@ -455,10 +455,6 @@ void cgns_flow_field(real dtout)
 
   real *uout = malloc(Dom.Gcc.s3 * sizeof(real));
 
-  real *fxout = malloc(Dom.Gcc.s3 * sizeof(real));
-  real *fyout = malloc(Dom.Gcc.s3 * sizeof(real));
-  real *fzout = malloc(Dom.Gcc.s3 * sizeof(real));
-
   // cpumem += Dom.Gcc.s3 * sizeof(real);
   for(int k = Dom.Gfx.ks; k < Dom.Gfx.ke; k++) {
     for(int j = Dom.Gfx.js; j < Dom.Gfx.je; j++) {
@@ -518,10 +514,20 @@ void cgns_flow_field(real dtout)
   cg_field_write(fn, bn, zn, sn, Integer, "Phase", phaseout, &fnpress);
 */
 
+  real *fxout = malloc(Dom.Gcc.s3 * sizeof(real));
+  real *fyout = malloc(Dom.Gcc.s3 * sizeof(real));
+  real *fzout = malloc(Dom.Gcc.s3 * sizeof(real));
+
+  real *fx_x = malloc(Dom.Gfx.s3 * sizeof(real));
+  real *fy_y = malloc(Dom.Gfy.s3 * sizeof(real));
+  real *fz_z = malloc(Dom.Gfz.s3 * sizeof(real));
+
+  real *u_x = malloc(Dom.Gfx.s3 * sizeof(real));
+  real *v_y = malloc(Dom.Gfy.s3 * sizeof(real));
+  real *w_z = malloc(Dom.Gfz.s3 * sizeof(real));
 
 
-int copyExtra=-1;
-if(copyExtra>0)
+if(OUT_SIMPLE<=0)
 {
 // cpumem += Dom.Gcc.s3 * sizeof(real);
   for(int k = Dom.Gfx.ks; k < Dom.Gfx.ke; k++) {
@@ -556,13 +562,78 @@ if(copyExtra>0)
         int CC0 = i + j*Dom.Gfz.s1b + k*Dom.Gfz.s2b;
         int CC1 = i + j*Dom.Gfz.s1b + (k+1)*Dom.Gfz.s2b;
          fzout[C] = 0.5*(f_z[CC1] + f_z[CC0]);
+/*
+if(fabs(f_z[CC1])>EPSILON||fabs(f_z[CC0])>EPSILON) 
+{printf("\nwrite %f %f %f\n",fzout[C],f_z[CC1],f_z[CC0]);
+fflush(stdout);}
+*/
       }
     }
   }
 
+ real tag_fz=0.f;
+
+ real tag_w=0.f;
+
+
+//Write in different coordinate system
+ for(int k = Dom.Gfx.ks; k < Dom.Gfx.ke; k++) {
+    for(int j = Dom.Gfx.js; j < Dom.Gfx.je; j++) {
+      for(int i = Dom.Gfx.is; i < Dom.Gfx.ie; i++) {
+        int C = (i-DOM_BUF) + (j-DOM_BUF)*Dom.Gcc.s1 + (k-DOM_BUF)*Dom.Gcc.s2;
+        int CC = i + j*Dom.Gfx.s1b + k*Dom.Gfx.s2b;
+        fx_x[C] = f_x[CC];
+        u_x[C] = u[CC];
+      }
+    }
+  }
+ 
+   // cpumem += Dom.Gcc.s3 * sizeof(real);
+  for(int k = Dom.Gfy.ks; k < Dom.Gfy.ke; k++) {
+    for(int j = Dom.Gfy.js; j < Dom.Gfy.je; j++) {
+      for(int i = Dom.Gfy.is; i < Dom.Gfy.ie; i++) {
+        int C = (i-DOM_BUF) + (j-DOM_BUF)*Dom.Gcc.s1 + (k-DOM_BUF)*Dom.Gcc.s2;
+        int CC = i + j*Dom.Gfy.s1b + k*Dom.Gfy.s2b;
+        fy_y[C] = f_y[CC];
+        v_y[C] = v[CC];
+      }
+    }
+  }
+  
+   // cpumem += Dom.Gcc.s3 * sizeof(real);
+  for(int k = Dom.Gfz.ks; k < Dom.Gfz.ke; k++) {
+    for(int j = Dom.Gfz.js; j < Dom.Gfz.je; j++) {
+      for(int i = Dom.Gfz.is; i < Dom.Gfz.ie; i++) {
+        int C = (i-DOM_BUF) + (j-DOM_BUF)*Dom.Gcc.s1 + (k-DOM_BUF)*Dom.Gcc.s2;
+        int CC = i + j*Dom.Gfz.s1b + k*Dom.Gfz.s2b;
+        fz_z[C] = f_z[CC];
+        w_z[C] = w[CC];
+tag_fz +=f_z[CC];
+tag_w +=w[CC];
+/*
+int Ct=10 + j*Dom.Gfz.s1b + k*Dom.Gfz.s2b;
+if(fabs(f_z[CC])>fabs(f_z[Ct])+EPSILON) printf("\nForce and velocity: %f %f %f %f %d %d %d \n",f_z[CC]-f_z[Ct],w[CC],f_z[Ct],w[Ct],i,j,k);
+fflush(stdout);
+*/
+      }
+    }
+  }
+/*
+real Vcell=powf(Dom.dx,3);
+printf("\nSum of force and velocity: %f %f %f\n",tag_fz*Vcell,tag_w*Vcell,Vcell);
+fflush(stdout);
+*/
  cg_field_write(fn, bn, zn, sn, RealDouble, "f_x", fxout, &fnw);
  cg_field_write(fn, bn, zn, sn, RealDouble, "f_y", fyout, &fnw);
  cg_field_write(fn, bn, zn, sn, RealDouble, "f_z", fzout, &fnw);
+
+ cg_field_write(fn, bn, zn, sn, RealDouble, "fx_x", fx_x, &fnw);
+ cg_field_write(fn, bn, zn, sn, RealDouble, "fy_y", fy_y, &fnw);
+ cg_field_write(fn, bn, zn, sn, RealDouble, "fz_z", fz_z, &fnw);
+
+ cg_field_write(fn, bn, zn, sn, RealDouble, "u_x", u_x, &fnw);
+ cg_field_write(fn, bn, zn, sn, RealDouble, "v_y", v_y, &fnw);
+ cg_field_write(fn, bn, zn, sn, RealDouble, "w_z", w_z, &fnw);
 
 }
 
@@ -583,6 +654,14 @@ if(copyExtra>0)
   free(fyout);
   free(fzout);
 //  free(phaseout);
+
+  free(fx_x);
+  free(fy_y);
+  free(fz_z);
+  	
+  free(u_x);
+  free(v_y);
+  free(w_z);
 
 }
 
