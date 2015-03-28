@@ -1,5 +1,101 @@
 #include "cuda_bluebottle.h"
 
+// pressure; west; Dirichlet
+__global__ void BC_p_W_D(real *w, dom_struct *dom, real bc)
+{
+  int tj = blockDim.x*blockIdx.x + threadIdx.x;
+  int tk = blockDim.y*blockIdx.y + threadIdx.y;
+
+  int s1b = dom->Gcc._s1b;
+  int s2b = dom->Gcc._s2b;
+
+  if((tj < dom->Gcc._jnb) && (tk < dom->Gcc._knb))
+    w[dom->Gcc._isb + tj*s1b + tk*s2b] = 8./3. * bc
+      - 2. * w[dom->Gcc._is + tj*s1b + tk*s2b]
+      + 1./3. * w[(dom->Gcc._is+1) + tj*s1b + tk*s2b];
+}
+
+
+// pressure; east; Dirichlet
+__global__ void BC_p_E_D(real *w, dom_struct *dom, real bc)
+{
+  int tj = blockDim.x*blockIdx.x + threadIdx.x;
+  int tk = blockDim.y*blockIdx.y + threadIdx.y;
+
+  int s1b = dom->Gcc._s1b;
+  int s2b = dom->Gcc._s2b;
+
+  if((tj < dom->Gcc._jnb) && (tk < dom->Gcc._knb))
+    w[(dom->Gcc._ieb-1) + tj*s1b + tk*s2b] = 8./3. * bc
+      - 2. * w[(dom->Gcc._ie-1) + tj*s1b + tk*s2b]
+      + 1./3. * w[(dom->Gcc._ie-2) + tj*s1b + tk*s2b];
+}
+
+// pressure; top; Dirichlet
+__global__ void BC_p_T_D(real *w, dom_struct *dom, real bc)
+{
+  int ti = blockDim.x*blockIdx.x + threadIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y;
+
+  int s1b = dom->Gcc._s1b;
+  int s2b = dom->Gcc._s2b;
+
+  if((ti < dom->Gcc._inb) && (tj < dom->Gcc._jnb)) {
+    w[ti + tj*s1b + (dom->Gcc._keb-1)*s2b] = 8./3. * bc
+	 -2.*w[ti + tj*s1b + (dom->Gcc._ke-1)*s2b]
+         +1./3.*w[ti + tj*s1b + (dom->Gcc._ke-2)*s2b];
+  }
+}
+
+// pressure; bottom; Dirichlet
+__global__ void BC_p_B_D(real *w, dom_struct *dom, real bc)
+{
+  int ti = blockDim.x*blockIdx.x + threadIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y;
+
+  int s1b = dom->Gcc._s1b;
+  int s2b = dom->Gcc._s2b;
+
+  if((ti < dom->Gcc._inb) && (tj < dom->Gcc._jnb)) {
+    w[ti + tj*s1b + dom->Gcc._ksb*s2b] = 8./3. * bc 
+	-2.*  w[ti + tj*s1b + dom->Gcc._ks*s2b]
+        +1./3.*w[ti + tj*s1b + (dom->Gcc._ks+1)*s2b];
+  }
+}
+
+
+// pressure; south; Dirichlet
+__global__ void BC_p_S_D(real *w, dom_struct *dom, real bc)
+{
+  int tk = blockDim.x*blockIdx.x + threadIdx.x;
+  int ti = blockDim.y*blockIdx.y + threadIdx.y;
+
+  int s1b = dom->Gcc._s1b;
+  int s2b = dom->Gcc._s2b;
+
+  if((ti < dom->Gcc._inb) && (tk < dom->Gcc._knb))
+    w[ti + dom->Gcc._jsb*s1b + tk*s2b] = 8./3. * bc
+      - 2. * w[ti + dom->Gcc._js*s1b + tk*s2b]
+      + 1./3. * w[ti + (dom->Gcc._js+1)*s1b + tk*s2b];
+}
+
+// pressure; north; Dirichlet
+__global__ void BC_p_N_D(real *w, dom_struct *dom, real bc)
+{
+  int tk = blockDim.x*blockIdx.x + threadIdx.x;
+  int ti = blockDim.y*blockIdx.y + threadIdx.y;
+
+  int s1b = dom->Gcc._s1b;
+  int s2b = dom->Gcc._s2b;
+
+  if((ti < dom->Gcc._inb) && (tk < dom->Gcc._knb))
+    w[ti + (dom->Gcc._jeb-1)*s1b + tk*s2b] = 8./3. * bc
+      - 2. * w[ti + (dom->Gcc._je-1)*s1b + tk*s2b]
+      + 1./3. * w[ti + (dom->Gcc._je-2)*s1b + tk*s2b];
+}
+
+
+ 
 // pressure; west; periodic
 __global__ void BC_p_W_P(real *p, dom_struct *dom)
 {
@@ -169,7 +265,7 @@ __global__ void BC_u_W_P(real *u, dom_struct *dom)
 
   if((tj < dom->Gfx._jnb) && (tk < dom->Gfx._knb)) {
     u[dom->Gfx._isb + tj*s1b + tk*s2b] = u[(dom->Gfx._ie-2) + tj*s1b + tk*s2b];
-    //u[dom->Gfx._is + tj*s1b + tk*s2b] = u[(dom->Gfx._ie-1) + tj*s1b + tk*s2b];
+    u[dom->Gfx._is + tj*s1b + tk*s2b] = u[(dom->Gfx._ie-1) + tj*s1b + tk*s2b];
   }
 }
 
@@ -183,7 +279,7 @@ __global__ void BC_u_W_D(real *u, dom_struct *dom, real bc)
   int s2b = dom->Gfx._s2b;
 
   if((tj < dom->Gfx._jnb) && (tk < dom->Gfx._knb)) {
-    u[dom->Gfx._isb + tj*s1b + tk*s2b] = 2 * bc
+    u[dom->Gfx._isb + tj*s1b + tk*s2b] = 2. * bc
       - u[(dom->Gfx._is+1) + tj*s1b + tk*s2b];
     u[dom->Gfx._is + tj*s1b + tk*s2b] = bc;
   }
@@ -212,7 +308,7 @@ __global__ void BC_u_W_T(real *u, dom_struct *dom, real* bc)
   int s2b = dom->Gfx._s2b;
 
   if((tj < dom->Gfx._jnb) && (tk < dom->Gfx._knb)) {
-    u[dom->Gfx._isb + tj*s1b + tk*s2b] = 2 * bc[tj + tk*dom->Gfx.jnb]
+    u[dom->Gfx._isb + tj*s1b + tk*s2b] = 2. * bc[tj + tk*dom->Gfx.jnb]
       - u[(dom->Gfx._is+1) + tj*s1b + tk*s2b];
     u[dom->Gfx._is + tj*s1b + tk*s2b] = bc[tj + tk*dom->Gfx.jnb];
   }
@@ -229,7 +325,7 @@ __global__ void BC_u_E_P(real *u, dom_struct *dom)
 
   if((tj < dom->Gfx._jnb) && (tk < dom->Gfx._knb)) {
     u[(dom->Gfx._ieb-1) + tj*s1b + tk*s2b] = u[(dom->Gfx._is+1) + tj*s1b + tk*s2b];
-    //u[(dom->Gfx._ie-1) + tj*s1b + tk*s2b] = u[dom->Gfx._is + tj*s1b + tk*s2b];
+    u[(dom->Gfx._ie-1) + tj*s1b + tk*s2b] = u[dom->Gfx._is + tj*s1b + tk*s2b];
   }
 }
 
@@ -243,7 +339,7 @@ __global__ void BC_u_E_D(real *u, dom_struct *dom, real bc)
   int s2b = dom->Gfx._s2b;
 
   if((tj < dom->Gfx._jnb) && (tk < dom->Gfx._knb)) {
-    u[(dom->Gfx._ieb-1) + tj*s1b + tk*s2b] = 2 * bc - u[(dom->Gfx._ie-2)
+    u[(dom->Gfx._ieb-1) + tj*s1b + tk*s2b] = 2. * bc - u[(dom->Gfx._ie-2)
       + tj*s1b + tk*s2b];
     u[(dom->Gfx._ie-1) + tj*s1b + tk*s2b] = bc;
   }
@@ -273,7 +369,7 @@ __global__ void BC_u_E_T(real *u, dom_struct *dom, real* bc)
   int s2b = dom->Gfx._s2b;
 
   if((tj < dom->Gfx._jnb) && (tk < dom->Gfx._knb)) {
-    u[(dom->Gfx._ieb-1) + tj*s1b + tk*s2b] = 2 * bc[tj + tk*dom->Gfx.jnb]
+    u[(dom->Gfx._ieb-1) + tj*s1b + tk*s2b] = 2. * bc[tj + tk*dom->Gfx.jnb]
       - u[(dom->Gfx._ie-2) + tj*s1b + tk*s2b];
     u[(dom->Gfx._ie-1) + tj*s1b + tk*s2b] = bc[tj + tk*dom->Gfx.jnb];
   }
@@ -302,9 +398,11 @@ __global__ void BC_u_S_D(real *u, dom_struct *dom, real bc)
   int s1b = dom->Gfx._s1b;
   int s2b = dom->Gfx._s2b;
 
-  if((ti < dom->Gfx._inb) && (tk < dom->Gfx._knb))
-    u[ti + dom->Gfx._jsb*s1b + tk*s2b] = 2 * bc
-      - u[ti + dom->Gfx._js*s1b + tk*s2b];
+  if((ti < dom->Gfx._inb) && (tk < dom->Gfx._knb)) {
+    u[ti + dom->Gfx._jsb*s1b + tk*s2b] = 8./3. * bc
+      - 2. * u[ti + dom->Gfx._js*s1b + tk*s2b]
+      + 1./3. * u[ti + (dom->Gfx._js+1)*s1b + tk*s2b];
+  }
 }
 
 // u-velocity; south; Neumann
@@ -330,7 +428,7 @@ __global__ void BC_u_S_T(real *u, dom_struct *dom, real* bc)
   int s2b = dom->Gfx._s2b;
 
   if((ti < dom->Gfx._inb) && (tk < dom->Gfx._knb)) {
-    u[ti + dom->Gfx._jsb*s1b + tk*s2b] = 2 * bc[tk + ti*dom->Gfx.knb]
+    u[ti + dom->Gfx._jsb*s1b + tk*s2b] = 2. * bc[tk + ti*dom->Gfx.knb]
       - u[ti + dom->Gfx._js*s1b + tk*s2b];
   }
 }
@@ -358,9 +456,11 @@ __global__ void BC_u_N_D(real *u, dom_struct *dom, real bc)
   int s1b = dom->Gfx._s1b;
   int s2b = dom->Gfx._s2b;
 
-  if((ti < dom->Gfx._inb) && (tk < dom->Gfx._knb))
-    u[ti + (dom->Gfx._jeb-1)*s1b + tk*s2b] = 2 * bc - u[ti
-      + (dom->Gfx._je-1)*s1b + tk*s2b];
+  if((ti < dom->Gfx._inb) && (tk < dom->Gfx._knb)) {
+    u[ti + (dom->Gfx._jeb-1)*s1b + tk*s2b] = 8./3. * bc
+      - 2. * u[ti + (dom->Gfx._je-1)*s1b + tk*s2b]
+      + 1./3. * u[ti + (dom->Gfx._je-2)*s1b + tk*s2b];
+  }
 }
 
 // u-velocity; north; Neumann
@@ -387,7 +487,7 @@ __global__ void BC_u_N_T(real *u, dom_struct *dom, real* bc)
   int s2b = dom->Gfx._s2b;
 
   if((ti < dom->Gfx._inb) && (tk < dom->Gfx._knb)) {
-    u[ti + (dom->Gfx._jeb-1)*s1b + tk*s2b] = 2 * bc[tk + ti*dom->Gfx.knb]
+    u[ti + (dom->Gfx._jeb-1)*s1b + tk*s2b] = 2. * bc[tk + ti*dom->Gfx.knb]
       - u[ti + (dom->Gfx._je-1)*s1b + tk*s2b];
   }
 }
@@ -415,8 +515,9 @@ __global__ void BC_u_B_D(real *u, dom_struct *dom, real bc)
   int s2b = dom->Gfx._s2b;
 
   if((ti < dom->Gfx._inb) && (tj < dom->Gfx._jnb))
-    u[ti + tj*s1b + dom->Gfx._ksb*s2b] = 2 * bc
-      - u[ti + tj*s1b + dom->Gfx._ks*s2b];
+    u[ti + tj*s1b + dom->Gfx._ksb*s2b] = 8./3. * bc
+      - 2. * u[ti + tj*s1b + dom->Gfx._ks*s2b]
+      + 1./3. * u[ti + tj*s1b + (dom->Gfx._ks+1)*s2b];
 }
 
 // u-velocity; bottom; Neumann
@@ -442,7 +543,7 @@ __global__ void BC_u_B_T(real *u, dom_struct *dom, real* bc)
   int s2b = dom->Gfx._s2b;
 
   if((ti < dom->Gfx._inb) && (tj < dom->Gfx._jnb)) {
-    u[ti + tj*s1b + dom->Gfx._ksb*s2b] = 2 * bc[ti + tj*dom->Gfx.inb]
+    u[ti + tj*s1b + dom->Gfx._ksb*s2b] = 2. * bc[ti + tj*dom->Gfx.inb]
       - u[ti + tj*s1b + dom->Gfx._ks*s2b];
   }
 }
@@ -471,8 +572,9 @@ __global__ void BC_u_T_D(real *u, dom_struct *dom, real bc)
   int s2b = dom->Gfx._s2b;
 
   if((ti < dom->Gfx._inb) && (tj < dom->Gfx._jnb))
-    u[ti + tj*s1b + (dom->Gfx._keb-1)*s2b] = 2 * bc - u[ti + tj*s1b +
-      (dom->Gfx._ke-1)*s2b];
+    u[ti + tj*s1b + (dom->Gfx._keb-1)*s2b] = 8./3. * bc
+      - 2. * u[ti + tj*s1b + (dom->Gfx._ke-1)*s2b]
+      + 1./3. * u[ti + tj*s1b + (dom->Gfx._ke-2)*s2b];
 }
 
 // u-velocity; top; Neumann
@@ -499,7 +601,7 @@ __global__ void BC_u_T_T(real *u, dom_struct *dom, real* bc)
   int s2b = dom->Gfx._s2b;
 
   if((ti < dom->Gfx._inb) && (tj < dom->Gfx._jnb)) {
-    u[ti + tj*s1b + (dom->Gfx._keb-1)*s2b] = 2 * bc[ti + tj*dom->Gfx.inb]
+    u[ti + tj*s1b + (dom->Gfx._keb-1)*s2b] = 2. * bc[ti + tj*dom->Gfx.inb]
       - u[ti + tj*s1b + (dom->Gfx._ke-1)*s2b];
   }
 }
@@ -526,9 +628,11 @@ __global__ void BC_v_W_D(real *v, dom_struct *dom, real bc)
   int s1b = dom->Gfy._s1b;
   int s2b = dom->Gfy._s2b;
 
-  if((tj < dom->Gfy._jnb) && (tk < dom->Gfy._knb))
-    v[dom->Gfy._isb + tj*s1b + tk*s2b] = 2 * bc
-      - v[dom->Gfy._is + tj*s1b + tk*s2b];
+  if((tj < dom->Gfy._jnb) && (tk < dom->Gfy._knb)) {
+    v[dom->Gfy._isb + tj*s1b + tk*s2b] = 8./3. * bc
+      - 2. * v[dom->Gfy._is + tj*s1b + tk*s2b]
+      + 1./3. * v[(dom->Gfy._is+1) + tj*s1b + tk*s2b];
+  }
 }
 
 // v-velocity; west; Neumann
@@ -554,7 +658,7 @@ __global__ void BC_v_W_T(real *v, dom_struct *dom, real* bc)
   int s2b = dom->Gfy._s2b;
 
   if((tj < dom->Gfy._jnb) && (tk < dom->Gfy._knb)) {
-    v[dom->Gfy._isb + tj*s1b + tk*s2b] = 2 * bc[tj + tk*dom->Gfy.jnb]
+    v[dom->Gfy._isb + tj*s1b + tk*s2b] = 2. * bc[tj + tk*dom->Gfy.jnb]
       - v[(dom->Gfy._is) + tj*s1b + tk*s2b];
   }
 }
@@ -582,9 +686,11 @@ __global__ void BC_v_E_D(real *v, dom_struct *dom, real bc)
   int s1b = dom->Gfy._s1b;
   int s2b = dom->Gfy._s2b;
 
-  if((tj < dom->Gfy._jnb) && (tk < dom->Gfy._knb))
-    v[(dom->Gfy._ieb-1) + tj*s1b + tk*s2b] = 2 * bc - v[(dom->Gfy._ie-1)
-      + tj*s1b + tk*s2b];
+  if((tj < dom->Gfy._jnb) && (tk < dom->Gfy._knb)) {
+    v[(dom->Gfy._ieb-1) + tj*s1b + tk*s2b] = 8./3. * bc
+      - 2. * v[(dom->Gfy._ie-1) + tj*s1b + tk*s2b]
+      + 1./3. * v[(dom->Gfy._ie-2) + tj*s1b + tk*s2b];
+  }
 }
 
 // v-velocity; east; Neumann
@@ -611,7 +717,7 @@ __global__ void BC_v_E_T(real *v, dom_struct *dom, real* bc)
   int s2b = dom->Gfy._s2b;
 
   if((tj < dom->Gfy._jnb) && (tk < dom->Gfy._knb)) {
-    v[(dom->Gfy._ieb-1) + tj*s1b + tk*s2b] = 2 * bc[tj + tk*dom->Gfy.jnb]
+    v[(dom->Gfy._ieb-1) + tj*s1b + tk*s2b] = 2. * bc[tj + tk*dom->Gfy.jnb]
       - v[(dom->Gfy._ie-1) + tj*s1b + tk*s2b];
   }
 }
@@ -627,7 +733,7 @@ __global__ void BC_v_S_P(real *v, dom_struct *dom)
 
   if((ti < dom->Gfy._inb) && (tk < dom->Gfy._knb)) {
     v[ti + dom->Gfy._jsb*s1b + tk*s2b] = v[ti + (dom->Gfy._je-2)*s1b + tk*s2b];
-    //v[ti + dom->Gfy._js*s1b + tk*s2b] = v[ti + (dom->Gfy._je-1)*s1b + tk*s2b];
+    v[ti + dom->Gfy._js*s1b + tk*s2b] = v[ti + (dom->Gfy._je-1)*s1b + tk*s2b];
   }
 }
 
@@ -641,7 +747,7 @@ __global__ void BC_v_S_D(real *v, dom_struct *dom, real bc)
   int s2b = dom->Gfy._s2b;
 
   if((ti < dom->Gfy._inb) && (tk < dom->Gfy._knb)) {
-    v[ti + dom->Gfy._jsb*s1b + tk*s2b] = 2 * bc - v[ti
+    v[ti + dom->Gfy._jsb*s1b + tk*s2b] = 2. * bc - v[ti
       + (dom->Gfy._js+1)*s1b + tk*s2b];
     v[ti + dom->Gfy._js*s1b + tk*s2b] = bc;
   }
@@ -670,7 +776,7 @@ __global__ void BC_v_S_T(real *v, dom_struct *dom, real* bc)
   int s2b = dom->Gfy._s2b;
 
   if((ti < dom->Gfy._inb) && (tk < dom->Gfy._knb)) {
-    v[ti + dom->Gfy._jsb*s1b + tk*s2b] = 2 * bc[tk + ti*dom->Gfy.knb]
+    v[ti + dom->Gfy._jsb*s1b + tk*s2b] = 2. * bc[tk + ti*dom->Gfy.knb]
       - v[ti + (dom->Gfy._js+1)*s1b + tk*s2b];
     v[ti + dom->Gfy._js*s1b + tk*s2b] = bc[tk + ti*dom->Gfy.knb];
   }
@@ -688,8 +794,8 @@ __global__ void BC_v_N_P(real *v, dom_struct *dom)
   if((ti < dom->Gfy._inb) && (tk < dom->Gfy._knb)) {
     v[ti + (dom->Gfy._jeb-1)*s1b + tk*s2b] = v[ti
       + (dom->Gfy._js+1)*s1b + tk*s2b];
-    //v[ti + (dom->Gfy._je-1)*s1b + tk*s2b] = v[ti
-      //+ dom->Gfy._js*s1b + tk*s2b];
+    v[ti + (dom->Gfy._je-1)*s1b + tk*s2b] = v[ti
+      + dom->Gfy._js*s1b + tk*s2b];
   }
 }
 
@@ -703,7 +809,7 @@ __global__ void BC_v_N_D(real *v, dom_struct *dom, real bc)
   int s2b = dom->Gfy._s2b;
 
   if((ti < dom->Gfy._inb) && (tk < dom->Gfy._knb)) {
-    v[ti + (dom->Gfy._jeb-1)*s1b + tk*s2b] = 2 * bc - v[ti +
+    v[ti + (dom->Gfy._jeb-1)*s1b + tk*s2b] = 2. * bc - v[ti +
       (dom->Gfy._je-2)*s1b + tk*s2b];
     v[ti + (dom->Gfy._je-1)*s1b + tk*s2b] = bc;
   }
@@ -733,7 +839,7 @@ __global__ void BC_v_N_T(real *v, dom_struct *dom, real* bc)
   int s2b = dom->Gfy._s2b;
 
   if((ti < dom->Gfy._inb) && (tk < dom->Gfy._knb)) {
-    v[ti + (dom->Gfy._jeb-1)*s1b + tk*s2b] = 2 * bc[tk + ti*dom->Gfy.knb]
+    v[ti + (dom->Gfy._jeb-1)*s1b + tk*s2b] = 2. * bc[tk + ti*dom->Gfy.knb]
       - v[ti + (dom->Gfy._je-2)*s1b + tk*s2b];
     v[ti + (dom->Gfy._je-1)*s1b + tk*s2b] = bc[tk + ti*dom->Gfy.knb];
   }
@@ -763,8 +869,9 @@ __global__ void BC_v_B_D(real *v, dom_struct *dom, real bc)
   int s2b = dom->Gfy._s2b;
 
   if((ti < dom->Gfy._inb) && (tj < dom->Gfy._jnb))
-    v[ti + tj*s1b + dom->Gfy._ksb*s2b] = 2 * bc
-      - v[ti + tj*s1b + dom->Gfy._ks*s2b];
+    v[ti + tj*s1b + dom->Gfy._ksb*s2b] = 8./3. * bc
+      - 2. * v[ti + tj*s1b + dom->Gfy._ks*s2b]
+      + 1./3. * v[ti + tj*s1b + (dom->Gfy._ks+1)*s2b];
 }
 
 // v-velocity; bottom; Neumann
@@ -790,7 +897,7 @@ __global__ void BC_v_B_T(real *v, dom_struct *dom, real* bc)
   int s2b = dom->Gfy._s2b;
 
   if((ti < dom->Gfy._inb) && (tj < dom->Gfy._jnb)) {
-    v[ti + tj*s1b + dom->Gfy._ksb*s2b] = 2 * bc[ti + tj*dom->Gfy.inb]
+    v[ti + tj*s1b + dom->Gfy._ksb*s2b] = 2. * bc[ti + tj*dom->Gfy.inb]
       - v[ti + tj*s1b + dom->Gfy._ks*s2b];
   }
 }
@@ -819,8 +926,9 @@ __global__ void BC_v_T_D(real *v, dom_struct *dom, real bc)
   int s2b = dom->Gfy._s2b;
 
   if((ti < dom->Gfy._inb) && (tj < dom->Gfy._jnb))
-    v[ti + tj*s1b + (dom->Gfy._keb-1)*s2b] = 2 * bc - v[ti + tj*s1b +
-      (dom->Gfy._ke-1)*s2b];
+    v[ti + tj*s1b + (dom->Gfy._keb-1)*s2b] = 8./3. * bc
+      - 2. * v[ti + tj*s1b + (dom->Gfy._ke-1)*s2b]
+      + 1./3. * v[ti + tj*s1b + (dom->Gfy._ke-2)*s2b];
 }
 
 // v-velocity; top; Neumann
@@ -847,7 +955,7 @@ __global__ void BC_v_T_T(real *v, dom_struct *dom, real* bc)
   int s2b = dom->Gfy._s2b;
 
   if((ti < dom->Gfy._inb) && (tj < dom->Gfy._jnb)) {
-    v[ti + tj*s1b + (dom->Gfy._keb-1)*s2b] = 2 * bc[ti + tj*dom->Gfy.inb]
+    v[ti + tj*s1b + (dom->Gfy._keb-1)*s2b] = 2. * bc[ti + tj*dom->Gfy.inb]
       - v[ti + tj*s1b + (dom->Gfy._ke-1)*s2b];
   }
 }
@@ -875,8 +983,9 @@ __global__ void BC_w_W_D(real *w, dom_struct *dom, real bc)
   int s2b = dom->Gfz._s2b;
 
   if((tj < dom->Gfz._jnb) && (tk < dom->Gfz._knb))
-    w[dom->Gfz._isb + tj*s1b + tk*s2b] = 2 * bc
-      - w[dom->Gfz._is + tj*s1b + tk*s2b];
+    w[dom->Gfz._isb + tj*s1b + tk*s2b] = 8./3. * bc
+      - 2. * w[dom->Gfz._is + tj*s1b + tk*s2b]
+      + 1./3. * w[(dom->Gfz._is+1) + tj*s1b + tk*s2b];
 }
 
 // w-velocity; west; Neumann
@@ -902,7 +1011,7 @@ __global__ void BC_w_W_T(real *w, dom_struct *dom, real* bc)
   int s2b = dom->Gfz._s2b;
 
   if((tj < dom->Gfz._jnb) && (tk < dom->Gfz._knb)) {
-    w[dom->Gfz._isb + tj*s1b + tk*s2b] = 2 * bc[tj + tk*dom->Gfz.jnb]
+    w[dom->Gfz._isb + tj*s1b + tk*s2b] = 2. * bc[tj + tk*dom->Gfz.jnb]
       - w[(dom->Gfz._is) + tj*s1b + tk*s2b];
   }
 }
@@ -931,8 +1040,9 @@ __global__ void BC_w_E_D(real *w, dom_struct *dom, real bc)
   int s2b = dom->Gfz._s2b;
 
   if((tj < dom->Gfz._jnb) && (tk < dom->Gfz._knb))
-    w[(dom->Gfz._ieb-1) + tj*s1b + tk*s2b] = 2 * bc - w[(dom->Gfz._ie-1)
-      + tj*s1b + tk*s2b];
+    w[(dom->Gfz._ieb-1) + tj*s1b + tk*s2b] = 8./3. * bc
+      - 2. * w[(dom->Gfz._ie-1) + tj*s1b + tk*s2b]
+      + 1./3. * w[(dom->Gfz._ie-2) + tj*s1b + tk*s2b];
 }
 
 // w-velocity; east; Neumann
@@ -959,7 +1069,7 @@ __global__ void BC_w_E_T(real *w, dom_struct *dom, real* bc)
   int s2b = dom->Gfz._s2b;
 
   if((tj < dom->Gfz._jnb) && (tk < dom->Gfz._knb)) {
-    w[(dom->Gfz._ieb-1) + tj*s1b + tk*s2b] = 2 * bc[tj + tk*dom->Gfz.jnb]
+    w[(dom->Gfz._ieb-1) + tj*s1b + tk*s2b] = 2. * bc[tj + tk*dom->Gfz.jnb]
       - w[(dom->Gfz._ie-1) + tj*s1b + tk*s2b];
   }
 }
@@ -988,8 +1098,9 @@ __global__ void BC_w_S_D(real *w, dom_struct *dom, real bc)
   int s2b = dom->Gfz._s2b;
 
   if((ti < dom->Gfz._inb) && (tk < dom->Gfz._knb))
-    w[ti + dom->Gfz._jsb*s1b + tk*s2b] = 2 * bc
-      - w[ti + dom->Gfz._js*s1b + tk*s2b];
+    w[ti + dom->Gfz._jsb*s1b + tk*s2b] = 8./3. * bc
+      - 2. * w[ti + dom->Gfz._js*s1b + tk*s2b]
+      + 1./3. * w[ti + (dom->Gfz._js+1)*s1b + tk*s2b];
 }
 
 // w-velocity; south; Neumann
@@ -1015,7 +1126,7 @@ __global__ void BC_w_S_T(real *w, dom_struct *dom, real* bc)
   int s2b = dom->Gfz._s2b;
 
   if((ti < dom->Gfz._inb) && (tk < dom->Gfz._knb)) {
-    w[ti + dom->Gfz._jsb*s1b + tk*s2b] = 2 * bc[tk + ti*dom->Gfz.knb]
+    w[ti + dom->Gfz._jsb*s1b + tk*s2b] = 2. * bc[tk + ti*dom->Gfz.knb]
       - w[ti + dom->Gfz._js*s1b + tk*s2b];
   }
 }
@@ -1044,8 +1155,9 @@ __global__ void BC_w_N_D(real *w, dom_struct *dom, real bc)
   int s2b = dom->Gfz._s2b;
 
   if((ti < dom->Gfz._inb) && (tk < dom->Gfz._knb))
-    w[ti + (dom->Gfz._jeb-1)*s1b + tk*s2b] = 2 * bc - w[ti +
-      (dom->Gfz._je-1)*s1b + tk*s2b];
+    w[ti + (dom->Gfz._jeb-1)*s1b + tk*s2b] = 8./3. * bc
+      - 2. * w[ti + (dom->Gfz._je-1)*s1b + tk*s2b]
+      + 1./3. * w[ti + (dom->Gfz._je-2)*s1b + tk*s2b];
 }
 
 // w-velocity; north; Neumann
@@ -1072,7 +1184,7 @@ __global__ void BC_w_N_T(real *w, dom_struct *dom, real* bc)
   int s2b = dom->Gfz._s2b;
 
   if((ti < dom->Gfz._inb) && (tk < dom->Gfz._knb)) {
-    w[ti + (dom->Gfz._jeb-1)*s1b + tk*s2b] = 2 * bc[tk + ti*dom->Gfz.knb]
+    w[ti + (dom->Gfz._jeb-1)*s1b + tk*s2b] = 2. * bc[tk + ti*dom->Gfz.knb]
       - w[ti + (dom->Gfz._je-1)*s1b + tk*s2b];
   }
 }
@@ -1088,7 +1200,7 @@ __global__ void BC_w_B_P(real *w, dom_struct *dom)
 
   if((ti < dom->Gfz._inb) && (tj < dom->Gfz._jnb)) {
     w[ti + tj*s1b + dom->Gfz._ksb*s2b] = w[ti + tj*s1b + (dom->Gfz._ke-2)*s2b];
-    //w[ti + tj*s1b + dom->Gfz._ks*s2b] = w[ti + tj*s1b + (dom->Gfz._ke-1)*s2b];
+    w[ti + tj*s1b + dom->Gfz._ks*s2b] = w[ti + tj*s1b + (dom->Gfz._ke-1)*s2b];
   }
 }
 
@@ -1102,7 +1214,7 @@ __global__ void BC_w_B_D(real *w, dom_struct *dom, real bc)
   int s2b = dom->Gfz._s2b;
 
   if((ti < dom->Gfz._inb) && (tj < dom->Gfz._jnb)) {
-    w[ti + tj*s1b + dom->Gfz._ksb*s2b] = 2 * bc - w[ti
+    w[ti + tj*s1b + dom->Gfz._ksb*s2b] = 2. * bc - w[ti
       + tj*s1b + (dom->Gfz._ks+1)*s2b];
     w[ti + tj*s1b + dom->Gfz._ks*s2b] = bc;
   }
@@ -1131,7 +1243,7 @@ __global__ void BC_w_B_T(real *w, dom_struct *dom, real* bc)
   int s2b = dom->Gfz._s2b;
 
   if((ti < dom->Gfz._inb) && (tj < dom->Gfz._jnb)) {
-    w[ti + tj*s1b + dom->Gfz._ksb*s2b] = 2 * bc[ti + tj*dom->Gfz.inb]
+    w[ti + tj*s1b + dom->Gfz._ksb*s2b] = 2. * bc[ti + tj*dom->Gfz.inb]
       - w[ti + tj*s1b + (dom->Gfz._ks+1)*s2b];
     w[ti + tj*s1b + dom->Gfz._ks*s2b] = bc[ti + tj*dom->Gfz.inb];
   }
@@ -1149,8 +1261,8 @@ __global__ void BC_w_T_P(real *w, dom_struct *dom)
   if((ti < dom->Gfz._inb) && (tj < dom->Gfz._jnb)) {
     w[ti + tj*s1b + (dom->Gfz._keb-1)*s2b] = w[ti
       + tj*s1b + (dom->Gfz._ks+1)*s2b];
-    //w[ti + tj*s1b + (dom->Gfz._ke-1)*s2b] = w[ti
-      //+ tj*s1b + dom->Gfz._ks*s2b];
+    w[ti + tj*s1b + (dom->Gfz._ke-1)*s2b] = w[ti
+      + tj*s1b + dom->Gfz._ks*s2b];
   }
 }
 
@@ -1164,7 +1276,7 @@ __global__ void BC_w_T_D(real *w, dom_struct *dom, real bc)
   int s2b = dom->Gfz._s2b;
 
   if((ti < dom->Gfz._inb) && (tj < dom->Gfz._jnb)) {
-    w[ti + tj*s1b + (dom->Gfz._keb-1)*s2b] = 2 * bc - w[ti + tj*s1b +
+    w[ti + tj*s1b + (dom->Gfz._keb-1)*s2b] = 2. * bc - w[ti + tj*s1b +
       (dom->Gfz._ke-2)*s2b];
     w[ti + tj*s1b + (dom->Gfz._ke-1)*s2b] = bc;
   }
@@ -1194,11 +1306,13 @@ __global__ void BC_w_T_T(real *w, dom_struct *dom, real* bc)
   int s2b = dom->Gfz._s2b;
 
   if((ti < dom->Gfz._inb) && (tj < dom->Gfz._jnb)) {
-    w[ti + tj*s1b + (dom->Gfz._keb-1)*s2b] = 2 * bc[ti + tj*dom->Gfz.inb]
+    w[ti + tj*s1b + (dom->Gfz._keb-1)*s2b] = 2. * bc[ti + tj*dom->Gfz.inb]
       - w[ti + tj*s1b + (dom->Gfz._ke-2)*s2b];
     w[ti + tj*s1b + (dom->Gfz._ke-1)*s2b] = bc[ti + tj*dom->Gfz.inb];
   }
 }
+
+
 
 __global__ void project_u(real *u_star, real *p, real rho_f, real dt,
   real *u, dom_struct *dom, real ddx, int *flag_u)
@@ -2505,9 +2619,15 @@ __global__ void forcing_add_z_field(real scale, real *val, real *fz,
 
 //if(fabs(val[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b])>EPSILON) printf("scale \n%f %f %f %d %d %d\n",val[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b],fz[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b],scale,ti,tj,k);
 
-
-//if(fabs(val[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b])>EPSILON) printf("\nscale %f %d %d %d\n",fz[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b],ti,tj,k);
-    }
+/*
+//if((ti==33)&&tj==33)
+//if(ti==32&&tj==33)
+if(ti==32&&tj==32)
+{
+if(fabs(val[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b])>EPSILON) printf("\nKsi %f %d %d %d\n",val[ti + tj*dom->Gfz._s1b + k*dom->Gfz._s2b],ti,tj,k);
+}
+*/  
+  }
   }
 }
 

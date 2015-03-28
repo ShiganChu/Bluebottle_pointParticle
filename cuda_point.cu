@@ -814,6 +814,7 @@ getLastCudaError("Kernel execution failed.");
 
 
 //printf("\ngridDim_p %d %d %d\n",numBlocks_p.x,dimBlocks_p.x,npoints);
+//fflush(stdout);
 //printf("\nnumBlocks_3d %d %d %d %d %d\n",numBlocks_3d.x,numBlocks_3d.y,numBlocks_3d.z,lenCell,Dom.Gcc.in);
 //printf("\ndimBlocks_3d %d %d %d\n",dimBlocks_3d.x,dimBlocks_3d.y,dimBlocks_3d.z);
 
@@ -864,18 +865,28 @@ coordiSys,valType);
 
 getLastCudaError("Kernel execution failed.");
 
+for(int start_end=1;start_end<=2;start_end++)
+{
+if(coordiSys>0)
+	{
+	gaussian_periodic_value_add_supplemental<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc_buf,
+	      Ksi[dev],cellStart[dev],cellEnd[dev],gridFlowHash[dev],
+              maxPointsPerCell,coordiSys, start_end);
+	}
+}
 
-//print_kernel_array_int<<<numBlocks_print,dimBlocks_print>>>(cellEnd[dev],lenCell);
-
+/*
 if(coordiSys>0)
 {
 boundary_face_value_periodic_start<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc_buf,coordiSys);
 boundary_face_value_periodic_end<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc_buf,coordiSys);
 }
+*/
+
 cuda_scSrc_BC(coordiSys,SCALAR_TYPE, scSrc_buf,dev);
 
 //Difuse the buf value based on Cappeccelo&Desjadins(2012)
-cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc_buf);
+//cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc_buf);
 
 ////Diffuse the scalar after gaussian mollification
 ////Explicit solver Takes 4 times longer than one time implicit solver
@@ -883,8 +894,6 @@ cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc_buf);
 
 //Add the buf value to the source
 scSrc_value_add<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc,scSrc_buf,coordiSys);
-
-
 
     checkCudaErrors(cudaFree(scSrc_buf));
 

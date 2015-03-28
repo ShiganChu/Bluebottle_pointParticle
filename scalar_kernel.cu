@@ -1449,8 +1449,7 @@ int isb,jsb,ksb,ieb,jeb,keb;
 dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
 
   if((tj < jeb) && (tk < keb)) {
-    scSrc[isb + tj*s1b + tk*s2b] = scSrc[((ieb-1)-2) + tj*s1b + tk*s2b];
-    //scSrc[((ieb-1)-1) + tj*s1b + tk*s2b]=scSrc[(isb+1) + tj*s1b + tk*s2b];
+    scSrc[isb + tj*s1b + tk*s2b] = scSrc[((ieb-1)-1-(coordiSys==1)) + tj*s1b + tk*s2b];
   }
 }
 
@@ -1512,7 +1511,7 @@ int isb,jsb,ksb,ieb,jeb,keb;
 dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
 
   if((tj < jeb) && (tk < keb)) {
-    scSrc[(ieb-1) + tj*s1b + tk*s2b] = scSrc[((isb+1)+1) + tj*s1b + tk*s2b];
+    scSrc[(ieb-1-(coordiSys==1)) + tj*s1b + tk*s2b] = scSrc[((isb+1)+1) + tj*s1b + tk*s2b];
     //scSrc[((ieb-1)-1) + tj*s1b + tk*s2b] = scSrc[(isb+1) + tj*s1b + tk*s2b];
   }
 }
@@ -1577,7 +1576,7 @@ int isb,jsb,ksb,ieb,jeb,keb;
 dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
 
   if((ti <ieb) && (tk < keb)) {
-    scSrc[ti + jsb*s1b + tk*s2b] = scSrc[ti + ((jeb-1)-1)*s1b + tk*s2b];
+    scSrc[ti + jsb*s1b + tk*s2b] = scSrc[ti + ((jeb-1)-1-(coordiSys==2))*s1b + tk*s2b];
   }
 }
 
@@ -1637,7 +1636,7 @@ int isb,jsb,ksb,ieb,jeb,keb;
 dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
 
   if((ti <ieb) && (tk < keb))
-    scSrc[ti + (jeb-1)*s1b + tk*s2b] = scSrc[ti
+    scSrc[ti + (jeb-1-(coordiSys==2))*s1b + tk*s2b] = scSrc[ti
       + (jsb+1)*s1b + tk*s2b];
 }
 
@@ -1698,7 +1697,7 @@ int isb,jsb,ksb,ieb,jeb,keb;
 dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
 
   if((ti <ieb) && (tj < jeb))
-    scSrc[ti + tj*s1b + ksb*s2b] = scSrc[ti + tj*s1b + ((keb-1)-1)*s2b];
+    scSrc[ti + tj*s1b + ksb*s2b] = scSrc[ti + tj*s1b + ((keb-1)-1-(coordiSys==1))*s2b];
 }
 
 // u-velocity; bottom; Dirichlet
@@ -1755,7 +1754,7 @@ int isb,jsb,ksb,ieb,jeb,keb;
 dom_startEnd_index(isb,jsb,ksb,ieb,jeb,keb,dom,coordiSys,incGhost);
 
   if((ti <ieb) && (tj < jeb))
-    scSrc[ti + tj*s1b + (keb-1)*s2b] = scSrc[ti
+    scSrc[ti + tj*s1b + (keb-1-(coordiSys==3))*s2b] = scSrc[ti
       + tj*s1b + (ksb+1)*s2b];
 }
 

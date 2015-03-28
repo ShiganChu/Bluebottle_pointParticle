@@ -1065,7 +1065,7 @@ int incGhost=1;
 
 
 //Mollify volume fraction on device, don't need too much thread source
-lpt_mollify_sc_optH(coordiSys,EPSP_TYPE,dev,_epsp[dev]);
+//lpt_mollify_sc_optH(coordiSys,EPSP_TYPE,dev,_epsp[dev]);
 
 //lpt_mollify_delta_scH(coordiSys,EPSP_TYPE,dev,_epsp[dev]);
 getLastCudaError("Kernel execution failed.");
@@ -1525,6 +1525,9 @@ case 0:
 	scSrcN=sc_bc.scN;
 	scSrcT=sc_bc.scT;
 	scSrcB=sc_bc.scB;
+	break;
+	default:break;
+	}
 
 	scSrcWD=sc_bc.scWD;	
 	scSrcED=sc_bc.scED;
@@ -1532,10 +1535,6 @@ case 0:
 	scSrcBD=sc_bc.scBD;
 	scSrcSD=sc_bc.scSD;
 	scSrcND=sc_bc.scND;
-
-	break;
-	default:break;
-	}
 break;
 case 1:
 	scSrcW=bc.uW;
@@ -1613,18 +1612,59 @@ default: break;
       dim3 numBlocks_p(blocks_y, blocks_z);
 
       // apply BC to all fields for this face
+switch(coordiSys)
+{
+case 0:
       switch(scSrcW) {
         case PERIODIC:
-          BC_scSrc_W_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_W_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case NEUMANN:
-          BC_scSrc_W_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_W_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
          case DIRICHLET:
-          BC_scSrc_W_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcWD);
+          BC_p_W_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcWD);
           break;
-  
-    }
+   	 }
+case 1:
+      switch(scSrcW) {
+        case PERIODIC:
+          BC_u_W_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_u_W_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+         case DIRICHLET:
+          BC_u_W_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcWD);
+          break;
+   	 }
+case 2:
+      switch(scSrcW) {
+        case PERIODIC:
+          BC_v_W_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_v_W_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+         case DIRICHLET:
+          BC_v_W_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcWD);
+          break;
+   	 }
+case 3:
+      switch(scSrcW) {
+        case PERIODIC:
+          BC_w_W_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_w_W_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+         case DIRICHLET:
+          BC_w_W_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcWD);
+          break;
+   	 }
+default:break;
+}
+
  }
    if(dom[dev].E == -1) {
       // set up kernel call
@@ -1645,20 +1685,59 @@ default: break;
       dim3 dimBlocks_p(threads_y, threads_z);
       dim3 numBlocks_p(blocks_y, blocks_z);
 
+switch(coordiSys)
+{
+case 0:
       // apply BC to all fields for this face
        switch(scSrcE) {
         case PERIODIC:
-          BC_scSrc_E_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_E_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case NEUMANN:
-          BC_scSrc_E_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_E_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case DIRICHLET:
-          BC_scSrc_E_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcED);
+          BC_p_E_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcED);
           break;
-
     }
-
+case 1:
+       switch(scSrcE) {
+        case PERIODIC:
+          BC_u_E_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_u_E_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_u_E_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcED);
+          break;
+    }	
+case 2:
+       switch(scSrcE) {
+        case PERIODIC:
+          BC_v_E_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_v_E_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_v_E_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcED);
+          break;
+    }
+case 3:
+       switch(scSrcE) {
+        case PERIODIC:
+          BC_w_E_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_w_E_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_w_E_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcED);
+          break;
+    }
+default:break;
+  }
 }
     if(dom[dev].S == -1) {
       // set up kernel call
@@ -1679,19 +1758,67 @@ default: break;
       dim3 dimBlocks_p(threads_z, threads_x);
       dim3 numBlocks_p(blocks_z, blocks_x);
 
-     
+switch(coordiSys)
+{
+case 0:     
  // apply BC to all fields for this face
           switch(scSrcS) {
         case PERIODIC:
-          BC_scSrc_S_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_S_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case NEUMANN:
-          BC_scSrc_S_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_S_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case DIRICHLET:
-          BC_scSrc_S_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcSD);
+          BC_p_S_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcSD);
           break;
     }
+
+case 1:     
+ // apply BC to all fields for this face
+          switch(scSrcS) {
+        case PERIODIC:
+          BC_u_S_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_u_S_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_u_S_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcSD);
+          break;
+    }
+case 2:     
+ // apply BC to all fields for this face
+          switch(scSrcS) {
+        case PERIODIC:
+          BC_v_S_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_v_S_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_v_S_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcSD);
+          break;
+    }
+case 3:     
+ // apply BC to all fields for this face
+          switch(scSrcS) {
+        case PERIODIC:
+          BC_w_S_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_w_S_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_w_S_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcSD);
+          break;
+    }
+default:break;
+ 
+
+
+}
+
 }
     if(dom[dev].N == -1) {
       // set up kernel call
@@ -1713,18 +1840,61 @@ default: break;
       dim3 numBlocks_p(blocks_z, blocks_x);
 
 
-
+switch(coordiSys)
+{
+case 0:   
       // apply BC to all fields for this face
       switch(scSrcN) {
         case PERIODIC:
-          BC_scSrc_N_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_N_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case NEUMANN:
-          BC_scSrc_N_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_N_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case DIRICHLET:
-          BC_scSrc_N_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcND);
+          BC_p_N_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcND);
           break;
+	}
+case 1:   
+      // apply BC to all fields for this face
+      switch(scSrcN) {
+        case PERIODIC:
+          BC_u_N_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_u_N_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_u_N_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcND);
+          break;
+	}
+case 2:   
+      // apply BC to all fields for this face
+      switch(scSrcN) {
+        case PERIODIC:
+          BC_v_N_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_v_N_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_v_N_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcND);
+          break;
+	}
+case 3:   
+      // apply BC to all fields for this face
+      switch(scSrcN) {
+        case PERIODIC:
+          BC_w_N_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_w_N_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_w_N_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcND);
+          break;
+	}
+
 
     }
 }
@@ -1748,18 +1918,62 @@ default: break;
       dim3 numBlocks_p(blocks_x, blocks_y);
 
 
-
+switch(coordiSys)
+{
+case 0:   
       // apply BC to all fields for this face
            switch(scSrcB) {
         case PERIODIC:
-          BC_scSrc_B_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_B_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case NEUMANN:
-          BC_scSrc_B_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_B_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case DIRICHLET:
-          BC_scSrc_B_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcBD);
+          BC_p_B_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcBD);
           break;
+	}
+case 1:   
+      // apply BC to all fields for this face
+           switch(scSrcB) {
+        case PERIODIC:
+          BC_u_B_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_u_B_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_u_B_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcBD);
+          break;
+	}
+case 2:   
+      // apply BC to all fields for this face
+           switch(scSrcB) {
+        case PERIODIC:
+          BC_v_B_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_v_B_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_v_B_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcBD);
+          break;
+	}
+case 3:
+      // apply BC to all fields for this face
+           switch(scSrcB) {
+        case PERIODIC:
+          BC_w_B_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_w_B_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_w_B_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcBD);
+          break;
+	}
+default:break;
+
 
     }
 }
@@ -1782,22 +1996,60 @@ default: break;
       dim3 dimBlocks_p(threads_x, threads_y);
       dim3 numBlocks_p(blocks_x, blocks_y);
 
-
+switch(coordiSys)
+{
+case 0:   
       // apply BC to all fields for this face
-            switch(scSrcT) {
+        switch(scSrcT) {
         case PERIODIC:
-          BC_scSrc_T_P<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_T_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case NEUMANN:
-          BC_scSrc_T_N<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev]);
+          BC_p_T_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
         case DIRICHLET:
-          BC_scSrc_T_D<<<numBlocks_p, dimBlocks_p>>>(coordiSys, scSrc, _dom[dev],scSrcTD);
+          BC_p_T_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcTD);
           break;
-
-   	 	}
-
+		}
+case 1:
+        switch(scSrcT) {
+        case PERIODIC:
+          BC_u_T_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_u_T_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_u_T_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcTD);
+          break;
+		}
+case 2:
+        switch(scSrcT) {
+        case PERIODIC:
+          BC_v_T_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_v_T_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_v_T_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcTD);
+          break;
+		}
+case 3:
+        switch(scSrcT) {
+        case PERIODIC:
+          BC_w_T_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case NEUMANN:
+          BC_w_T_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+          break;
+        case DIRICHLET:
+          BC_w_T_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcTD);
+          break;
+		}
+default:break;		
     	}
+}
 getLastCudaError("Kernel execution failed.");
 
 }

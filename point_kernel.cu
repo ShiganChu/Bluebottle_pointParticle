@@ -1,6 +1,180 @@
 #include "cuda_scalar.h"
 #include "cuda_point.h"
 
+//The goal for gaussian mollification.
+//For Gcc, add (ie-1,j,k) to cell (is,j,k)
+//For Gfx~Gfz, add (ie-2,j,k) to cell (is,j,k), as well as  (ie-1,j,k) to cell (is,j,k); besides, (ie-1,j,k) to cell (is+1,j,k). 
+
+
+//In lpt_mollify_sc_ksi_optD, we have already added particle contribution in (ie-2,j,k) to cell (is,j,k) for Gfx~Gfz systems; 
+//added particle contribution in (ie-1,j,k) to cell (is,j,k) for Gcc system.  
+//lpt_mollify_sc_ksi_optD will be enough for Gcc system, but not for Gfx~Gfz system
+
+ 
+//gaussian_periodic_value_add_supplemental add particle contribution in (ie-1,j,k) to cell (is,j,k), which combines two half cell for Gfx~Gfz systems. 
+//For Gcc system, this operation is redundant,since it is done in lpt_mollify_sc_ksi_optD
+//thus this subroutine only works for Gfx~Gfz systems.
+
+//Besides, gaussian_periodic_value_add_supplemental add particle contribution in (ie-1,j,k) to cell (is+1,j,k)
+//which works for Gfx~Gfz systems only, and make the gaussian mollification complete. 
+
+//Combine lpt_mollify_sc_ksi_optD,gaussian_periodic_value_add,gaussian_periodic_value_add_supplemental
+//For Gcc system, we added particle contribution in (ie-1,j,k) to cell (is,j,k)
+//For Gfx~Gfz system, we added  particle contribution in (ie-2,j,k) to cell (is,j,k), as well as  (ie-1,j,k) to cell (is,j,k), besides, (ie-1,j,k) to cell (is+1,j,k).  Those three operation completes a gaussian mollification
+
+//start_end=1 represent start; start_end=2 represent end;
+__global__ void gaussian_periodic_value_add_supplemental(dom_struct *dom,
+              real *A,
+	      real *Ksi,
+              int   *cellStart,
+              int   *cellEnd,
+              int   *gridFlowHash,
+              int maxPointsPerCell,
+              int coordiSys,
+	      int start_end)
+{
+//get domain start and end index
+int is,js,ks,ie,je,ke;
+int incGhost=0;//using ghost will cause problem, that the array maximum will be violated
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+
+
+int   index=coordiSys*48	+21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+int cell_start;
+int cell_end;
+int gridHash;
+int inCellTag;
+int ksi_ind;
+int i,j,k;
+int ip,jp,kp;
+int it,jt,kt;
+int di,dj,dk;
+real forceCell;
+
+for(int dg=0;dg<=1;dg++)
+//for(int dg=1;dg<=1;dg++)
+{
+
+switch(coordiSys)
+{
+case 1:
+//add (ie-1,j,k) t0 (is,j,k); (is,j,k) to (ie-1,j,k) for dg=0. Combines two half cell for Gfx~Gfz systems.  
+//add (ie-1,j,k) t0 (is+1,j,k); (is,j,k) to (ie-2,j,k) for dg=1.  Works for Gfx~Gfz systems only, and make the gaussian mollification complete.
+    if(start_end==1)     {i=is+dg;ip=ie-1;}
+    else 		 {i=ie-1-dg;ip=is;}
+    j = blockIdx.x*blockDim.x + threadIdx.x;
+    k = blockIdx.y*blockDim.y + threadIdx.y;
+break;
+case 2:
+    if(start_end==1)      {j=js+dg;jp=je-1;}
+    else		  {j=je-1-dg;jp=js;}
+    k = blockIdx.x*blockDim.x + threadIdx.x;
+    i = blockIdx.y*blockDim.y + threadIdx.y;
+break;
+case 3:
+    if(start_end==1)      {k=ks+dg;kp=ke-1;}
+    else		  {k=ke-1-dg;kp=ks;}
+    i = blockIdx.x*blockDim.x + threadIdx.x;
+    j = blockIdx.y*blockDim.y + threadIdx.y;
+break;
+default:break;
+}
+
+forceCell=0.f;
+for(int plane1=-1;plane1<2;plane1++)
+{
+	for(int plane2=-1;plane2<2;plane2++)
+{
+
+//	ip=i-di;jp=j-dj;kp=k-dk;
+//1 for start cell; -1 for end cell; ip=i-di;
+switch(coordiSys)
+{
+case 1:
+di =3-2*start_end;
+dj=plane1;
+dk=plane2;
+	jp=j-dj;kp=k-dk;
+//For Gfx system, when adding (ie-1,j,k) t0 (is,j,k), i.e when dg==0,  we need to specify di=0; otherwise no modification to di is neccessary
+di *=(coordiSys!=1)||(dg==1);//di=0 for Gfx,dg=0
+break;
+case 2:
+dj =3-2*start_end;
+di=plane1;
+dk=plane2;
+	ip=i-di;kp=k-dk;
+
+dj *=(coordiSys!=2)||(dg==1);//dj=0 for Gfy,dg=0
+break;
+case 3:
+dk =3-2*start_end;
+di=plane1;
+dj=plane2;
+	ip=i-di;jp=j-dj;
+dk *=(coordiSys!=3)||(dg==1);//dk=0 for Gfz,dg=0
+break;
+default:break;
+}
+
+
+//Only combine the restriction of ti&tj and i&j could we get unique i&j
+//Should contain boundary here
+if(i<ie&&i>=is && j<je&&j>=js&&k<ke&&k>=ks)
+{
+//using cache to store gridHash is more efficient than using shared memory
+//Particle index position
+ gridHash=gridFlowHash[ip+jp*s1b+s2b*kp];
+// gridHash=ip+jp*s1b+s2b*kp;
+
+//The cell need to add to
+cell_start =cellStart[gridHash];
+cell_end =cellEnd[gridHash];
+
+
+
+//Add to (is,j,k) or to (ie-1,j,k), then change dir 
+//		di=1;dj=0;dk=0;
+		it=di+1;jt=dj+1;kt=dk+1;
+//		ip=i-di;jp=j-dj;kp=k-dk;
+		ksi_ind=it+jt*STENCIL+kt*STENCIL2;
+		inCellTag=(cell_start>=0);
+				for (int count=0; count<maxPointsPerCell; count++)
+        			{
+				index=cell_start+count;
+				inCellTag=(index<cell_end)&&inCellTag;
+			//tag is the criterial for whether add or not
+				forceCell +=inCellTag*Ksi[ksi_ind+index*inCellTag*STENCIL3];
+//if(inCellTag>0&&fabs(forceCell)>EPSILON) printf("\nsupforceCell  %d %d %d %d %d %d %f\n",di,dj,dk,i,j,k,Ksi[ksi_ind+index*inCellTag*STENCIL3]);
+				}
+			}
+		   }
+   		 }
+
+if(i<ie&&i>=is && j<je&&j>=js&&k<ke&&k>=ks)
+		{
+		 A[i+j*s1b+k*s2b] +=forceCell;
+//if(fabs(forceCell)>EPSILON) printf("\nsupforceCell  %d %d %d %d %f\n",coordiSys,i,j,k,forceCell);
+
+		}
+   }
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
 __global__ void scSrc_value_init(dom_struct *dom,real *scSrc,real a,int coordiSys)
 {
 int i,j,k,C;
@@ -46,6 +220,7 @@ if(i<ie&&j<je)
 {
 C=i+j*s1b+k*s2b;
 scSrc[C] +=scSrc_buf[C];
+//if(fabs(scSrc_buf[C])>EPSILON&&i==33&&j==33) printf("\nscSrc_add  %d %d %d %f\n",i,j,k,scSrc_buf[C]);
 }
 }
 }
@@ -466,6 +641,8 @@ printf("\nforceCell %f %d %d %d\n",forceCell,i,j,k);
 }
 
 
+/*
+//In lpt_mollify_sc_ksi_optD, we have already added particle contribution in (ie-2,j,k) to cell (is,j,k) for Gfx~Gfz systems; added particle contribution in (ie-1,j,k) to cell (is,j,k) for Gcc system.  lpt_mollify_sc_ksi_optD will be enough for Gcc system, but not for Gfx~Gfz system
 
 //Use periodic BC for the particle source; Use cache to read layer by layer
 __global__
@@ -578,6 +755,7 @@ for(int di=-1;di<2;di++)
 for(int dj=-1;dj<2;dj++)
 {
 		// store grid hash and partisle pp
+		// include ghost value here
 		tip=ti-di;tjp=tj-dj;
 		start_index[0]=cell_start0[tip+tjp*blockDim.x];
 		start_index[1]=cell_start1[tip+tjp*blockDim.x];
@@ -586,7 +764,6 @@ for(int dj=-1;dj<2;dj++)
                 end_index[0]=cell_end0[tip+tjp*blockDim.x];
                 end_index[1]=cell_end1[tip+tjp*blockDim.x];
                 end_index[2]=cell_end2[tip+tjp*blockDim.x];
-
 
 		for(int dk=-1;dk<2;dk++)
 		{
@@ -601,7 +778,6 @@ ksi_ind=it+jt*STENCIL+kt*STENCIL2;
 int inCellTag=(start_index[kt]>=0);
 				for (int count=0; count<maxPointsPerCell; count++)
         			{
-
 index=start_index[kt]+count;
 inCellTag=(index<end_index[kt])&&inCellTag;
 				//Read of Global memory, how to coalesce it???
@@ -615,9 +791,7 @@ inCellTag=(index<end_index[kt])&&inCellTag;
 				
 			//tag is the criterial for whether add or not
 			//	ksi=inCellTag*Ksi[it+jt*STENCIL+kt*STENCIL2+index*inCellTag*STENCIL3];
-			//	ksi=inCellTag*Ksi[ksi_ind+index*inCellTag*STENCIL3];
 				forceCell +=inCellTag*Ksi[ksi_ind+index*inCellTag*STENCIL3];
-			//	forceCell += ksi;
 //				forceCell +=lpt_integrate_mol_opt(i,j,k,xp,yp,zp,dom,coordiSys)*Weight[index];
 		//printf("\nstartEndIndex %d %d %d %f %f\n",start_index[kt],end_index[kt],index,test,Weight[index]);
 		//printf("\nposition %f %f %f %d %d\n",xp,yp,zp,index,start_index[kt]);
@@ -636,26 +810,227 @@ inCellTag=(index<end_index[kt])&&inCellTag;
 //		force+= point_cell_ksi(gridHash,is,js,ks,Ksi,cellStart,cellEnd,gridParticleIndex);
 }
 	
-//    int gridHash=calcGridHash(i,j,k,dom,coordiSys);
-    int gridHash=gridFlowHash[i+j*s1b+k*s2b];
+    int gridHash;
 
     __syncthreads();
-
+//Should include ghost point, add it instead to the inner domain
     if((j >= js && j < je)
      && (i >= is && i < ie)
       && (ti > 0 && ti < (blockDim.x-1))
       && (tj > 0 && tj < (blockDim.y-1)))
 		{
+		gridHash=gridFlowHash[i+j*s1b+k*s2b];
 		 // examine neighbouring cells
 		 //A[gridHash] +=forceCell;
 		 A[gridHash] =forceCell;
-//if(forceCell>EPSILON) printf("\nforceCell %f %f %f %f %d %d %d\n",xp,yp,zp,forceCell,i,j,k,gridHash);
-//	 A[gridHash]=sum_ksi_cell(i,j,k,points,dom,Ksi,cellStart,cellEnd,gridParticleIndex,coordiSys,valType);
+//if(forceCell>EPSILON) printf("\nforceCell  %f %d %d %d %d\n",forceCell,i,j,k,(gridHash-j*s1b-i)/s2b);
+if(forceCell>EPSILON) printf("\nforceCell  %d %d %d %d %f\n",coordiSys,i,j,k,forceCell);
 		}
 
 	}
 }
 
+*/
+
+
+//Use periodic BC for the particle source; Use cache to read layer by layer
+__global__
+void lpt_mollify_sc_ksi_optD(dom_struct *dom,
+              real *A,
+	      real *posX,
+	      real *posY,
+	      real *posZ,
+	      real *Ksi,
+              int   *cellStart,
+              int   *cellEnd,
+              int   *gridFlowHash,
+              int   *gridParticleIndex,
+              int    npoints,int maxPointsPerCell,
+              int coordiSys,int valType)
+{
+
+//get domain start and end index
+int is,js,ks,ie,je,ke;
+int incGhost=0;//using ghost will cause problem, that the array maximum will be violated
+dom_startEnd_index(is,js,ks,ie,je,ke,dom,coordiSys,incGhost);
+
+//int isb,jsb,ksb,ieb,jeb,keb;
+int isb,jsb,ieb,jeb;
+isb=is-DOM_BUF;
+jsb=js-DOM_BUF;
+//ksb=ks-DOM_BUF;
+ieb=ie+DOM_BUF;
+jeb=je+DOM_BUF;
+//keb=ke+DOM_BUF;
+
+int   index=coordiSys*48	+21;
+int s1b=tex1Dfetch(texRefDomInfo,index);
+int s2b=tex1Dfetch(texRefDomInfo,index+1);
+
+__shared__ int cell_start0[MAX_THREADS_DIM * MAX_THREADS_DIM];
+__shared__ int cell_start1[MAX_THREADS_DIM * MAX_THREADS_DIM];
+__shared__ int cell_start2[MAX_THREADS_DIM * MAX_THREADS_DIM];
+
+__shared__ int cell_end0[MAX_THREADS_DIM * MAX_THREADS_DIM];
+__shared__ int cell_end1[MAX_THREADS_DIM * MAX_THREADS_DIM];
+__shared__ int cell_end2[MAX_THREADS_DIM * MAX_THREADS_DIM];
+
+//int maxThreadsDim2=MAX_THREADS_DIM * MAX_THREADS_DIM;
+
+
+int gridHash0,gridHash1,gridHash2;
+    // the extra 2*blockIdx.X terms implement the necessary overlapping of shared memory blocks in the subdomain
+    int i = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+    int j = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    // shared memory indices
+    int ti = threadIdx.x;
+    int tj = threadIdx.y;
+
+
+//Only combine the restriction of ti&tj and i&j could we get unique i&j
+//Should contain boundary here
+if(i<ieb&&i>=isb && j<jeb&&j>=jsb)
+{
+//using cache to store gridHash is more efficient than using shared memory
+ gridHash0=gridFlowHash[i+j*s1b+s2b*(ks-1)];
+ gridHash1=gridFlowHash[i+j*s1b+s2b*ks];
+ gridHash2=gridFlowHash[i+j*s1b+s2b*(ks+1)];
+
+//representing three layers
+cell_start0[ti+tj*blockDim.x]=cellStart[gridHash0];
+cell_start1[ti+tj*blockDim.x]=cellStart[gridHash1];
+cell_start2[ti+tj*blockDim.x]=cellStart[gridHash2];
+
+cell_end0[ti+tj*blockDim.x]=cellEnd[gridHash0];
+cell_end1[ti+tj*blockDim.x]=cellEnd[gridHash1];
+cell_end2[ti+tj*blockDim.x]=cellEnd[gridHash2];
+
+}
+
+
+for(int k=ks;k<ke;k++)
+{
+//Should include ghost value
+if(k>ks&&i<ieb&&i>=isb && j<jeb&&j>=jsb)
+{
+gridHash2=gridFlowHash[i+j*s1b+s2b*(k+1)];
+
+//Read one layer each time
+cell_start0[ti+tj*blockDim.x]=cell_start1[ti+tj*blockDim.x];
+cell_start1[ti+tj*blockDim.x]=cell_start2[ti+tj*blockDim.x];
+cell_start2[ti+tj*blockDim.x]=cellStart[gridHash2];
+
+cell_end0[ti+tj*blockDim.x]=cell_end1[ti+tj*blockDim.x];
+cell_end1[ti+tj*blockDim.x]=cell_end2[ti+tj*blockDim.x];
+cell_end2[ti+tj*blockDim.x]=cellEnd[gridHash2];
+
+}
+
+
+   __syncthreads();
+	int it,jt,kt;
+	int tip,tjp;
+	int ksi_ind;
+	real forceCell = 0.f;
+	int start_index[3];
+	int end_index[3];
+//should not contain boundary here
+if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1)&&(i<ie&&i>=is && j<je&&j>=js))
+{
+      //  int ip,jp,kp;//index of particle cell
+//if(i==33&&j==32&&k==5) printf("\ni_thread %d %d %d %d %d %d %d\n",i,blockDim.x,blockIdx.x,threadIdx.x,blockIdx.y,threadIdx.y,coordiSys);
+//if(i==33&&k==5) printf("\nj_thread %d %d %d %d\n",j,blockDim.x,blockIdx.x,threadIdx.x);
+
+//Make the sum_ksi_cell a device kernel will save half time of the calculation
+for(int di=-1;di<2;di++)
+for(int dj=-1;dj<2;dj++)
+{
+		// store grid hash and partisle pp
+		// include ghost value here
+		tip=ti-di;tjp=tj-dj;
+		start_index[2]=cell_start0[tip+tjp*blockDim.x];
+		start_index[1]=cell_start1[tip+tjp*blockDim.x];
+		start_index[0]=cell_start2[tip+tjp*blockDim.x];
+
+                end_index[2]=cell_end0[tip+tjp*blockDim.x];
+                end_index[1]=cell_end1[tip+tjp*blockDim.x];
+                end_index[0]=cell_end2[tip+tjp*blockDim.x];
+
+		for(int dk=-1;dk<2;dk++)
+		{
+			it=di+1;jt=dj+1;kt=dk+1;
+			int ip,jp,kp;
+			ip=i-di;jp=j-dj;kp=k-dk;
+			int index=ip+jp*s1b+kp*s2b;
+/*			
+if(ip==33&&jp==32&&kp==5&&coordiSys==3) {
+ printf("\n1end-start  %d %d %d %d %d %d %d %d %d\n",di,dj,dk,ip,jp,kp,start_index[kt],end_index[kt],end_index[kt]-start_index[kt]);
+ printf("\nEnd-start  %d %d %d %d %d %d\n",ip,jp,kp,index,cellStart[index],cellEnd[index]);
+}
+*/
+
+// if(start_index[kt]>=0)
+//			{ 
+
+ksi_ind=it+jt*STENCIL+kt*STENCIL2;
+
+
+int inCellTag=(start_index[kt]>=0);
+
+/*
+if(ip==33&&jp==32&&kp==5&&coordiSys==3) {
+ printf("\n1end-start  %d %d %d %d %d %d %d %d %d\n",di,dj,dk,ip,jp,kp,start_index[kt],end_index[kt],maxPointsPerCell);
+	}
+*/
+				for (int count=0; count<maxPointsPerCell; count++)
+        			{
+//if(inCellTag>0&&coordiSys==3) printf("\npartInCell  %d %d %d %d %d %d %f\n",di,dj,dk,i,j,k,Ksi[ksi_ind+index*inCellTag*STENCIL3]);
+
+index=start_index[kt]+count;
+inCellTag=(index<end_index[kt])&&inCellTag;
+				//Read of Global memory, how to coalesce it???
+				//int pp=gridParticleIndex[index]; 
+	  		
+			//tag is the criterial for whether add or not
+			//	ksi=inCellTag*Ksi[it+jt*STENCIL+kt*STENCIL2+index*inCellTag*STENCIL3];
+				forceCell +=inCellTag*Ksi[ksi_ind+index*inCellTag*STENCIL3];
+//				forceCell +=lpt_integrate_mol_opt(i,j,k,xp,yp,zp,dom,coordiSys)*Weight[index];
+		//printf("\nstartEndIndex %d %d %d %f %f\n",start_index[kt],end_index[kt],index,test,Weight[index]);
+		//printf("\nposition %f %f %f %d %d\n",xp,yp,zp,index,start_index[kt]);
+
+//if(inCellTag>0&&fabs(forceCell)>EPSILON) printf("\nforceCell  %d %d %d %d %d %d %f\n",di,dj,dk,i,j,k,Ksi[ksi_ind+index*inCellTag*STENCIL3]);
+	 
+				}
+
+
+//			}
+		}
+}
+
+//The above are cheap, takes 1 ms or so.  The following has significant thread divergence
+		// Any operation inside will be expensive
+//		force+= forceCell;
+//		force+= point_cell_ksi(gridHash,is,js,ks,Ksi,cellStart,cellEnd,gridParticleIndex);
+}
+	
+    int gridHash;
+
+    __syncthreads();
+//Should include ghost point, add it instead to the inner domain
+    if((j >= js && j < je)
+     && (i >= is && i < ie)
+      && (ti > 0 && ti < (blockDim.x-1))
+      && (tj > 0 && tj < (blockDim.y-1)))
+		{
+		gridHash=gridFlowHash[i+j*s1b+k*s2b];
+		 // examine neighbouring cells
+		 //A[gridHash] +=forceCell;
+		 A[gridHash] =forceCell;
+//if(forceCell>EPSILON) printf("\nforceCell  %f %d %d %d %d\n",forceCell,i,j,k,(gridHash-j*s1b-i)/s2b);
+		}
+
+	}
+}
 
 
 // calculate grid hash value for each particle
@@ -681,6 +1056,7 @@ calcGridPos_opt(ip,jp,kp,xp,yp,zp,dom,coordiSys);
 
     // calculate grid index where the particle lives in
 int hash=calcGridHash(ip,jp,kp,dom,coordiSys);
+//if(coordiSys==3) printf("\ngridHash  %d %d %d %d\n",ip,jp,kp,hash);
 
 //__syncthreads();
     // store grid hash and particle pp
@@ -757,7 +1133,7 @@ __syncthreads();
   int ic,jc,kc;//index of object cell
   int is,js,ks;
 
-//Calculate ip,jp,kp independently
+//Calculate ip,jp,kp independently, no periodicity is imposed
 calcGridPos_opt(ip,jp,kp,xp,yp,zp,dom,coordiSys);
 
 real buf=0;
@@ -765,7 +1141,7 @@ int began=-floor((STENCIL-1)/2.0f);//equal to -1,-1 if STENCIL=3,4
 int end=1+ceil((STENCIL-1)/2.0f);//equal to 2,3 if STENCIL=3,4
 
 //printf("\ni~j %d %d %d %f %f %f\n",ip,jp,kp,xp,yp,zp);
-
+//Always calculate based on the nearest cell or face center
 //Calculate the filter strength from Gaussian kernel
 for(int dk=began;dk<end;dk++)
 for(int dj=began;dj<end;dj++)
@@ -775,7 +1151,6 @@ is=di-began;js=dj-began;ks=dk-began;
 ic=ip+di;jc=jp+dj;kc=kp+dk;
 //ip~kp could be beyond domain boundary
 ksi[is][js][ks]=lpt_integrate_mol_opt(ic,jc,kc,xp,yp,zp,dom,coordiSys);
-//ksi[is][js][ks]=lpt_integrate_mol(ic,jc,kc,xp,yp,zp,coordiSys,xs,ys,zs,dx,dy,dz);
 buf+=ksi[is][js][ks];
 }
 
@@ -792,10 +1167,27 @@ for(int dj=began;dj<end;dj++)
 for(int di=began;di<end;di++)
 			{
 		is=di-began;js=dj-began;ks=dk-began;
+		ic=ip+di;jc=jp+dj;kc=kp+dk;
 		ksi[is][js][ks]=ksi[is][js][ks]/buf;
-//printf("\nksi %d %d %d %f %f %f\n",di,dj,dk,ksi[is][js][ks],buf,Ap);
                 //Add gausssian weight between cell center and partisle position to object
 		Ksi[is+js*STENCIL+ks*STENCIL2+index*STENCIL3]=ksi[is][js][ks]*Ap;
+if(fabs(Ap)>EPSILON)
+	{ 
+//	printf("\nksi %d %d %d %d %d %d %d %d %d %f\n",di,dj,dk,ic,jc,kc,ip,jp,kp,ksi[is][js][ks]*Ap);
+//	printf("\nPosition %f %f %f\n",xp,yp,zp);
+	}
+	//	printf("\nksi %d %d %d %f %f %f\n",di,dj,dk,ksi[is][js][ks],buf,Ap);
+/*
+real tag=di*di+dj*dj+dk*dk;
+if(fabs(Ap)>EPSILON)
+{
+if(tag==0) Ksi[is+js*STENCIL+ks*STENCIL2+index*STENCIL3]=512;
+else if(tag==1) Ksi[is+js*STENCIL+ks*STENCIL2+index*STENCIL3]=128;
+else if(tag==2) Ksi[is+js*STENCIL+ks*STENCIL2+index*STENCIL3]=32;
+else if(tag==3) Ksi[is+js*STENCIL+ks*STENCIL2+index*STENCIL3]=8;
+}
+else Ksi[is+js*STENCIL+ks*STENCIL2+index*STENCIL3]=0;
+*/
 			}
 		}
 }
@@ -812,7 +1204,7 @@ dir
 __global__ void calcMaxPointsPerCell_optD(dom_struct *dom, int *cellStart, int *cellEnd,int *pointsNum, int coordiSys)
 {
   int i = threadIdx.x + blockIdx.x*blockDim.x;
-  int j = threadIdx.x + blockIdx.x*blockDim.x;
+  int j = threadIdx.y + blockIdx.y*blockDim.y;
 
 int is,js,ks,ie,je,ke;
 int incGhost=1;//using ghost will cause problem, that the array maximum will be violated
@@ -952,14 +1344,14 @@ int ti =  threadIdx.x;
             if (pp > 0)
               {
         cellEnd[sharedHash[ti]] = pp;
-	// printf("\nend %d %d\n",sharedHash[ti],pp);
+	 //printf("\nend %d %d\n",sharedHash[ti],pp);
 		}
         }
 
         if (pp == npoints - 1)
         {
             cellEnd[hash] = pp + 1;
-	//   printf("\nend %d %d\n",hash,pp+1);
+	  // printf("\nend %d %d\n",hash,pp+1);
         }
    
          __syncthreads();
@@ -976,6 +1368,7 @@ int ti =  threadIdx.x;
 
 //calculate which grid the particle is in, won't make the grid index periodic
 //Passing the dom and points pointer won't take time!!
+//Calculate ip,jp,kp independently, no periodicity is imposed
 __device__ void calcGridPos_opt(int &ip,int &jp,int &kp,real xp,real yp,real zp,dom_struct *dom,int coordiSys)
 {
 real xs=dom->xs;
@@ -1295,6 +1688,9 @@ int dt17=(int) (time18-time17);
 int dt18=(int) (time19-time18);
 printf("\nbasic operations: %d %d %d %d %d\n",dt14,dt15,dt16,dt17,dt18);
 */
+
+//if(kc==ke&&ic==in/2&&jc==jn/2) printf("\ncalcGridFlowHash %d %d %d %d\n",kr+ks,kr,ks,coordiSys);
+
 ic=ir+is;
 jc=jr+js;
 kc=kr+ks;

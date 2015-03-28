@@ -111,6 +111,17 @@ __global__ void boundary_face_value_periodic_end(dom_struct *dom,real *scSrc,int
 __global__ void boundary_face_value_homo_end(dom_struct *dom,real *scSrc,int coordiSys);
 
 
+__global__ void gaussian_periodic_value_add_supplemental(dom_struct *dom,
+              real *A,
+	      real *Ksi,
+              int   *cellStart,
+              int   *cellEnd,
+              int   *gridFlowHash,
+              int maxPointsPerCell,
+              int coordiSys,
+	      int start_end);
+
+
 
 __global__ void lpt_delta_point_position(point_struct *points,
 dom_struct *dom,

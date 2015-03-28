@@ -15,6 +15,21 @@ extern "C"
 #include "point.h"
 }
 
+
+// pressure; west; Dirichlet
+__global__ void BC_p_W_D(real *w, dom_struct *dom, real bc);
+// pressure; east; Dirichlet
+__global__ void BC_p_E_D(real *w, dom_struct *dom, real bc);
+// pressure; top; Dirichlet
+__global__ void BC_p_T_D(real *w, dom_struct *dom, real bc);
+// pressure; bottom; Dirichlet
+__global__ void BC_p_B_D(real *w, dom_struct *dom, real bc);
+// pressure; south; Dirichlet
+__global__ void BC_p_S_D(real *w, dom_struct *dom, real bc);
+// pressure; north; Dirichlet
+__global__ void BC_p_N_D(real *w, dom_struct *dom, real bc);
+
+
 /****f* cuda_bluebottle_kernel/BC_p_W_P<<<>>>()
  * NAME
  *  BC_p_W_P<<<>>>()

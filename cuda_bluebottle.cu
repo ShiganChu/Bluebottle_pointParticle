@@ -3547,6 +3547,7 @@ else
 
 
 //printf("\ngradP_g %f %f %f %f\n",force_buoy*dt,gradP_g,force_buoy,dt0/dt);
+//printf("\ngradP_g %f %f %f\n",gradP_g,Fz,dt0/dt);
 //fflush(stdout);
 
 //TODO deal with boundary conditions!!
