@@ -26,15 +26,16 @@ if(DIFF_dt<=0) return;
 /*
 printf("\ndiff s3 %d %d \n",s3,dom[dev].Gcc.s3);
 fflush(stdout);
-*/
 int index=coordiSys*48 +2;
 int in=DomInfo[index];
 int jn=DomInfo[index+6];
 int kn=DomInfo[index+12];
+*/
 
- index=coordiSys*48 +23;
+int index=coordiSys*48 +23;
 int s3b=DomInfo[index];
 
+/*
 // write coefficients using kernel
 int threads_x = 0;
 int threads_y = 0;
@@ -92,6 +93,12 @@ numBlocks.y=numBlocks_z.y;
 break;
 default:break;
 }
+*/
+
+
+dim3 dimBlocks,numBlocks;
+block_thread_cell(dimBlocks,numBlocks,dom[dev],coordiSys,coordiSys);
+
 real dx=Dom.dx;
 real dy=Dom.dx;
 real dz=Dom.dz;
@@ -117,21 +124,13 @@ while(DIFF_dt_done<DIFF_dt)
 DIFF_dt_sub=min(DIFF_dt_diffScalar,DIFF_dt-DIFF_dt_done);
 //DIFF_dt_sub=DIFF_dt;
 DIFF_dt_done +=DIFF_dt_sub;
+
+//DIFF_dt_done =DIFF_dt;//test
+
 /*
 iter +=1;
 printf("\niter %d %f %f %f %f\n",iter,DIFF_dt,DIFF_dt_done,DIFF_dt_diffScalar,DIFF_dt_sub);
 fflush(stdout);
-*/
-BC_sc_W_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_E_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_T_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_S_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_B_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-BC_sc_N_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
-
-checkCudaErrors(cudaMemcpy(scSrc_buf, scSrc, dom[dev].Gcc.s3b*sizeof(real), cudaMemcpyDeviceToDevice));
-diffScalar_explicitD<<<numBlocks, dimBlocks>>>(scSrc,scSrc_buf,_dom[dev],DIFF_dt_sub);
-/*
 BC_sc_W_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
 BC_sc_E_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
 BC_sc_T_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
@@ -139,11 +138,41 @@ BC_sc_S_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
 BC_sc_B_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
 BC_sc_N_P<<<numBlocks, dimBlocks>>>(scSrc, _dom[dev]);
 */
-}
 
+cuda_scSrc_BC(coordiSys,SCALAR_TYPE, scSrc,dev);
+
+//Store the old value of scSrc to scSrc_buf
+checkCudaErrors(cudaMemcpy(scSrc_buf, scSrc, s3b*sizeof(real), cudaMemcpyDeviceToDevice));
+
+//advance scSrc_buf to scSrc
+////diffScalar_explicitD<<<numBlocks, dimBlocks>>>(scSrc,scSrc_buf,_dom[dev],DIFF_dt_sub,coordiSys);
+switch(coordiSys)
+ {
+case 0:
+diff_Gcc_explicitD<<<numBlocks, dimBlocks>>>(scSrc,scSrc_buf,_dom[dev],DIFF_dt_sub);
+break;
+case 1:
+diff_Gfx_explicitD<<<numBlocks, dimBlocks>>>(scSrc,scSrc_buf,_dom[dev],DIFF_dt_sub);
+break;
+case 2:
+diff_Gfy_explicitD<<<numBlocks, dimBlocks>>>(scSrc,scSrc_buf,_dom[dev],DIFF_dt_sub);
+break;
+case 3:
+
+//printf("\nGfz %d %d %d %d \n",dimBlocks.x,dimBlocks.y,numBlocks.x,numBlocks.y);
+//fflush(stdout);
+diff_Gfz_explicitD<<<numBlocks, dimBlocks>>>(scSrc,scSrc_buf,_dom[dev],DIFF_dt_sub);
+break;
+default:break;
+   }
+
+//printf("\n\nSeparate %d %f %f\n\n\n",coordiSys, DIFF_dt_done,DIFF_dt_sub);
+//fflush(stdout);
+	}
     checkCudaErrors(cudaFree(scSrc_buf));
 }
 
+//TODO Need to change Gcc to all coordiSys
 extern "C"
 void cuda_diffScalar_helmholtz_CN(int coordiSys,int dev, real *scSrc)
 {

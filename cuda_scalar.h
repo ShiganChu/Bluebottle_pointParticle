@@ -61,8 +61,18 @@ __global__ void diffScalar_coeffs_CN(real thetaD, dom_struct *dom, int pitch,
 
 //Using central difference scheme in space, and adam-bashforth scheme in time.
 __global__ void diffScalar_explicitD(real *sc,real *sc0,
-				dom_struct *dom, real DIFF_dt);
+				dom_struct *dom, real DIFF_dt, int coordiSys);
 
+
+__global__ void diff_Gcc_explicitD(real *sc,real *sc0,
+dom_struct *dom, real DIFF_dt);
+//Using central difference scheme in space, and adam-bashforth scheme in time.
+__global__ void diff_Gfx_explicitD(real *sc,real *sc0,
+dom_struct *dom, real DIFF_dt);
+__global__ void diff_Gfy_explicitD(real *sc,real *sc0,
+dom_struct *dom, real DIFF_dt);
+__global__ void diff_Gfz_explicitD(real *sc,real *sc0,
+dom_struct *dom, real DIFF_dt);
 
 
 

@@ -3001,6 +3001,9 @@ fflush(stdout);
     dim3 dimBlocks_w(threads_x, threads_y);
     dim3 numBlocks_w(blocks_x, blocks_y);
 
+//printf("\nwstar %d %d %d %d \n",threads_x, threads_y,blocks_x, blocks_y);
+//fflush(stdout);
+
     if(dt0 > 0.) {
       w_star_2<<<numBlocks_w, dimBlocks_w>>>(rho_f, nu,
         _u0[dev], _v0[dev], _w0[dev], _f_z[dev],

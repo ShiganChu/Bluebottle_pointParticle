@@ -1,21 +1,20 @@
 #include "cuda_scalar.h"
 #include "cuda_point.h"
 
-
 //Using central difference scheme in space, and adam-bashforth scheme in time.
-__global__ void diffScalar_explicitD(real *sc,real *sc0,
+__global__ void diff_Gcc_explicitD(real *sc,real *sc0,
 dom_struct *dom, real DIFF_dt)
 {
 //store scalar value of difference direction at cell center
 __shared__ real sc_b[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at bottom center
 __shared__ real sc_t[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at top center
 __shared__ real sc_c[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at center
+__shared__ real sc_d[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at center
 real ddx = 1. / dom->dx; // to limit the number of divisions needed
 real ddy = 1. / dom->dy; // to limit the number of divisions needed
 real ddz = 1. / dom->dz; // to limit the number of divisions needed
 int C;
 // loop over z-planes
-// for(int k = dom->Gcc._ksb; k < dom->Gcc._keb; k++) {
 for(int k = dom->Gcc._ks; k < dom->Gcc._ke; k++) {
 // subdomain indices
 // the extra 2*blockIdx.X terms implement the necessary overlapping of
@@ -44,7 +43,7 @@ real ddsdxx=(sc_c[ti-1 + tj*blockDim.x]+sc_c[ti+1 + tj*blockDim.x]-2*sc_c[ti + t
 real ddsdyy=(sc_c[ti + (tj-1)*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddy* ddy;
 real ddsdzz=(sc_b[ti + tj*blockDim.x]+sc_t[ti + tj*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddz* ddz;
 real sc_diff= (ddsdxx+ddsdyy+ddsdzz)*DIFF_dt;
-sc_c[ti + tj*blockDim.x] +=sc_diff;
+sc_d[ti + tj*blockDim.x] =sc_c[ti + tj*blockDim.x]+sc_diff;
 }
 // copy shared memory back to global, without copying boundary ghost values
 //sc stores n+1 timestep, conv and diff are n timestep!!
@@ -53,22 +52,227 @@ if((j >= dom->Gcc._js && j < dom->Gcc._je)
 && (ti > 0 && ti < (blockDim.x-1))
 && (tj > 0 && tj < (blockDim.y-1))) {
 C = i + j*dom->Gcc._s1b + k*dom->Gcc._s2b;
-sc[C] = sc_c[ti + tj*blockDim.x];
+sc[C] = sc_d[ti + tj*blockDim.x];
+		}
+	}
 }
+
+//Using central difference scheme in space, and adam-bashforth scheme in tjme.
+__global__ void diff_Gfx_explicitD(real *sc,real *sc0,
+dom_struct *dom, real DIFF_dt)
+{
+//store scalar value of difference directjon at cell center
+__shared__ real sc_b[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at bottom center
+__shared__ real sc_t[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at top center
+__shared__ real sc_c[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at center
+__shared__ real sc_d[MAX_THREADS_DIM * MAX_THREADS_DIM];  
+real ddx = 1. / dom->dx; // to limit the number of divisions needed
+real ddy = 1. / dom->dy; // to limit the number of divisions needed
+real ddz = 1. / dom->dz; // to limit the number of divisions needed
+int C;
+ // loop over u-planes
+  for(int i = dom->Gfx._is; i < dom->Gfx._ie; i++) {
+  // subdomain indices
+// the extra 2*blockIdx.X terms implement the necessary overlapping of
+// shared memory blocks in the subdomain
+    int j = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+    int k = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    // shared memory indices
+    int tj = threadIdx.x;
+    int tk = threadIdx.y;
+
+// load shared memory
+// TODO: look into the effect of removing these if statements and simply
+// allowing memory overruns for threads that don't matter for partjcular
+// discretjzatjons
+    if((k >= dom->Gfx._ksb && k < dom->Gfx._keb)
+      && (j >= dom->Gfx._jsb && j < dom->Gfx._jeb)) {
+sc_c[tj + tk*blockDim.x]=sc0[i  +j*dom->Gfx._s1b + k*dom->Gfx._s2b];
+sc_b[tj + tk*blockDim.x]=sc0[i-1+j*dom->Gfx._s1b + k*dom->Gfx._s2b];
+sc_t[tj + tk*blockDim.x]=sc0[i+1+j*dom->Gfx._s1b + k*dom->Gfx._s2b];
 }
+// make sure all threads complete shared memory copy
+__syncthreads();
+// compute convectjve term
+// if off the shared memory block boundary
+  if((tj > 0 && tj < blockDim.x-1) && (tk > 0 && tk < blockDim.y-1)) {
+//diffusive term of scalar at cell center
+real ddsdxx=(sc_c[tj-1 + tk*blockDim.x]  +sc_c[tj+1 + tk*blockDim.x]  -2*sc_c[tj + tk*blockDim.x]) *ddy* ddy;
+real ddsdyy=(sc_c[tj + (tk-1)*blockDim.x]+sc_c[tj + (tk+1)*blockDim.x]-2*sc_c[tj + tk*blockDim.x]) *ddz* ddz;
+real ddsdzz=(sc_b[tj + tk*blockDim.x]    +sc_t[tj + tk*blockDim.x]    -2*sc_c[tj + tk*blockDim.x]) *ddx* ddx;
+
+//There is memory conflict here, how to avoid??
+ 
+real sc_diff= (ddsdxx+ddsdyy+ddsdzz)*DIFF_dt;
+sc_d[tj + tk*blockDim.x] =sc_c[tj + tk*blockDim.x]+sc_diff;
+ 
+}
+
+// make sure all threads complete shared memory copy
+__syncthreads();
+
+    // copy shared memory back to global
+    if((k >= dom->Gfx._ks && k < dom->Gfx._ke)
+      && (j >= dom->Gfx._js && j < dom->Gfx._je)
+      && (tj > 0 && tj < (blockDim.x-1))
+      && (tk > 0 && tk < (blockDim.y-1))) {
+
+C = i + j*dom->Gfx._s1b + k*dom->Gfx._s2b;
+sc[C] = sc_d[tj + tk*blockDim.x];
+
+//if(k==dom->Gfx._ks&&j==1) printf("\ni %d %d\n",i,tj);
+			}
+		}
+}
+
+//Using central difference scheme in space, and adam-bashforth scheme in time.
+__global__ void diff_Gfy_explicitD(real *sc,real *sc0,
+dom_struct *dom, real DIFF_dt)
+{
+//store scalar value of difference direction at cell center
+__shared__ real sc_b[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at bottom center
+__shared__ real sc_t[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at top center
+__shared__ real sc_c[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at center
+__shared__ real sc_d[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at bottom center
+real ddx = 1. / dom->dx; // to limit the number of divisions needed
+real ddy = 1. / dom->dy; // to limit the number of divisions needed
+real ddz = 1. / dom->dz; // to limit the number of divisions needed
+int C;
+ 
+ for(int j = dom->Gfy._js; j < dom->Gfy._je; j++) {
+    // subdomain indices
+    // the extra 2*blockIdx.X terms implement the necessary overlapping of
+    // shared memory blocks in the subdomain
+    int k = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+    int i = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    // shared memory indices
+    int tk = threadIdx.x;
+    int ti = threadIdx.y;
+
+
+// load shared memory
+// TODO: look into the effect of removing these if statements and simply
+// allowing memory overruns for threads that don't matter for particular
+// discretizations
+    if((i >= dom->Gfy._isb && i < dom->Gfy._ieb)
+      && (k >= dom->Gfy._ksb && k < dom->Gfy._keb)) {
+sc_c[tk + ti*blockDim.x]=sc0[i+j*dom->Gfy._s1b + k*dom->Gfy._s2b];
+sc_b[tk + ti*blockDim.x]=sc0[i+(j-1)*dom->Gfy._s1b + k*dom->Gfy._s2b];
+sc_t[tk + ti*blockDim.x]=sc0[i+(j+1)*dom->Gfy._s1b + k*dom->Gfy._s2b];
+}
+// make sure all threads complete shared memory copy
+__syncthreads();
+// compute convective term
+// if off the shared memory block boundary
+ if((tk > 0 && tk < blockDim.x-1) && (ti > 0 && ti < blockDim.y-1)) {
+   
+//diffusive term of scalar at cell center
+real ddsdxx=(sc_c[tk-1 + ti*blockDim.x]  +sc_c[tk+1 + ti*blockDim.x]  -2*sc_c[tk + ti*blockDim.x]) *ddz* ddz;
+real ddsdyy=(sc_c[tk + (ti-1)*blockDim.x]+sc_c[tk + (ti+1)*blockDim.x]-2*sc_c[tk + ti*blockDim.x]) *ddx* ddx;
+real ddsdzz=(sc_b[tk + ti*blockDim.x]    +sc_t[tk + ti*blockDim.x]    -2*sc_c[tk + ti*blockDim.x]) *ddy* ddy;
+
+//There is memory conflict here, how to avoid??
+ 
+real sc_diff= (ddsdxx+ddsdyy+ddsdzz)*DIFF_dt;
+sc_d[tk + ti*blockDim.x]  =sc_c[tk + ti*blockDim.x]+sc_diff;
+}
+
+// make sure all threads complete shared memory copy
+__syncthreads();
+
+   // copy shared memory back to global
+    if((i >= dom->Gfy._is && i < dom->Gfy._ie)
+      && (k >= dom->Gfy._ks && k < dom->Gfy._ke)
+      && (tk > 0 && tk < (blockDim.x-1))
+      && (ti > 0 && ti < (blockDim.y-1))) {
+C = i + j*dom->Gfy._s1b + k*dom->Gfy._s2b;
+sc[C] = sc_d[tk + ti*blockDim.x];
+
+//if(k==dom->Gfy._ks&&j==1) printf("\ni %d %d\n",i,ti);
+			}
+		}
+}
+
+ //Using central difference scheme in space, and adam-bashforth scheme in time.
+__global__ void diff_Gfz_explicitD(real *sc,real *sc0,
+dom_struct *dom, real DIFF_dt)
+{
+//store scalar value of difference direction at cell center
+__shared__ real sc_b[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at bottom center
+__shared__ real sc_t[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at top center
+__shared__ real sc_c[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at center
+__shared__ real sc_d[MAX_THREADS_DIM * MAX_THREADS_DIM]; // sc at center
+real ddx = 1. / dom->dx; // to limit the number of divisions needed
+real ddy = 1. / dom->dy; // to limit the number of divisions needed
+real ddz = 1. / dom->dz; // to limit the number of divisions needed
+int C;
+// loop over z-planes
+for(int k = dom->Gfz._ks; k < dom->Gfz._ke; k++) {
+// subdomain indices
+// the extra 2*blockIdx.X terms implement the necessary overlapping of
+// shared memory blocks in the subdomain
+int i = blockIdx.x*(blockDim.x-2) + threadIdx.x;
+int j = blockIdx.y*(blockDim.y-2) + threadIdx.y;
+// shared memory indices
+int ti = threadIdx.x;
+int tj = threadIdx.y;
+
+
+// load shared memory
+// TODO: look into the effect of removing these if statements and simply
+// allowing memory overruns for threads that don't matter for particular
+// discretizations
+    if((j >= dom->Gfz._jsb && j < dom->Gfz._jeb)
+      && (i >= dom->Gfz._isb && i < dom->Gfz._ieb)) {
+sc_c[ti + tj*blockDim.x]=sc0[i+j*dom->Gfz._s1b + k*dom->Gfz._s2b];
+sc_b[ti + tj*blockDim.x]=sc0[i+j*dom->Gfz._s1b + (k-1)*dom->Gfz._s2b];
+sc_t[ti + tj*blockDim.x]=sc0[i+j*dom->Gfz._s1b + (k+1)*dom->Gfz._s2b];
+}
+// make sure all threads complete shared memory copy
+__syncthreads();
+// compute convective term
+// if off the shared memory block boundary
+if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1)) {
+//diffusive term of scalar at cell center
+real ddsdxx=(sc_c[ti-1 + tj*blockDim.x]  +sc_c[ti+1 + tj*blockDim.x]  -2*sc_c[ti + tj*blockDim.x]) *ddx* ddx;
+real ddsdyy=(sc_c[ti + (tj-1)*blockDim.x]+sc_c[ti + (tj+1)*blockDim.x]-2*sc_c[ti + tj*blockDim.x]) *ddy* ddy;
+real ddsdzz=(sc_b[ti + tj*blockDim.x]    +sc_t[ti + tj*blockDim.x]    -2*sc_c[ti + tj*blockDim.x]) *ddz* ddz;
+
+//There is memory conflict here, how to avoid??
+real sc_diff= (ddsdxx+ddsdyy+ddsdzz)*DIFF_dt;
+
+//sc_d[ti + tj*blockDim.x] =sc_diff;
+sc_d[ti + tj*blockDim.x] =sc_c[ti + tj*blockDim.x]+sc_diff;
+
+//if(k==dom->Gfz._ks&&j==1) printf("\nGfz %d %d\n",i,ti);
+}
+
+// make sure all threads complete shared memory copy
+__syncthreads();
+
+// copy shared memory back to global, without copying boundary ghost values
+//sc stores n+1 timestep, conv and diff are n timestep!!
+if((j >= dom->Gfz._js && j < dom->Gfz._je)
+&& (i >= dom->Gfz._is && i < dom->Gfz._ie)
+&& (ti > 0 && ti < (blockDim.x-1))
+&& (tj > 0 && tj < (blockDim.y-1))) {
+C = i + j*dom->Gfz._s1b + k*dom->Gfz._s2b;
+sc[C] = sc_d[ti + tj*blockDim.x];
+ 			}
+		}
 }
 
 
-//2nd order for source as well as for convective&diffusion term
+ //2nd order for source as well as for convective&diffusion term
 __global__ void diffScalar_rhs_CN(real DIFF_dt, 
- real *sc0, real *sc_rhs, dom_struct *dom)
+ real *sc0, real *sc, dom_struct *dom)
 {
 
 //store scalar value of difference direction at cell center
   __shared__ real sc_b[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at bottom center
   __shared__ real sc_t[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at top    center
   __shared__ real sc_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at        center
-
+  __shared__ real sc_rhs[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at        center
   real ddx = 1. / dom->dx;     // to limit the number of divisions needed
   real ddy = 1. / dom->dy;     // to limit the number of divisions needed
   real ddz = 1. / dom->dz;     // to limit the number of divisions needed
@@ -107,7 +311,7 @@ real ddsdzz=(sc_b[ti + tj*blockDim.x]+sc_t[ti + tj*blockDim.x]-2*sc_c[ti + tj*bl
 
       real diff_sc= (ddsdxx+ddsdyy+ddsdzz)*DIFF_dt;
      // sc_c[ti + tj*blockDim.x] +=(1-theta)*diff_sc;
-      sc_c[ti + tj*blockDim.x] +=diff_sc;
+      sc_rhs[ti + tj*blockDim.x] =sc_c[ti + tj*blockDim.x]+diff_sc;
 //s_rhs[ti + tj*blockDim.x] =sc_c[ti + tj*blockDim.x];
 }
 
@@ -118,7 +322,7 @@ real ddsdzz=(sc_b[ti + tj*blockDim.x]+sc_t[ti + tj*blockDim.x]-2*sc_c[ti + tj*bl
       && (ti > 0 && ti < (blockDim.x-1))
       && (tj > 0 && tj < (blockDim.y-1))) {
       C = i + j*dom->Gcc._s1b + k*dom->Gcc._s2b;
-      sc_rhs[C] = sc_c[ti + tj*blockDim.x];
+      sc[C] = sc_rhs[ti + tj*blockDim.x];
     }
   }
 }
@@ -2520,6 +2724,7 @@ __global__ void advance_sc(	real DIFF,
   __shared__ real s_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // conv
   __shared__ real s_f[MAX_THREADS_DIM * MAX_THREADS_DIM];       // source term
 
+  __shared__ real s_rhs[MAX_THREADS_DIM * MAX_THREADS_DIM];       // source term
 
 //store scalar value of difference direction at cell center
   __shared__ real sc_b[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at bottom center
@@ -2635,7 +2840,7 @@ real sc_diff= ab * s_d[ti + tj*blockDim.x]-ab0*s_d0[ti + tj*blockDim.x];
 //real rhs=(sc_diff+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
 real rhs=sc_diff+s_f[ti + tj*blockDim.x];
 //real rhs=s_f[ti + tj*blockDim.x];
-sc_c[ti + tj*blockDim.x] +=(sc_conv+rhs)*dt;
+s_rhs[ti + tj*blockDim.x] =sc_c[ti + tj*blockDim.x]+(sc_conv+rhs)*dt;
 
 //if(i==36&&j==38&&k==35) printf("\nsc_diff %f %f %f %f\n",sc_diff,sc_conv,s_f[ti + tj*blockDim.x],sc_c[ti + tj*blockDim.x]);
 }
@@ -2647,7 +2852,7 @@ sc_c[ti + tj*blockDim.x] +=(sc_conv+rhs)*dt;
       && (ti > 0 && ti < (blockDim.x-1))
       && (tj > 0 && tj < (blockDim.y-1))) {
       C = i + j*dom->Gcc._s1b + k*dom->Gcc._s2b;
-      sc[C] = sc_c[ti + tj*blockDim.x];
+      sc[C] = s_rhs[ti + tj*blockDim.x];
       conv[C] = s_c[ti + tj*blockDim.x];
       diff[C] = s_d[ti + tj*blockDim.x];
     }
@@ -2676,6 +2881,7 @@ __global__ void advance_sc_init(real DIFF, real *u, real *v, real *w,real *f,rea
 //  __shared__ real s_c0[MAX_THREADS_DIM * MAX_THREADS_DIM];       // conv0
   __shared__ real s_f[MAX_THREADS_DIM * MAX_THREADS_DIM];       // source term
 
+  __shared__ real s_rhs[MAX_THREADS_DIM * MAX_THREADS_DIM];        
 
 //store scalar value of difference direction at cell center
   __shared__ real sc_c[MAX_THREADS_DIM * MAX_THREADS_DIM];       // sc at  	 center
@@ -2796,7 +3002,7 @@ real ddsdzz=(sc_b[ti + tj*blockDim.x]+sc_t[ti + tj*blockDim.x]-2*sc_c[ti + tj*bl
 //real rhs=(s_d[ti + tj*blockDim.x]+s_f[ti + tj*blockDim.x])/(1-p_epsp[ti + tj*blockDim.x]);
 real rhs=s_d[ti + tj*blockDim.x]+s_f[ti + tj*blockDim.x];
 //real rhs=s_f[ti + tj*blockDim.x];
-sc_c[ti + tj*blockDim.x] +=(s_c[ti + tj*blockDim.x]+rhs)*dt;
+s_rhs[ti + tj*blockDim.x]  =sc_c[ti + tj*blockDim.x]+(s_c[ti + tj*blockDim.x]+rhs)*dt;
 
 //if(i==36&&j==38&&k==35) printf("\nsc_diff0 %f %f %f %d\n",s_d[ti + tj*blockDim.x],s_c[ti + tj*blockDim.x],s_f[ti + tj*blockDim.x],k);
 
@@ -2811,7 +3017,7 @@ sc_c[ti + tj*blockDim.x] +=(s_c[ti + tj*blockDim.x]+rhs)*dt;
       && (ti > 0 && ti < (blockDim.x-1))
       && (tj > 0 && tj < (blockDim.y-1))) {
       C = i + j*dom->Gcc._s1b + k*dom->Gcc._s2b;
-      sc[C] = sc_c[ti + tj*blockDim.x];
+      sc[C] = s_rhs[ti + tj*blockDim.x];
       conv[C] = s_c[ti + tj*blockDim.x];
       diff[C] = s_d[ti + tj*blockDim.x];
     }

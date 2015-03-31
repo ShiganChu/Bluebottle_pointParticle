@@ -865,9 +865,9 @@ coordiSys,valType);
 
 getLastCudaError("Kernel execution failed.");
 
-for(int start_end=1;start_end<=2;start_end++)
-{
 if(coordiSys>0)
+{
+for(int start_end=1;start_end<=2;start_end++)
 	{
 	gaussian_periodic_value_add_supplemental<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc_buf,
 	      Ksi[dev],cellStart[dev],cellEnd[dev],gridFlowHash[dev],
@@ -886,10 +886,11 @@ boundary_face_value_periodic_end<<<numBlocks_z,dimBlocks_z>>>(_dom[dev],scSrc_bu
 cuda_scSrc_BC(coordiSys,SCALAR_TYPE, scSrc_buf,dev);
 
 //Difuse the buf value based on Cappeccelo&Desjadins(2012)
-//cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc_buf);
+cuda_diffScalar_sub_explicitH(coordiSys,dev,scSrc_buf);
 
 ////Diffuse the scalar after gaussian mollification
 ////Explicit solver Takes 4 times longer than one time implicit solver
+//////TODO Need to change Gcc to all coordiSys
 ////cuda_diffScalar_helmholtz_CN(coordiSys,dev,scSrc);
 
 //Add the buf value to the source
@@ -924,6 +925,10 @@ default: break;
 
 	switch(dirc2)
 	{
+	case 0:
+		lenX=G._inb;
+		lenY=G._jnb;
+		break;
 	case 1:
 		lenX=G._jnb;
 		lenY=G._knb;
