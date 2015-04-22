@@ -771,6 +771,11 @@ void cgns_scalar_field(real dtout)
   real *scSrc_out = malloc(Dom.Gcc.s3 * sizeof(real));
   real *epsp_out = malloc(Dom.Gcc.s3 * sizeof(real));
 
+//Vorticity
+  real *omegaX_out = malloc(Dom.Gcc.s3 * sizeof(real));
+  real *omegaY_out = malloc(Dom.Gcc.s3 * sizeof(real));
+  real *omegaZ_out = malloc(Dom.Gcc.s3 * sizeof(real));
+
   // cpumem += Dom.Gcc.s3 * sizeof(real);
   for(int k = Dom.Gcc.ks; k < Dom.Gcc.ke; k++) {
     for(int j = Dom.Gcc.js; j < Dom.Gcc.je; j++) {
@@ -782,6 +787,11 @@ void cgns_scalar_field(real dtout)
         diff_out[C] = diff_sc[CC];
         scSrc_out[C] = scSrc[CC];
 	epsp_out[C]=epsp[CC];
+
+	omegaX_out[C]=omega_x[CC];
+	omegaY_out[C]=omega_y[CC];
+	omegaZ_out[C]=omega_z[CC];
+
       }
     }
   }
@@ -791,6 +801,10 @@ void cgns_scalar_field(real dtout)
   cg_field_write(fn, bn, zn, sn, RealDouble, "ConvScalar", conv_out, &fnpress);
   cg_field_write(fn, bn, zn, sn, RealDouble, "DiffScalar", diff_out, &fnpress);
   cg_field_write(fn, bn, zn, sn, RealDouble, "EPSP", epsp_out, &fnpress);
+
+  cg_field_write(fn, bn, zn, sn, RealDouble, "OmegaX", omegaX_out, &fnpress);
+  cg_field_write(fn, bn, zn, sn, RealDouble, "OmegaY", omegaY_out, &fnpress);
+  cg_field_write(fn, bn, zn, sn, RealDouble, "OmegaZ", omegaZ_out, &fnpress);
 
   cg_user_data_write("Etc");
   cg_goto(fn, bn, "Zone_t", zn, "Etc", 0, "end");
@@ -805,6 +819,11 @@ void cgns_scalar_field(real dtout)
   free(diff_out);
   free(scSrc_out);
   free(epsp_out);
+
+  free(omegaX_out);
+  free(omegaY_out);
+  free(omegaZ_out);
+
 }
 
 

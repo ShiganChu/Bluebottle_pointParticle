@@ -397,7 +397,20 @@ point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
 						ug[dev],vg[dev],wg[dev]);
 point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
 						lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev]);
-array_init<<<numBlocks_p, dimBlocks_p>>>(scg[dev],_dom[dev],npoints, 0);						
+array_init<<<numBlocks_p, dimBlocks_p>>>(scg[dev],_dom[dev],npoints, 0);	
+
+if(C_lift>0) 
+{
+array_init<<<numBlocks_p, dimBlocks_p>>>(lpt_omegaX[dev],_dom[dev],npoints, 0);	
+array_init<<<numBlocks_p, dimBlocks_p>>>(lpt_omegaY[dev],_dom[dev],npoints, 0);	
+array_init<<<numBlocks_p, dimBlocks_p>>>(lpt_omegaZ[dev],_dom[dev],npoints, 0);	
+
+interpolate_point_scalar_Lag2<<<numBlocks_p, dimBlocks_p>>>(npoints,_omega_x[dev],lpt_omegaX[dev],_points[dev],_dom[dev]);
+interpolate_point_scalar_Lag2<<<numBlocks_p, dimBlocks_p>>>(npoints,_omega_y[dev],lpt_omegaY[dev],_points[dev],_dom[dev]);
+interpolate_point_scalar_Lag2<<<numBlocks_p, dimBlocks_p>>>(npoints,_omega_z[dev],lpt_omegaZ[dev],_points[dev],_dom[dev]);
+
+}
+					
 if(lpt_twoway>0)
 point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
 						lpt_dudt[dev],lpt_dvdt[dev],lpt_dwdt[dev]);
@@ -466,9 +479,11 @@ if(lpt_twoway<=0)
 {
 drag_move_points<<<numBlocks_p, dimBlocks_p>>>(_points[dev],_dom[dev],npoints,
 ug[dev],vg[dev],wg[dev],
-lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],scg[dev],
+lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],
+lpt_omegaX[dev],lpt_omegaY[dev],lpt_omegaZ[dev],
+scg[dev],
 rho_f,mu,g,gradP,
-C_add, C_stress,C_drag,
+C_add, C_stress,C_drag,C_lift,
 sc_eq,DIFF,dt_try);
 }
 else
@@ -477,9 +492,10 @@ drag_move_points_twoway<<<numBlocks_p, dimBlocks_p>>>(_points[dev],_dom[dev],npo
 ug[dev],vg[dev],wg[dev],
 lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev],
 lpt_dudt[dev],lpt_dvdt[dev],lpt_dwdt[dev],
+lpt_omegaX[dev],lpt_omegaY[dev],lpt_omegaZ[dev],
 scg[dev],
 rho_f,mu,g,gradP,
-C_add, C_stress,C_drag,
+C_add, C_stress,C_drag,C_lift,
 sc_eq,DIFF,dt_try);
 }
 
@@ -1275,6 +1291,8 @@ void cuda_point_malloc(void)
   cpumem += nsubdom * sizeof(real*);
 
 
+
+
 if(lpt_twoway>0)
 {
   _dudt = (real**) malloc(nsubdom * sizeof(real*));
@@ -1483,6 +1501,11 @@ cuda_malloc_array_real(lpt_stress_u,npoints);
 cuda_malloc_array_real(lpt_stress_v,npoints);
 cuda_malloc_array_real(lpt_stress_w,npoints);
 
+cuda_malloc_array_real(lpt_omegaX,npoints);
+cuda_malloc_array_real(lpt_omegaY,npoints);
+cuda_malloc_array_real(lpt_omegaZ,npoints);
+
+
 if(lpt_twoway>0)
 {
 cuda_malloc_array_real(lpt_dudt,npoints);
@@ -1673,6 +1696,74 @@ fflush(stdout);
 }
 
 
+void cuda_vorticity(int dev)
+{
+
+dim3 dimBlocks,numBlocks;
+dim3 dimBlocks_u,numBlocks_u;
+dim3 dimBlocks_v,numBlocks_v;
+dim3 dimBlocks_w,numBlocks_w;
+
+int coordiSys,planeDirc;
+
+coordiSys=0;
+planeDirc=1;
+block_thread_cell_noOverLap(dimBlocks,numBlocks,dom[dev],coordiSys,planeDirc);
+
+coordiSys=1;
+planeDirc=coordiSys;
+block_thread_cell(dimBlocks_u,numBlocks_u,dom[dev],coordiSys,planeDirc);
+coordiSys=2;
+planeDirc=coordiSys;
+block_thread_cell(dimBlocks_v,numBlocks_v,dom[dev],coordiSys,planeDirc);
+coordiSys=3;
+planeDirc=coordiSys;
+block_thread_cell(dimBlocks_w,numBlocks_w,dom[dev],coordiSys,planeDirc);
+
+real *dudy,*dudz;
+real *dvdx,*dvdz;
+real *dwdx,*dwdy;
+
+ checkCudaErrors(cudaMalloc((void**) &dudy, 
+	sizeof(real) * dom[dev].Gcc.s3b));
+ checkCudaErrors(cudaMalloc((void**) &dudz, 
+	sizeof(real) * dom[dev].Gcc.s3b));
+ checkCudaErrors(cudaMalloc((void**) &dvdx, 
+	sizeof(real) * dom[dev].Gcc.s3b));
+ checkCudaErrors(cudaMalloc((void**) &dvdz, 
+	sizeof(real) * dom[dev].Gcc.s3b));
+ checkCudaErrors(cudaMalloc((void**) &dwdx, 
+	sizeof(real) * dom[dev].Gcc.s3b));
+ checkCudaErrors(cudaMalloc((void**) &dwdy, 
+	sizeof(real) * dom[dev].Gcc.s3b));
+
+
+gradU<<<numBlocks_u,dimBlocks_u>>>(_u[dev],dudy,dudz,_dom[dev]);
+gradV<<<numBlocks_v,dimBlocks_v>>>(_v[dev],dvdx,dvdz,_dom[dev]);
+gradW<<<numBlocks_w,dimBlocks_w>>>(_w[dev],dwdx,dwdy,_dom[dev]);
+
+
+Omega<<<numBlocks,dimBlocks>>>(_omega_x[dev],_omega_y[dev],_omega_z[dev], 
+			 dudy, dudz,
+			 dvdx, dvdz,
+			 dwdx, dwdy,
+			 _dom[dev]);
+
+cudaFree(dudy);
+cudaFree(dudz);
+
+cudaFree(dvdx);
+cudaFree(dvdz);
+
+cudaFree(dwdx);
+cudaFree(dwdy);
+}
+
+
+
+
+
+
 
 //extern "C"
 void lpt_point_source_mollify_final()
@@ -1706,6 +1797,11 @@ cuda_free_array_real(Ksi);
 cuda_free_array_real(lpt_stress_u);
 cuda_free_array_real(lpt_stress_v);
 cuda_free_array_real(lpt_stress_w);
+
+cuda_free_array_real(lpt_omegaX);
+cuda_free_array_real(lpt_omegaY);
+cuda_free_array_real(lpt_omegaZ);
+
 
 if(lpt_twoway>0)
 {

@@ -85,6 +85,13 @@ void lpt_mollify_sc_optH(int coordiSys,int valType,int dev,real *scSrc);
 extern "C"
 void lpt_mollify_delta_scH(int coordiSys,int valType,int dev,real *scSrc);
 
+
+
+//Calculate fluid vorticity
+extern "C"
+void cuda_vorticity(int dev);
+
+
 __device__ void calcGridPos_opt(int &ip,int &jp,int &kp,real xp,real yp,real zp,dom_struct *dom,int coordiSys);
 
 //Use texture memory to fetch it!!!
@@ -287,6 +294,31 @@ void block_thread_cell_3D(dim3 &dimBlocks,dim3 &numBlocks,dom_struct dom,int coo
 void block_thread_point(dim3 &dimBlocks,dim3 &numBlocks,int npoints);
 
 
+
+/*
+Calculate vorticity of the flow at the cell center
+*/
+__global__ void Omega(real *omega_x,real *omega_y,real *omega_z, 
+			real *dudy,real *dudz,
+			real *dvdx,real *dvdz,
+			real *dwdx,real *dwdy,
+			dom_struct *dom);
+__global__ void gradU(real *u0, 
+			real *dudy,real *dudz,
+			dom_struct *dom);
+__global__ void gradV(real *v0, 
+			real *dvdx,real *dvdz,
+			dom_struct *dom);
+
+__global__ void gradW(real *w0, 
+			real *dwdx,real *dwdy,
+			dom_struct *dom);
+
+
+
+
+
+
 /*
 Interpolate flow field property at the particle position, it's for cell-center system
 	A is cell-centerred flow field data 
@@ -354,18 +386,21 @@ real sc_eq,real DIFF,real dt);
 
 __global__ void drag_move_points(point_struct *points,dom_struct *dom, int npoints,
 real *ug,real *vg,real *wg,
-real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,
+real *lpt_omegaX,real *lpt_omegaY,real *lpt_omegaZ,
+real *scg,
 real rho_f,real mu, g_struct g,gradP_struct gradP,
-real C_add,real C_stress,real C_drag,
+real C_add,real C_stress,real C_drag,real C_lift,
 real sc_eq,real DIFF,real dt);
 
 __global__ void drag_move_points_twoway(point_struct *points,dom_struct *dom, int npoints,
 real *ug,real *vg,real *wg,
 real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,
 real *lpt_dudt,real *lpt_dvdt,real *lpt_dwdt,
+real *lpt_omegaX,real *lpt_omegaY,real *lpt_omegaZ,
 real *scg,
 real rho_f,real mu, g_struct g,gradP_struct gradP,
-real C_add,real C_stress,real C_drag,
+real C_add,real C_stress,real C_drag, real C_lift,
 real sc_eq,real DIFF,real dt);
 
 //Locate the grid cell index (i,j,k) of each particle

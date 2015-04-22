@@ -548,11 +548,13 @@ void turb_read_input(void)
   fret = fscanf(infile, "Add mass %lf\n", &C_add);
   fret = fscanf(infile, "Fluid stress %lf\n", &C_stress);
   fret = fscanf(infile, "Drag force %lf\n", &C_drag);
+  fret = fscanf(infile, "Lift force %lf\n", &C_lift);
 #else
 
   fret = fscanf(infile, "Add mass %f\n", &C_add);
   fret = fscanf(infile, "Fluid stress %f\n", &C_stress);
   fret = fscanf(infile, "Drag force %f\n", &C_drag);
+  fret = fscanf(infile, "Lift force %f\n", &C_lift);
 #endif
 
 

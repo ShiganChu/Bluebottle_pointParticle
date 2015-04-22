@@ -55,13 +55,24 @@ extern real **_stress_v;
 extern real **_stress_w;
 extern real **lpt_stress_u,**lpt_stress_v,**lpt_stress_w;//device pointer of the fluid velocity at the particle position
 
+extern real **lpt_omegaX;
+extern real **lpt_omegaY;
+extern real **lpt_omegaZ;
+
+
 extern real **_dudt,**_dvdt,**_dwdt;//device pointer of the fluid accleration at the particle position
 extern real **lpt_dudt,**lpt_dvdt,**lpt_dwdt;//device pointer of the fluid accleration at the particle position
 
+/*
 //Fluid vorticity,located on edge center, memory on device
 extern real **_omega_x;
 extern real **_omega_y;
 extern real **_omega_z;
+
+extern real *_omega_x;
+extern real *_omega_y;
+extern real *_omega_z;
+*/
 
 
 extern float *GaussianKernel; //Gaussian kernel weight contributed by each point particle 
@@ -88,12 +99,13 @@ extern int  **gridParticleHash;
 
 
 /*
-Coeff for added mass,fluid stress, drag force, 
-the default values are 0.5, 1,1 correspondlingly
+Coeff for added mass,fluid stress, drag force, lift force
+the default values are 0.5, 1,1,0.5 correspondlingly
 */
 extern real C_add;
 extern real C_stress;
 extern real C_drag;
+extern real C_lift;
 
 //Add particle reaction force to fluid momentum source term in every fluid time
 void lpt_point_twoway_forcing();

@@ -89,6 +89,18 @@ extern real *epsp;
 extern real **_epsp;
 extern real **_epsp0;
 
+
+//Vorticity, located on cell center
+extern real **_omega_x;
+extern real **_omega_y;
+extern real **_omega_z;
+
+extern real *omega_x;
+extern real *omega_y;
+extern real *omega_z;
+
+
+
 //time step for scalar diffusion
 extern real dt_sc;
 

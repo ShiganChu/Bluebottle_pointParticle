@@ -498,14 +498,12 @@ getLastCudaError("Kernel execution failed.");
 extern "C"
 void cuda_scalar_malloc(void)
 {
-/*
   _omega_x = (real**) malloc(nsubdom * sizeof(real*));
   cpumem += nsubdom * sizeof(real*);
   _omega_y = (real**) malloc(nsubdom * sizeof(real*));
   cpumem += nsubdom * sizeof(real*);
   _omega_z = (real**) malloc(nsubdom * sizeof(real*));
   cpumem += nsubdom * sizeof(real*);
-*/
 
 //malloc device scalar on host
   _sc = (real**) malloc(nsubdom * sizeof(real*));
@@ -578,6 +576,16 @@ fflush(stdout);
     gpumem += dom[dev].Gcc.s3b * sizeof(real);
 
 
+    checkCudaErrors(cudaMalloc((void**) &(_omega_x[dev]),
+      sizeof(real) * dom[dev].Gcc.s3b));
+    gpumem += dom[dev].Gcc.s3b * sizeof(real);
+    checkCudaErrors(cudaMalloc((void**) &(_omega_y[dev]),
+      sizeof(real) * dom[dev].Gcc.s3b));
+    gpumem += dom[dev].Gcc.s3b * sizeof(real);
+    checkCudaErrors(cudaMalloc((void**) &(_omega_z[dev]),
+      sizeof(real) * dom[dev].Gcc.s3b));
+    gpumem += dom[dev].Gcc.s3b * sizeof(real);
+
     // TODO add CUSP solver data structures to memory usage count
 
     //printf("Device %d of %d using %f Mb global memory.\n", dev, nsubdom, mb);
@@ -608,6 +616,9 @@ void cuda_scalar_free(void)
     checkCudaErrors(cudaFree(_epsp[dev]));
     checkCudaErrors(cudaFree(_epsp0[dev]));
 
+    checkCudaErrors(cudaFree(_omega_x[dev]));
+    checkCudaErrors(cudaFree(_omega_y[dev]));
+    checkCudaErrors(cudaFree(_omega_z[dev]));
 
   }
 
@@ -624,7 +635,9 @@ void cuda_scalar_free(void)
     free(_epsp);
     free(_epsp0);
 
-
+    free(_omega_x);
+    free(_omega_y);
+    free(_omega_z);
 }
 
 extern "C"
@@ -648,11 +661,15 @@ void cuda_scalar_push(void)
     real *stress_vv = (real*) malloc(dom[dev].Gfy.s3b * sizeof(real));
     real *stress_ww = (real*) malloc(dom[dev].Gfz.s3b * sizeof(real));
 
-
-    real *omega_xx = (real*) malloc(dom[dev].Gfx.s3b * sizeof(real));
-    real *omega_yy = (real*) malloc(dom[dev].Gfy.s3b * sizeof(real));
-    real *omega_zz = (real*) malloc(dom[dev].Gfz.s3b * sizeof(real));
+    real *omega_xx = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
+    real *omega_yy = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
+    real *omega_zz = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
 */
+
+    real *omega_xx = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
+    real *omega_yy = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
+    real *omega_zz = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
+
     real *scc = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
     real *scc0 = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
     real *diff0_scc = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
@@ -709,49 +726,9 @@ void cuda_scalar_push(void)
 
 */
 
-/*
-//omega_x
-    for(k = dom[dev].Gfx.ksb; k < dom[dev].Gfx.keb; k++) {
-      for(j = dom[dev].Gfx.jsb; j < dom[dev].Gfx.jeb; j++) {
-        for(i = dom[dev].Gfx.isb; i < dom[dev].Gfx.ieb; i++) {
-          ii = i - dom[dev].Gfx.isb;
-          jj = j - dom[dev].Gfx.jsb;
-          kk = k - dom[dev].Gfx.ksb;
-          C = i + j * Dom.Gfx.s1b + k * Dom.Gfx.s2b;
-          CC = ii + jj * dom[dev].Gfx.s1b + kk * dom[dev].Gfx.s2b;
-          omega_xx[CC] = 0;
-        }
-      }
-    }
+ 
 
-  //omega_y
-    for(k = dom[dev].Gfy.ksb; k < dom[dev].Gfy.keb; k++) {
-      for(j = dom[dev].Gfy.jsb; j < dom[dev].Gfy.jeb; j++) {
-        for(i = dom[dev].Gfy.isb; i < dom[dev].Gfy.ieb; i++) {
-          ii = i - dom[dev].Gfy.isb;
-          jj = j - dom[dev].Gfy.jsb;
-          kk = k - dom[dev].Gfy.ksb;
-          C = i + j * Dom.Gfy.s1b + k * Dom.Gfy.s2b;
-          CC = ii + jj * dom[dev].Gfy.s1b + kk * dom[dev].Gfy.s2b;
-          omega_yy[CC] =0;
-        }
-      }
-    }
 
-  // omega_z
-    for(k = dom[dev].Gfz.ksb; k < dom[dev].Gfz.keb; k++) {
-      for(j = dom[dev].Gfz.jsb; j < dom[dev].Gfz.jeb; j++) {
-        for(i = dom[dev].Gfz.isb; i < dom[dev].Gfz.ieb; i++) {
-          ii = i - dom[dev].Gfz.isb;
-          jj = j - dom[dev].Gfz.jsb;
-          kk = k - dom[dev].Gfz.ksb;
-          C = i + j * Dom.Gfz.s1b + k * Dom.Gfz.s2b;
-          CC = ii + jj * dom[dev].Gfz.s1b + kk * dom[dev].Gfz.s2b;
-          omega_zz[CC] =0;
-        }
-      }
-    }
-*/
 
 //scalar initialization
  for(k = dom[dev].Gcc.ksb; k < dom[dev].Gcc.keb; k++) {
@@ -770,6 +747,11 @@ void cuda_scalar_push(void)
           conv_scc[CC] = conv_sc[C];
 	  scSrcc[CC] = scSrc[C];
 	  epspc[CC] = epsp[C];
+
+	//Vorticity
+	omega_xx[CC] = omega_x[C];
+	omega_yy[CC] = omega_y[C];
+	omega_zz[CC] = omega_z[C];
         }
       }
     }
@@ -784,14 +766,15 @@ void cuda_scalar_push(void)
     checkCudaErrors(cudaMemcpy(_stress_w[dev],stress_ww, sizeof(real) * dom[dev].Gfz.s3b,
       cudaMemcpyHostToDevice));
 
-
-    checkCudaErrors(cudaMemcpy(_omega_x[dev],omega_xx, sizeof(real) * dom[dev].Gfx.s3b,
-      cudaMemcpyHostToDevice));
-    checkCudaErrors(cudaMemcpy(_omega_y[dev],omega_yy, sizeof(real) * dom[dev].Gfy.s3b,
-      cudaMemcpyHostToDevice));
-    checkCudaErrors(cudaMemcpy(_omega_z[dev],omega_zz, sizeof(real) * dom[dev].Gfz.s3b,
-      cudaMemcpyHostToDevice));
+ 
 */
+    checkCudaErrors(cudaMemcpy(_omega_x[dev],omega_xx, sizeof(real) * dom[dev].Gcc.s3b,
+      cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(_omega_y[dev],omega_yy, sizeof(real) * dom[dev].Gcc.s3b,
+      cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(_omega_z[dev],omega_zz, sizeof(real) * dom[dev].Gcc.s3b,
+      cudaMemcpyHostToDevice));
+
     checkCudaErrors(cudaMemcpy(_sc[dev],scc, sizeof(real) * dom[dev].Gcc.s3b,
       cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMemcpy(_sc0[dev],scc0, sizeof(real) * dom[dev].Gcc.s3b,
@@ -815,11 +798,11 @@ void cuda_scalar_push(void)
     free(stress_uu);
     free(stress_vv);
     free(stress_ww);
-
+*/
     free(omega_xx);
     free(omega_yy);
     free(omega_zz);
-*/
+
     free(scc);
     free(scc0);
     free(diff0_scc);
@@ -870,25 +853,29 @@ void cuda_scalar_pull(void)
     real *stress_vv = (real*) malloc(dom[dev].Gfy.s3b * sizeof(real));
     real *stress_ww = (real*) malloc(dom[dev].Gfz.s3b * sizeof(real));
 
-    real *omega_xx = (real*) malloc(dom[dev].Gfx.s3b * sizeof(real));
-    real *omega_yy = (real*) malloc(dom[dev].Gfy.s3b * sizeof(real));
-    real *omega_zz = (real*) malloc(dom[dev].Gfz.s3b * sizeof(real));
-
+  
  checkCudaErrors(cudaMemcpy(stress_uu, _stress_u[dev], sizeof(real) * dom[dev].Gfx.s3b,
       cudaMemcpyDeviceToHost)); 
  checkCudaErrors(cudaMemcpy(stress_vv, _stress_v[dev], sizeof(real) * dom[dev].Gfy.s3b,
       cudaMemcpyDeviceToHost)); 
  checkCudaErrors(cudaMemcpy(stress_ww, _stress_w[dev], sizeof(real) * dom[dev].Gfz.s3b,
       cudaMemcpyDeviceToHost)); 
-  
- checkCudaErrors(cudaMemcpy(omega_xx, _omega_x[dev], sizeof(real) * dom[dev].Gfx.s3b,
-      cudaMemcpyDeviceToHost)); 
- checkCudaErrors(cudaMemcpy(omega_yy, _omega_y[dev], sizeof(real) * dom[dev].Gfy.s3b,
-      cudaMemcpyDeviceToHost)); 
- checkCudaErrors(cudaMemcpy(omega_zz, _omega_z[dev], sizeof(real) * dom[dev].Gfz.s3b,
-      cudaMemcpyDeviceToHost)); 
  
 */
+
+    real *omega_xx = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
+    real *omega_yy = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
+    real *omega_zz = (real*) malloc(dom[dev].Gcc.s3b * sizeof(real));
+
+ checkCudaErrors(cudaMemcpy(omega_xx, _omega_x[dev], sizeof(real) * dom[dev].Gcc.s3b,
+      cudaMemcpyDeviceToHost)); 
+ checkCudaErrors(cudaMemcpy(omega_yy, _omega_y[dev], sizeof(real) * dom[dev].Gcc.s3b,
+      cudaMemcpyDeviceToHost)); 
+ checkCudaErrors(cudaMemcpy(omega_zz, _omega_z[dev], sizeof(real) * dom[dev].Gcc.s3b,
+      cudaMemcpyDeviceToHost)); 
+
+
+
    // copy from device to host
      checkCudaErrors(cudaMemcpy(scc, _sc[dev], sizeof(real) * dom[dev].Gcc.s3b,
       cudaMemcpyDeviceToHost));
@@ -930,58 +917,15 @@ void cuda_scalar_pull(void)
 
           scSrc[C] = scSrcc[CC];
           epsp[C] = epspc[CC];
-        }
+
+	//Vorticity
+	  omega_x[C]=omega_xx[CC];
+	  omega_y[C]=omega_yy[CC];
+	  omega_z[C]=omega_zz[CC];	  
+	  }
       }
     }
 
-/*
-  //stress_uu
-    for(k = dom[dev].Gfx.ksb; k < dom[dev].Gfx.keb; k++) {
-      for(j = dom[dev].Gfx.jsb; j < dom[dev].Gfx.jeb; j++) {
-        for(i = dom[dev].Gfx.isb; i < dom[dev].Gfx.ieb; i++) {
-          ii = i - dom[dev].Gfx.isb;
-          jj = j - dom[dev].Gfx.jsb;
-          kk = k - dom[dev].Gfx.ksb;
-          C = i + j * Dom.Gfx.s1b + k * Dom.Gfx.s2b;
-          CC = ii + jj * dom[dev].Gfx.s1b + kk * dom[dev].Gfx.s2b;
-          stress_u[CC]=stress_uu[CC] ;
-	  omega_x[CC]=omega_xx[CC]
-
-        }
-      }
-    }
-
-  //stress_vv
-    for(k = dom[dev].Gfy.ksb; k < dom[dev].Gfy.keb; k++) {
-      for(j = dom[dev].Gfy.jsb; j < dom[dev].Gfy.jeb; j++) {
-        for(i = dom[dev].Gfy.isb; i < dom[dev].Gfy.ieb; i++) {
-          ii = i - dom[dev].Gfy.isb;
-          jj = j - dom[dev].Gfy.jsb;
-          kk = k - dom[dev].Gfy.ksb;
-          C = i + j * Dom.Gfy.s1b + k * Dom.Gfy.s2b;
-          CC = ii + jj * dom[dev].Gfy.s1b + kk * dom[dev].Gfy.s2b;
-          stress_v[CC]=stress_vv[CC];
-          omega_y[CC]=omega_yy[CC]
-        }
-      }
-    }
-
-  // stress_ww
-    for(k = dom[dev].Gfz.ksb; k < dom[dev].Gfz.keb; k++) {
-      for(j = dom[dev].Gfz.jsb; j < dom[dev].Gfz.jeb; j++) {
-        for(i = dom[dev].Gfz.isb; i < dom[dev].Gfz.ieb; i++) {
-          ii = i - dom[dev].Gfz.isb;
-          jj = j - dom[dev].Gfz.jsb;
-          kk = k - dom[dev].Gfz.ksb;
-          C = i + j * Dom.Gfz.s1b + k * Dom.Gfz.s2b;
-          CC = ii + jj * dom[dev].Gfz.s1b + kk * dom[dev].Gfz.s2b;
-          stress_w[CC]=stress_ww[CC];
-	  omega_z[CC]=omega_zz[CC]
-        }
-      }
-    }
-
-*/
 
 
 
@@ -1000,10 +944,11 @@ void cuda_scalar_pull(void)
     free(stress_uu);
     free(stress_vv);
     free(stress_ww);
+*/
     free(omega_xx);
     free(omega_yy);
     free(omega_zz);
-*/
+
   }
 }
 
@@ -1094,7 +1039,7 @@ int incGhost=1;
 
 
 //Mollify volume fraction on device, don't need too much thread source
-//lpt_mollify_sc_optH(coordiSys,EPSP_TYPE,dev,_epsp[dev]);
+lpt_mollify_sc_optH(coordiSys,EPSP_TYPE,dev,_epsp[dev]);
 
 //lpt_mollify_delta_scH(coordiSys,EPSP_TYPE,dev,_epsp[dev]);
 getLastCudaError("Kernel execution failed.");

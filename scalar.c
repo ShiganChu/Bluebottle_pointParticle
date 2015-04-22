@@ -387,7 +387,16 @@ int scalar_init(void)
   scSrc = (real*) malloc(Dom.Gcc.s3b * sizeof(real));
   cpumem += Dom.Gcc.s3b * sizeof(real);
 
+//Local field volume fraction of particles
   epsp = (real*) malloc(Dom.Gcc.s3b * sizeof(real));
+  cpumem += Dom.Gcc.s3b * sizeof(real);
+
+//Vorticity
+  omega_x = (real*) malloc(Dom.Gcc.s3b * sizeof(real));
+  cpumem += Dom.Gcc.s3b * sizeof(real);
+  omega_y = (real*) malloc(Dom.Gcc.s3b * sizeof(real));
+  cpumem += Dom.Gcc.s3b * sizeof(real);
+  omega_z = (real*) malloc(Dom.Gcc.s3b * sizeof(real));
   cpumem += Dom.Gcc.s3b * sizeof(real);
 
 // initialize scalar as 0 (default) 
@@ -400,6 +409,10 @@ int scalar_init(void)
     conv_sc[i]=0.;
     scSrc[i]=0.;
     epsp[i]=0.;
+
+    omega_x[i]=0.;
+    omega_y[i]=0.;
+    omega_z[i]=0.;	
   }
 
 
@@ -579,6 +592,10 @@ void scalar_clean(void)
  free(conv_sc);
  free(scSrc);
  free(epsp);
+
+ free(omega_x);
+ free(omega_y);
+ free(omega_z);
 }
 
 

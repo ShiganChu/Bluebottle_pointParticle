@@ -51,14 +51,23 @@ int  **gridParticleHash;
 real C_add;
 real C_stress;
 real C_drag;
+real C_lift;
 
 real lpt_twoway;
 real sc_twoway;
-/*
+
+//Vorticity
 real **_omega_x;
 real **_omega_y;
 real **_omega_z;
-*/
+
+real *omega_x;
+real *omega_y;
+real *omega_z;
+
+real **lpt_omegaX;
+real **lpt_omegaY;
+real **lpt_omegaZ;
 
 real *p0;
 real *p;

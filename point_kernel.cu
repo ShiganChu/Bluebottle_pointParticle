@@ -415,6 +415,258 @@ scSrc[C2] =0;
 }
 }
 }
+
+
+
+__global__ void Omega(real *omega_x,real *omega_y,real *omega_z, 
+			real *dudy,real *dudz,
+			real *dvdx,real *dvdz,
+			real *dwdx,real *dwdy,
+			dom_struct *dom)
+{
+int i,j,k;
+//i=1~nx
+for(i = dom->Gcc._is; i < dom->Gcc._ie; i++) {
+     j = blockIdx.x*blockDim.x + threadIdx.x;
+     k = blockIdx.y*blockDim.y + threadIdx.y;
+
+   // HOST TO DEVICE
+    if((k >= dom->Gcc._ks && k < dom->Gcc._ke)
+      && (j >= dom->Gcc._js && j < dom->Gcc._je)) {
+ int  CC = i + j * dom->Gcc.s1b + k * dom->Gcc.s2b;
+omega_x[CC]=dwdy[CC]-dvdz[CC];
+omega_y[CC]=dudz[CC]-dwdx[CC];
+omega_z[CC]=dvdx[CC]-dudy[CC];
+		}
+	}
+
+}
+
+
+
+
+
+__global__ void gradU(real *u0, 
+			real *dudy,real *dudz,
+			dom_struct *dom)
+{
+  // create shared memory
+  // no reason to load pressure into shared memory, but leaving it in global
+  // will require additional if statements, so keep it in shared
+  __shared__ real s_u1[MAX_THREADS_DIM * MAX_THREADS_DIM];       //u center
+  __shared__ real s_u2[MAX_THREADS_DIM * MAX_THREADS_DIM];       //u forward
+  __shared__ real s_dudy[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dudy
+  __shared__ real s_dudz[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dudz
+
+real idy=1/dom->dy/8.f;
+real idz=1/dom->dz/8.f;
+
+int i,j,k;
+int tj,tk;
+
+//i=1~nx
+for(i = dom->Gcc._is; i < dom->Gcc._ie; i++) {
+     j = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+     k = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    // shared memory indices
+     tj = threadIdx.x;
+     tk = threadIdx.y;
+
+   // HOST TO DEVICE
+    if((k >= dom->Gfx._ksb && k < dom->Gfx._keb)
+      && (j >= dom->Gfx._jsb && j < dom->Gfx._jeb)) {
+    // shared memory indices
+     tj = threadIdx.x;
+     tk = threadIdx.y;
+//      s_u0[tj + tk*blockDim.x] = u0[(i-1) + j*dom->Gfx._s1b + k*dom->Gfx._s2b];
+      s_u1[tj + tk*blockDim.x] = u0[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b];
+      s_u2[tj + tk*blockDim.x] = u0[(i+1) + j*dom->Gfx._s1b + k*dom->Gfx._s2b];
+    }
+   __syncthreads();
+
+
+if((tj > 0 && tj < blockDim.x-1) && (tk > 0 && tk < blockDim.y-1)) {
+//u_z
+real u212=s_u2[tj+(tk+1)*blockDim.x];
+real u112=s_u1[tj+(tk+1)*blockDim.x];
+real u210=s_u2[tj+(tk-1)*blockDim.x];
+real u110=s_u1[tj+(tk-1)*blockDim.x];
+
+//u_y
+real u221=s_u2[(tj+1)+tk*blockDim.x];
+real u121=s_u2[(tj+1)+tk*blockDim.x];
+real u201=s_u1[(tj-1)+tk*blockDim.x];
+real u101=s_u1[(tj-1)+tk*blockDim.x];
+
+s_dudy[tj+tk*blockDim.x]=(u221+u121-u201-u101)*idy;
+s_dudz[tj+tk*blockDim.x]=(u212+u112-u210-u110)*idz;
+		}
+
+   __syncthreads();
+
+    // copy shared memory back to global
+    if((k >= dom->Gcc._ks && k < dom->Gcc._ke)
+      && (j >= dom->Gcc._js && j < dom->Gcc._je)
+      && (tj > 0 && tj < (blockDim.x-1))
+      && (tk > 0 && tk < (blockDim.y-1))) {
+  int  CC = i + j * dom->Gcc.s1b + k * dom->Gcc.s2b;
+    dudz[CC]=s_dudz[tj+tk*blockDim.x];
+    dudy[CC]=s_dudy[tj+tk*blockDim.x];
+		}
+	}
+}
+
+
+
+
+
+
+__global__ void gradV(real *v0, 
+			real *dvdx,real *dvdz,
+			dom_struct *dom)
+{
+  // create shared memory
+  // no reason to load pressvre into shared memory, bvt leaving it in global
+  // will reqvire additional if statements, so keep it in shared
+  __shared__ real s_v1[MAX_THREADS_DIM * MAX_THREADS_DIM];       //v center
+  __shared__ real s_v2[MAX_THREADS_DIM * MAX_THREADS_DIM];       //v forward
+  __shared__ real s_dvdx[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dvdy
+  __shared__ real s_dvdz[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dvdz
+
+real idx=1/dom->dx/8.f;
+real idz=1/dom->dz/8.f;
+
+int i,j,k;
+int ti,tk;
+
+//j=1~ny
+for(j = dom->Gcc._js; j < dom->Gcc._je; j++) {
+     i = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+     k = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    // shared memory indices
+     ti = threadIdx.x;
+     tk = threadIdx.y;
+
+   // HOST TO DEVICE
+    if((k >= dom->Gfy._ksb && k < dom->Gfy._keb)
+      && (i >= dom->Gfy._isb && i < dom->Gfy._ieb)) {
+//      s_v0[ti + tk*blockDim.x] = v0[i + (j-1)*dom->Gfy._s1b + k*dom->Gfy._s2b];
+      s_v1[ti + tk*blockDim.x] = v0[i + j*dom->Gfy._s1b + k*dom->Gfy._s2b];
+      s_v2[ti + tk*blockDim.x] = v0[i + (j+1)*dom->Gfy._s1b + k*dom->Gfy._s2b];
+    }
+
+   __syncthreads();
+
+
+if((ti > 0 && ti < blockDim.x-1) && (tk > 0 && tk < blockDim.y-1)) {
+//v_x
+real v221=s_v2[(ti+1)+tk*blockDim.x];
+real v211=s_v1[(ti+1)+tk*blockDim.x];
+real v021=s_v2[(ti-1)+tk*blockDim.x];
+real v011=s_v1[(ti-1)+tk*blockDim.x];
+
+//v_z
+real v122=s_v2[ti+(tk+1)*blockDim.x];
+real v112=s_v1[ti+(tk+1)*blockDim.x];
+real v120=s_v2[ti+(tk-1)*blockDim.x];
+real v110=s_v1[ti+(tk-1)*blockDim.x];
+
+s_dvdx[ti+tk*blockDim.x]=(v221+v211-v021-v011)*idx;
+s_dvdz[ti+tk*blockDim.x]=(v122+v112-v120-v110)*idz;
+		}
+
+   __syncthreads();
+
+    // copy shared memory back to global
+    if((k >= dom->Gcc._ks && k < dom->Gcc._ke)
+      && (i >= dom->Gcc._is && i < dom->Gcc._ie)
+      && (ti > 0 && ti < (blockDim.x-1))
+      && (tk > 0 && tk < (blockDim.y-1))) {
+  int  CC = i + j * dom->Gcc.s1b + k * dom->Gcc.s2b;
+    dvdz[CC]=s_dvdz[ti+tk*blockDim.x];
+    dvdx[CC]=s_dvdx[ti+tk*blockDim.x];
+		}
+	}
+}
+
+
+
+
+
+
+
+
+__global__ void gradW(real *w0, 
+			real *dwdx,real *dwdy,
+			dom_struct *dom)
+{
+  // create shared memory
+  // no reason to load presswre into shared memory, bwt leawing it in global
+  // will reqwire additional if statements, so keep it in shared
+  __shared__ real s_w1[MAX_THREADS_DIM * MAX_THREADS_DIM];       //w center
+  __shared__ real s_w2[MAX_THREADS_DIM * MAX_THREADS_DIM];       //w forward
+  __shared__ real s_dwdx[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dwdx
+  __shared__ real s_dwdy[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dwdy
+
+real idx=1/dom->dx/8.f;
+real idy=1/dom->dy/8.f;
+
+int i,j,k;
+int ti,tj;
+
+//k=1~nz
+for(k = dom->Gcc._ks; k < dom->Gcc._ke; k++) {
+     i = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+     j = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+    // shared memory indices
+     ti = threadIdx.x;
+     tj = threadIdx.y;
+
+   // HOST TO DEwICE
+
+    if((j >= dom->Gfz._jsb && j < dom->Gfz._jeb)
+      && (i >= dom->Gfz._isb && i < dom->Gfz._ieb)) {
+//      s_w0[ti + tj*blockDim.x] = w0[i + j*dom->Gfz._s1b + (k-1)*dom->Gfz._s2b];
+      s_w1[ti + tj*blockDim.x] = w0[i + j*dom->Gfz._s1b + k*dom->Gfz._s2b];
+      s_w2[ti + tj*blockDim.x] = w0[i + j*dom->Gfz._s1b + (k+1)*dom->Gfz._s2b];
+    }
+
+   __syncthreads();
+
+
+if((ti > 0 && ti < blockDim.x-1) && (tj > 0 && tj < blockDim.y-1)) {
+//w_y
+real w122=s_w2[ti + (tj+1)*blockDim.x];
+real w121=s_w1[ti + (tj+1)*blockDim.x];
+real w102=s_w2[ti + (tj-1)*blockDim.x];
+real w101=s_w1[ti + (tj-1)*blockDim.x];
+
+//w_x
+real w212=s_w2[ti+1 + tj*blockDim.x];
+real w211=s_w1[ti+1 + tj*blockDim.x];
+real w012=s_w2[ti-1 + tj*blockDim.x];
+real w011=s_w1[ti-1 + tj*blockDim.x];
+
+s_dwdx[ti+tj*blockDim.x]=(w212+w211-w012-w011)*idx;
+s_dwdy[ti+tj*blockDim.x]=(w122+w121-w102-w101)*idy;
+		}
+
+   __syncthreads();
+
+    // copy shared memory back to global
+    if((j >= dom->Gcc._js && j < dom->Gcc._je)
+      && (i >= dom->Gcc._is && i < dom->Gcc._ie)
+      && (ti > 0 && ti < (blockDim.x-1))
+      && (tj > 0 && tj < (blockDim.y-1))) {
+  int  CC = i + j * dom->Gcc.s1b + k * dom->Gcc.s2b;
+    dwdy[CC]=s_dwdy[ti+tj*blockDim.x];
+    dwdx[CC]=s_dwdx[ti+tj*blockDim.x];
+		}
+	}
+}
+
+
+
 __global__ void array_init(real *A,dom_struct *dom, int n, real a)
 {
 int indx =  threadIdx.x + blockIdx.x*blockDim.x;
@@ -3103,9 +3355,11 @@ real wp=points[pp].w;
 //The droplet mass is constant for momentum in this case
 __global__ void drag_move_points(point_struct *points,dom_struct *dom, int npoints,
 real *ug,real *vg,real *wg,
-real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,real *scg,
+real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,
+real *lpt_omegaX,real *lpt_omegaY,real *lpt_omegaZ,
+real *scg,
 real rho_f,real mu, g_struct g,gradP_struct gradP,
-real C_add,real C_stress,real C_drag,
+real C_add,real C_stress,real C_drag,real C_lift,
 real sc_eq,real DIFF,real dt)
 //gradP serve as bodyforce for the time being
 {
@@ -3169,6 +3423,10 @@ real stress_x=lpt_stress_u[pp];
 real stress_y=lpt_stress_v[pp];
 real stress_z=lpt_stress_w[pp];
 
+//Vorticity
+real lpt_omega_x=lpt_omegaX[pp];
+real lpt_omega_y=lpt_omegaY[pp];
+real lpt_omega_z=lpt_omegaZ[pp];
 
 //Total add mass,  -gradP.x~z are the body force on fluid apart from gravity
 real dudt=(stress_x/rho_f-gradP.x);
@@ -3179,11 +3437,15 @@ real add_x=dudt*mf;
 real add_y=dvdt*mf;
 real add_z=dwdt*mf;
 
+real lift_x=rho_f*volume*((vf-vp)*lpt_omega_z-(wf-wp)*lpt_omega_y);
+real lift_y=rho_f*volume*((wf-wp)*lpt_omega_x-(uf-up)*lpt_omega_z);
+real lift_z=rho_f*volume*((uf-up)*lpt_omega_y-(vf-vp)*lpt_omega_x);
+
 //Store the fluid force on particle including add mass, drag, fluid force and gravity
 //default C_add=0.5; C_stress=1; C_drag=1;
-real Fx=(C_add*add_x+C_stress*stress_x*volume+C_drag*drag_x)+(mp-mf)*g.x;
-real Fy=(C_add*add_y+C_stress*stress_y*volume+C_drag*drag_y)+(mp-mf)*g.y;
-real Fz=(C_add*add_z+C_stress*stress_z*volume+C_drag*drag_z)+(mp-mf)*g.z;
+real Fx=(C_add*add_x+C_stress*stress_x*volume+C_drag*drag_x+C_lift*lift_x)+(mp-mf)*g.x;
+real Fy=(C_add*add_y+C_stress*stress_y*volume+C_drag*drag_y+C_lift*lift_y)+(mp-mf)*g.y;
+real Fz=(C_add*add_z+C_stress*stress_z*volume+C_drag*drag_z+C_lift*lift_z)+(mp-mf)*g.z;
 
 
 real rhs_x=Fx+ C_drag*up*itau*mp;
@@ -3522,9 +3784,10 @@ __global__ void drag_move_points_twoway(point_struct *points,dom_struct *dom, in
 real *ug,real *vg,real *wg,
 real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,
 real *lpt_dudt,real *lpt_dvdt,real *lpt_dwdt,
+real *lpt_omegaX,real *lpt_omegaY,real *lpt_omegaZ,
 real *scg,
 real rho_f,real mu, g_struct g,gradP_struct gradP,
-real C_add,real C_stress,real C_drag,
+real C_add,real C_stress,real C_drag, real C_lift,
 real sc_eq,real DIFF,real dt)
 //gradP serve as bodyforce for the time being
 {
