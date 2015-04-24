@@ -87,9 +87,6 @@ void lpt_mollify_delta_scH(int coordiSys,int valType,int dev,real *scSrc);
 
 
 
-//Calculate fluid vorticity
-extern "C"
-void cuda_vorticity(int dev);
 
 
 __device__ void calcGridPos_opt(int &ip,int &jp,int &kp,real xp,real yp,real zp,dom_struct *dom,int coordiSys);

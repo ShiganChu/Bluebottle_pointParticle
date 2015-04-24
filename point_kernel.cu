@@ -437,6 +437,8 @@ for(i = dom->Gcc._is; i < dom->Gcc._ie; i++) {
 omega_x[CC]=dwdy[CC]-dvdz[CC];
 omega_y[CC]=dudz[CC]-dwdx[CC];
 omega_z[CC]=dvdx[CC]-dudy[CC];
+//omega_z[CC]=-dudy[CC];
+//omega_z[CC]=dvdx[CC];
 		}
 	}
 
@@ -458,13 +460,16 @@ __global__ void gradU(real *u0,
   __shared__ real s_dudy[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dudy
   __shared__ real s_dudz[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dudz
 
-real idy=1/dom->dy/8.f;
-real idz=1/dom->dz/8.f;
+real idy=1/dom->dy/4.f;
+real idz=1/dom->dz/4.f;
 
 int i,j,k;
 int tj,tk;
 
-//i=1~nx
+//Gradient value needed to calculate at i=1~nx,j=1~ny,k=1~nz,  cell-center
+//u-velocity value required at i=1~ nx+1,j=0~ny+1,k=0~nz+1, face-center
+
+//1~nx
 for(i = dom->Gcc._is; i < dom->Gcc._ie; i++) {
      j = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
      k = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
@@ -475,12 +480,11 @@ for(i = dom->Gcc._is; i < dom->Gcc._ie; i++) {
    // HOST TO DEVICE
     if((k >= dom->Gfx._ksb && k < dom->Gfx._keb)
       && (j >= dom->Gfx._jsb && j < dom->Gfx._jeb)) {
-    // shared memory indices
-     tj = threadIdx.x;
-     tk = threadIdx.y;
 //      s_u0[tj + tk*blockDim.x] = u0[(i-1) + j*dom->Gfx._s1b + k*dom->Gfx._s2b];
       s_u1[tj + tk*blockDim.x] = u0[i + j*dom->Gfx._s1b + k*dom->Gfx._s2b];
       s_u2[tj + tk*blockDim.x] = u0[(i+1) + j*dom->Gfx._s1b + k*dom->Gfx._s2b];
+//if(j==1&&k==2) printf("\nthread i %d\n",i);
+//if(i==1&&k==2) printf("\nthread j %d %d\n",j,tj);
     }
    __syncthreads();
 
@@ -494,12 +498,13 @@ real u110=s_u1[tj+(tk-1)*blockDim.x];
 
 //u_y
 real u221=s_u2[(tj+1)+tk*blockDim.x];
-real u121=s_u2[(tj+1)+tk*blockDim.x];
-real u201=s_u1[(tj-1)+tk*blockDim.x];
+real u121=s_u1[(tj+1)+tk*blockDim.x];
+real u201=s_u2[(tj-1)+tk*blockDim.x];
 real u101=s_u1[(tj-1)+tk*blockDim.x];
 
 s_dudy[tj+tk*blockDim.x]=(u221+u121-u201-u101)*idy;
 s_dudz[tj+tk*blockDim.x]=(u212+u112-u210-u110)*idz;
+
 		}
 
    __syncthreads();
@@ -533,19 +538,19 @@ __global__ void gradV(real *v0,
   __shared__ real s_dvdx[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dvdy
   __shared__ real s_dvdz[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dvdz
 
-real idx=1/dom->dx/8.f;
-real idz=1/dom->dz/8.f;
+real idx=1/dom->dx/4.f;
+real idz=1/dom->dz/4.f;
 
 int i,j,k;
 int ti,tk;
 
 //j=1~ny
 for(j = dom->Gcc._js; j < dom->Gcc._je; j++) {
-     i = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
-     k = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
+     k = blockIdx.x*blockDim.x + threadIdx.x - 2*blockIdx.x;
+     i = blockIdx.y*blockDim.y + threadIdx.y - 2*blockIdx.y;
     // shared memory indices
-     ti = threadIdx.x;
-     tk = threadIdx.y;
+     tk = threadIdx.x;
+     ti = threadIdx.y;
 
    // HOST TO DEVICE
     if((k >= dom->Gfy._ksb && k < dom->Gfy._keb)
@@ -558,7 +563,7 @@ for(j = dom->Gcc._js; j < dom->Gcc._je; j++) {
    __syncthreads();
 
 
-if((ti > 0 && ti < blockDim.x-1) && (tk > 0 && tk < blockDim.y-1)) {
+if((ti > 0 && ti < blockDim.y-1) && (tk > 0 && tk < blockDim.x-1)) {
 //v_x
 real v221=s_v2[(ti+1)+tk*blockDim.x];
 real v211=s_v1[(ti+1)+tk*blockDim.x];
@@ -580,8 +585,8 @@ s_dvdz[ti+tk*blockDim.x]=(v122+v112-v120-v110)*idz;
     // copy shared memory back to global
     if((k >= dom->Gcc._ks && k < dom->Gcc._ke)
       && (i >= dom->Gcc._is && i < dom->Gcc._ie)
-      && (ti > 0 && ti < (blockDim.x-1))
-      && (tk > 0 && tk < (blockDim.y-1))) {
+      && (ti > 0 && ti < (blockDim.y-1))
+      && (tk > 0 && tk < (blockDim.x-1))) {
   int  CC = i + j * dom->Gcc.s1b + k * dom->Gcc.s2b;
     dvdz[CC]=s_dvdz[ti+tk*blockDim.x];
     dvdx[CC]=s_dvdx[ti+tk*blockDim.x];
@@ -608,8 +613,8 @@ __global__ void gradW(real *w0,
   __shared__ real s_dwdx[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dwdx
   __shared__ real s_dwdy[MAX_THREADS_DIM * MAX_THREADS_DIM];     //dwdy
 
-real idx=1/dom->dx/8.f;
-real idy=1/dom->dy/8.f;
+real idx=1/dom->dx/4.f;
+real idy=1/dom->dy/4.f;
 
 int i,j,k;
 int ti,tj;
@@ -3437,9 +3442,12 @@ real add_x=dudt*mf;
 real add_y=dvdt*mf;
 real add_z=dwdt*mf;
 
+//TODO need to modify process of the small tau_p trick with the particle velocity on the rhs in lift force
 real lift_x=rho_f*volume*((vf-vp)*lpt_omega_z-(wf-wp)*lpt_omega_y);
 real lift_y=rho_f*volume*((wf-wp)*lpt_omega_x-(uf-up)*lpt_omega_z);
 real lift_z=rho_f*volume*((uf-up)*lpt_omega_y-(vf-vp)*lpt_omega_x);
+
+//printf("\nlift %f %f %f %f %f %f\n",lift_x,lift_y,lift_z,lpt_omega_x,lpt_omega_y,lpt_omega_z);
 
 //Store the fluid force on particle including add mass, drag, fluid force and gravity
 //default C_add=0.5; C_stress=1; C_drag=1;

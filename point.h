@@ -115,6 +115,9 @@ void lpt_point_twoway_momentum();
 //calculate fluid stress du/dt to impose on particles
 void cuda_flow_stress(void);
 
+//calculate flow vorticity located at cell center
+void cuda_flow_vorticity(void);
+
 real cuda_sum_points_Fz(void);
 
 real cuda_find_dt_points(real dt);

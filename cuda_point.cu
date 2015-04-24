@@ -942,8 +942,8 @@ default: break;
 	switch(dirc2)
 	{
 	case 0:
-		lenX=G._inb;
-		lenY=G._jnb;
+		lenX=G._jnb;
+		lenY=G._knb;
 		break;
 	case 1:
 		lenX=G._jnb;
@@ -1696,8 +1696,12 @@ fflush(stdout);
 }
 
 
-void cuda_vorticity(int dev)
+void cuda_flow_vorticity(void)
 {
+ #pragma omp parallel num_threads(nsubdom)
+  {
+    int dev = omp_get_thread_num();
+    checkCudaErrors(cudaSetDevice(dev + dev_start));
 
 dim3 dimBlocks,numBlocks;
 dim3 dimBlocks_u,numBlocks_u;
@@ -1757,8 +1761,8 @@ cudaFree(dvdz);
 
 cudaFree(dwdx);
 cudaFree(dwdy);
+ }
 }
-
 
 
 

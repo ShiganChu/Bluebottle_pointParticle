@@ -651,6 +651,8 @@ if(npoints>0&&lpt_twoway>0)    	   lpt_point_twoway_forcing();
 
 	//Calculate fluid stress on particles at time t_n
             if(npoints>0)  cuda_flow_stress();
+	//Calculate vorticity
+            if(npoints>0&&C_lift>0)  cuda_flow_vorticity();
 
 
       // update point_particle position in substep

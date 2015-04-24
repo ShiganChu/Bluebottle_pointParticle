@@ -1467,9 +1467,17 @@ else if(init_cond == POISEUILLE) {
     for(k = Dom.Gfx.ksb; k < Dom.Gfx.keb; k++) {
       for(j = Dom.Gfx.jsb; j < Dom.Gfx.jeb; j++) {
         for(i = Dom.Gfx.isb; i < Dom.Gfx.ieb; i++) {
-          real z = ((k-0.5) * Dom.dz) + Dom.zs;
+
+/*
+real z = ((k-0.5) * Dom.dz) + Dom.zs;
 real rad= z-(Dom.zs+Dom.ze)/2;
 real halfH=(Dom.ze-Dom.zs)/2;
+*/
+
+real y = ((j-0.5) * Dom.dy) + Dom.ys;
+real rad= y-(Dom.ys+Dom.ye)/2;
+real halfH=(Dom.ye-Dom.ys)/2;
+
           int C = i+j*Dom.Gfx.s1b+k*Dom.Gfx.s2b;
           u[C] = -gradP.xm/2/mu*(halfH*halfH-rad*rad);
           u0[C] = u[C];
