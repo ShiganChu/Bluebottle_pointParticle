@@ -3070,6 +3070,9 @@ void cuda_dom_BC_p(void)
       dim3 dimBlocks_p(threads_y, threads_z);
       dim3 numBlocks_p(blocks_y, blocks_z);
 
+//printf("\npressure west %d %d %d %d  %d %d\n",threads_y,threads_z,blocks_y,blocks_z,dom[dev].Gcc.jnb,dom[dev].Gcc.knb);
+//fflush(stdout);
+
       // apply BC to all fields for this face
       switch(bc.pW) {
         case PERIODIC:
@@ -3156,6 +3159,7 @@ void cuda_dom_BC_p(void)
 
       dim3 dimBlocks_p(threads_z, threads_x);
       dim3 numBlocks_p(blocks_z, blocks_x);
+
 
       // apply BC to all fields for this face
       switch(bc.pN) {

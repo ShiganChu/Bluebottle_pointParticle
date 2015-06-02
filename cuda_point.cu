@@ -399,16 +399,17 @@ point_interp_init<<<numBlocks_p, dimBlocks_p>>>(npoints,_points[dev],
 						lpt_stress_u[dev],lpt_stress_v[dev],lpt_stress_w[dev]);
 array_init<<<numBlocks_p, dimBlocks_p>>>(scg[dev],_dom[dev],npoints, 0);	
 
-if(C_lift>0) 
-{
+//The lpt array should be initialized whenever possible
 array_init<<<numBlocks_p, dimBlocks_p>>>(lpt_omegaX[dev],_dom[dev],npoints, 0);	
 array_init<<<numBlocks_p, dimBlocks_p>>>(lpt_omegaY[dev],_dom[dev],npoints, 0);	
 array_init<<<numBlocks_p, dimBlocks_p>>>(lpt_omegaZ[dev],_dom[dev],npoints, 0);	
 
+if(C_lift>0) 
+{
+//Vorticity _omega are stored in cell center grid.  
 interpolate_point_scalar_Lag2<<<numBlocks_p, dimBlocks_p>>>(npoints,_omega_x[dev],lpt_omegaX[dev],_points[dev],_dom[dev]);
 interpolate_point_scalar_Lag2<<<numBlocks_p, dimBlocks_p>>>(npoints,_omega_y[dev],lpt_omegaY[dev],_points[dev],_dom[dev]);
 interpolate_point_scalar_Lag2<<<numBlocks_p, dimBlocks_p>>>(npoints,_omega_z[dev],lpt_omegaZ[dev],_points[dev],_dom[dev]);
-
 }
 					
 if(lpt_twoway>0)
@@ -429,8 +430,6 @@ fflush(stdout);
 
 interpolate_point_scalar_Lag2<<<numBlocks_p, dimBlocks_p>>>(npoints,_sc[dev],scg[dev],_points[dev],_dom[dev]);
 fflush(stdout);
-
-
 
 /*
 C_add=0.5;
@@ -484,7 +483,7 @@ lpt_omegaX[dev],lpt_omegaY[dev],lpt_omegaZ[dev],
 scg[dev],
 rho_f,mu,g,gradP,
 C_add, C_stress,C_drag,C_lift,
-sc_eq,DIFF,dt_try);
+sc_init_percent,sc_eq,DIFF,dt_try);
 }
 else
 {
@@ -496,7 +495,7 @@ lpt_omegaX[dev],lpt_omegaY[dev],lpt_omegaZ[dev],
 scg[dev],
 rho_f,mu,g,gradP,
 C_add, C_stress,C_drag,C_lift,
-sc_eq,DIFF,dt_try);
+sc_init_percent,sc_eq,DIFF,dt_try);
 }
 
 /*
@@ -653,7 +652,7 @@ if(npoints<=0) return;
     dim3 dimBlocks_p,numBlocks_p;
 //    dim3 numBlocks_st;
 
-//    dim3 numBlocks_print,dimBlocks_print;
+ //   dim3 numBlocks_print,dimBlocks_print;
 
 //int coordiSys=0;//coordinate systerm, cell-center or face center
 int planeDirc=3;//parallel x-y or y-z or x-z plane
@@ -722,6 +721,8 @@ findCellStart_deltaD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 						lptSourceVal[dev],
 						lptSourceValOld[dev],
 						npoints);
+getLastCudaError("Find start end cell failed.");
+
 /*
 cudaEventRecord(stop);
 cudaEventSynchronize(stop);
@@ -746,19 +747,28 @@ cudaEventRecord(start);
 
 //Note the numBlocks_w doesn't contain overLap for the shared memory. This should vary from kernel to kernel
 lpt_mollify_delta_scD<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc_buf,lptSourceVal[dev],cellStart[dev],cellEnd[dev],npoints,coordiSys);
+getLastCudaError("Delta mollify failed.");
 
+
+//Deal with the boundary cell
 if(coordiSys>0)
 {
 boundary_face_value_periodic_start<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc_buf,coordiSys);
 boundary_face_value_periodic_end<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc_buf,coordiSys);
 }
 
+//Note: every branch in a switch should be followed by a break!
 cuda_scSrc_BC(coordiSys,SCALAR_TYPE,scSrc_buf,dev);
 
-scSrc_value_add<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,scSrc_buf,coordiSys);
 
+scSrc_value_add<<<numBlocks_w,dimBlocks_w>>>(_dom[dev],scSrc,scSrc_buf,coordiSys);
 getLastCudaError("Kernel execution failed.");
 
+/*
+print_kernel_array_real<<<numBlocks_print,dimBlocks_print>>>(scSrc,lenCell);
+printf("\nprint inside after above\n");
+fflush(stdout);
+*/
     checkCudaErrors(cudaFree(scSrc_buf));
 /*
 fflush(stdout);
@@ -836,16 +846,20 @@ getLastCudaError("Kernel execution failed.");
 
 //array_init<<<numBlocks_st, dimBlocks_p>>>(Ksi[dev],_dom[dev],npoints*STENCIL3, 0.);
 
+//Store particle position in posXold etc
 lpt_point_position<<<numBlocks_p,dimBlocks_p>>>(_points[dev],posXold[dev],posYold[dev],posZold[dev],npoints);
 
+//Calculate grid index of particles in cuda based on their position
 calcHash_optD<<<numBlocks_p,dimBlocks_p>>>(gridParticleHash[dev],
 					gridParticleIndex[dev],
 					_dom[dev],
 					posXold[dev],posYold[dev],posZold[dev],
 					npoints,coordiSys);
 
+//Sort particles based on grid cell index
 sortParticles(gridParticleHash[dev],gridParticleIndex[dev],npoints);
 
+//Find out the particle indexes in each grid cell, each cell has start and end index of particles inside; Moreover, the particle sequence in posX are also reordered.
 findCellStart_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 						cellEnd[dev],
 						gridParticleHash[dev],
@@ -856,7 +870,7 @@ findCellStart_optD<<<numBlocks_p,dimBlocks_p>>>(cellStart[dev],
 
 
 
-//valType=1 for particle volume fraction; valType =0 for other cell-centerred parameter 
+//valType=1 for particle volume fraction; valType =0 for other cell-centerred parameter; Find out point source and stored in Ksi[dev], notice that Ksi already contained the Gaussian coefficient
 lpt_point_ksi_opt<<<numBlocks_p,dimBlocks_p>>>(_points[dev],_dom[dev],posX[dev],posY[dev],posZ[dev],Ksi[dev],gridParticleIndex[dev],npoints,coordiSys,valType);
 fflush(stdout);
 
@@ -1160,6 +1174,7 @@ else
 
 
 int maxThread_z=floor(MAX_THREADS_BLOCK/(1.f*threads_y)/(1.f*threads_x));
+//int maxThread_z=MAX_THREADS_DIM3;
     if(lenZ < maxThread_z)
       threads_z = lenZ;
     else
@@ -1183,6 +1198,11 @@ int maxThread_z=floor(MAX_THREADS_BLOCK/(1.f*threads_y)/(1.f*threads_x));
     numBlocks.x=blocks_x;
     numBlocks.y=blocks_y;
     numBlocks.z=blocks_z;
+
+/*
+printf("\nthread_3d %d %d %d %d %d %d\n",threads_x,threads_y,threads_z,blocks_x,blocks_y,blocks_z);
+fflush(stdout);
+*/
 }
 
 void block_thread_point(dim3 &dimBlocks,dim3 &numBlocks,int npoints)
@@ -1741,12 +1761,12 @@ real *dwdx,*dwdy;
  checkCudaErrors(cudaMalloc((void**) &dwdy, 
 	sizeof(real) * dom[dev].Gcc.s3b));
 
-
+//Calculate the flow velocity gradient
 gradU<<<numBlocks_u,dimBlocks_u>>>(_u[dev],dudy,dudz,_dom[dev]);
 gradV<<<numBlocks_v,dimBlocks_v>>>(_v[dev],dvdx,dvdz,_dom[dev]);
 gradW<<<numBlocks_w,dimBlocks_w>>>(_w[dev],dwdx,dwdy,_dom[dev]);
 
-
+//Calculate vorticity based on velocity gradient
 Omega<<<numBlocks,dimBlocks>>>(_omega_x[dev],_omega_y[dev],_omega_z[dev], 
 			 dudy, dudz,
 			 dvdx, dvdz,

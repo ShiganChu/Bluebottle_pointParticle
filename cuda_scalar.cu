@@ -979,6 +979,34 @@ void cuda_store_scalar(void)
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 extern "C"
 void cuda_scalar_advance(void)
 {
@@ -990,25 +1018,25 @@ void cuda_scalar_advance(void)
     checkCudaErrors(cudaSetDevice(dev + dev_start));
 
     int threads_y = 0;
-    int threads_z = 0;
+    int threads_x = 0;
     int blocks_y = 0;
-    int blocks_z = 0;
+    int blocks_x = 0;
 
     if(dom[dev].Gcc._jnb < MAX_THREADS_DIM)
       threads_y = dom[dev].Gcc._jnb;
     else
       threads_y = MAX_THREADS_DIM;
 
-    if(dom[dev].Gcc._knb < MAX_THREADS_DIM)
-      threads_z = dom[dev].Gcc._knb;
+    if(dom[dev].Gcc._inb < MAX_THREADS_DIM)
+      threads_x = dom[dev].Gcc._inb;
     else
-      threads_z = MAX_THREADS_DIM;
+      threads_x = MAX_THREADS_DIM;
 
     blocks_y = (int)ceil((real) dom[dev].Gcc._jnb / (real) (threads_y-2));
-    blocks_z = (int)ceil((real) dom[dev].Gcc._knb / (real) (threads_z-2));
+    blocks_x = (int)ceil((real) dom[dev].Gcc._inb / (real) (threads_x-2));
 
-    dim3 dimBlocks_x(threads_y, threads_z);
-    dim3 numBlocks_x(blocks_y, blocks_z);
+    dim3 dimBlocks_z(threads_x, threads_y);
+    dim3 numBlocks_z(blocks_x, blocks_y);
 
  
 
@@ -1020,29 +1048,33 @@ void cuda_scalar_advance(void)
     dim3 dimBlocks(threads);
     dim3 numBlocks(blocks);
  //   dim3 numBlocks_st(blocks_st);
-    dim3 dimBlocks_3d,numBlocks_3d;
+ //   dim3 dimBlocks_3d,numBlocks_3d;
 
 int coordiSys=0;
-int incGhost=1;
-    block_thread_cell_3D(dimBlocks_3d,numBlocks_3d,dom[dev],coordiSys,incGhost);
+//int incGhost=1;
+//  block_thread_cell_3D(dimBlocks_3d,numBlocks_3d,dom[dev],coordiSys,incGhost);
 
 //Locate the point particle in each grid cell, store the grid cell number in points.i~points.k
  // if(npoints>0)  lpt_localize<<<numBlocks, dimBlocks>>>(npoints,_points[dev], _dom[dev],bc);
 
 //initialize flow field array to 0 on device, the array length is Nx*Ny*Nz
 //include scalar source and particle volume fraction divided by cell volume
-////    lpt_scalar_source_init<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
-    lpt_scalar_source_init<<<numBlocks_3d, dimBlocks_3d>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
+    lpt_scalar_source_init<<<numBlocks_z, dimBlocks_z>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
+//    lpt_scalar_source_init<<<numBlocks_3d, dimBlocks_3d>>>(_scSrc[dev],_epsp[dev], _dom[dev]);
 
-//lpt_scalar_source_init_test<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev], _dom[dev],ttime_done,DIFF_eq);
-//lpt_scalar_source_convDiff_test<<<numBlocks_x, dimBlocks_x>>>(_scSrc[dev], _dom[dev],ttime_done,DIFF_eq);
+//lpt_scalar_source_init_test<<<numBlocks_z, dimBlocks_z>>>(_scSrc[dev], _dom[dev],ttime_done,DIFF_eq);
+//lpt_scalar_source_convDiff_test<<<numBlocks_z, dimBlocks_z>>>(_scSrc[dev], _dom[dev],ttime_done,DIFF_eq);
 
 
+if(include_point_volFrac>0)
+{
 //Mollify volume fraction on device, don't need too much thread source
 lpt_mollify_sc_optH(coordiSys,EPSP_TYPE,dev,_epsp[dev]);
-
 //lpt_mollify_delta_scH(coordiSys,EPSP_TYPE,dev,_epsp[dev]);
 getLastCudaError("Kernel execution failed.");
+}
+
+lpt_epsp_clip<<<numBlocks_z, dimBlocks_z>>>(_epsp[dev],_dom[dev]);
 
 /*
     int lenSrc=dom[dev].Gcc.s3b;
@@ -1052,15 +1084,10 @@ getLastCudaError("Kernel execution failed.");
  */
 
 
-lpt_epsp_clip<<<numBlocks_x, dimBlocks_x>>>(_epsp[dev],_dom[dev]);
-
-
-
 //Mollify source of scalar on device
 if(sc_twoway>0) 
   {   
 lpt_mollify_sc_optH(coordiSys,SCALAR_TYPE,dev,_scSrc[dev]);
-
 //lpt_mollify_delta_scH(coordiSys,SCALAR_TYPE,dev,_scSrc[dev]);
 }
 fflush(stdout);
@@ -1076,26 +1103,26 @@ cudaEventRecord(start);
 /*
 //advance scalar TODO add boundary condition to sc in the kernel!,  takes 2.6 ms compared to 5 ms by u_star_2
 if(dt0 > 0.) {
-advance_sc_upwind_1st<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
+advance_sc_upwind_1st<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 fflush(stdout);
 
-//advance_sc<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
+//advance_sc<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev],  _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 }
 else
 {
-advance_sc_upwind_1st_init<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
+advance_sc_upwind_1st_init<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 
-//advance_sc_init<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
+//advance_sc_init<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff0_sc[dev], _conv0_sc[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt0_try,dt_try);
 }
 */
 
 /*
 //Using MacCormack scheme to advance scalar
-advance_sc_macCormack<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt_try);
+advance_sc_macCormack<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt_try);
 fflush(stdout);
 */
 
-//advance_sc_QUICK<<<numBlocks_x, dimBlocks_x>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt_try);
+//advance_sc_QUICK<<<numBlocks_z, dimBlocks_z>>>(DIFF_eq, _u[dev], _v[dev], _w[dev], _scSrc[dev],_epsp[dev], _diff_sc[dev], _conv_sc[dev], _sc[dev], _sc0[dev],_dom[dev],dt_try);
 
  cuda_scalar_helmholtz();
 
@@ -1418,34 +1445,34 @@ extern "C"
 void cuda_scalar_rhs(int dev)
 {
   int threads_y = 0;
-  int threads_z = 0;
+  int threads_x = 0;
   int blocks_y = 0;
-  int blocks_z = 0;
+  int blocks_x = 0;
 
   if(dom[dev].Gcc.jnb < MAX_THREADS_DIM)
     threads_y = dom[dev].Gcc.jnb + 2;
   else
     threads_y = MAX_THREADS_DIM;
 
-  if(dom[dev].Gcc.knb < MAX_THREADS_DIM)
-    threads_z = dom[dev].Gcc.knb + 2;
+  if(dom[dev].Gcc.inb < MAX_THREADS_DIM)
+    threads_x = dom[dev].Gcc.inb + 2;
   else
-    threads_z = MAX_THREADS_DIM;
+    threads_x = MAX_THREADS_DIM;
 
   blocks_y = (int)ceil((real) dom[dev].Gcc.jnb / (real) (threads_y-2));
-  blocks_z = (int)ceil((real) dom[dev].Gcc.knb / (real) (threads_z-2));
+  blocks_x = (int)ceil((real) dom[dev].Gcc.inb / (real) (threads_x-2));
 
-  dim3 dimBlocks(threads_y, threads_z);
-  dim3 numBlocks(blocks_y, blocks_z);
+  dim3 dimBlocks_z(threads_x, threads_y);
+  dim3 numBlocks_z(blocks_x, blocks_y);
 /*
-  scalar_rhs_FTCS<<<numBlocks, dimBlocks>>>(rho_f, DIFF_eq,
+  scalar_rhs_FTCS<<<numBlocks_z, dimBlocks_z>>>(rho_f, DIFF_eq,
 			 _u[dev], _v[dev], _w[dev],
 			 _epsp[dev], _scSrc[dev],
 			 _conv0_sc[dev],_conv_sc[dev],_diff_sc[dev],
 			_sc0[dev],_sc[dev], 
 			_dom[dev], dt_try, dt0_try);
 */
-  scalar_rhs_upwind_1st<<<numBlocks, dimBlocks>>>(rho_f, DIFF_eq,
+  scalar_rhs_upwind_1st<<<numBlocks_z, dimBlocks_z>>>(rho_f, DIFF_eq,
 			 _u[dev], _v[dev], _w[dev],
 			 _epsp[dev],_epsp0[dev],
 			 _scSrc[dev],_scSrc0[dev],
@@ -1563,7 +1590,6 @@ default: break;
 
 
 
-
     // check whether each subdomain boundary (E, W, N, S, T, B) is
     // an external boundary
     if(dom[dev].W == -1) {
@@ -1585,22 +1611,29 @@ default: break;
       dim3 dimBlocks_p(threads_y, threads_z);
       dim3 numBlocks_p(blocks_y, blocks_z);
 
+//printf("\nwest %d %d %d %d %d %d %d\n",threads_y,threads_z,blocks_y,blocks_z,coordiSys,jnb,knb);
+//fflush(stdout);
+
       // apply BC to all fields for this face
 switch(coordiSys)
 {
 case 0:
-      switch(scSrcW) {
+     switch(scSrcW) {
         case PERIODIC:
-          BC_p_W_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
+//          BC_p_W_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
+/* 
         case NEUMANN:
           BC_p_W_N<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
           break;
          case DIRICHLET:
           BC_p_W_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcWD);
           break;
+*/
    	 }
+break;
 case 1:
+{
       switch(scSrcW) {
         case PERIODIC:
           BC_u_W_P<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev]);
@@ -1612,6 +1645,9 @@ case 1:
           BC_u_W_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcWD);
           break;
    	 }
+
+}
+break;
 case 2:
       switch(scSrcW) {
         case PERIODIC:
@@ -1624,6 +1660,7 @@ case 2:
           BC_v_W_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcWD);
           break;
    	 }
+break;
 case 3:
       switch(scSrcW) {
         case PERIODIC:
@@ -1636,6 +1673,7 @@ case 3:
           BC_w_W_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcWD);
           break;
    	 }
+break;
 default:break;
 }
 
@@ -1674,6 +1712,7 @@ case 0:
           BC_p_E_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcED);
           break;
     }
+break;
 case 1:
        switch(scSrcE) {
         case PERIODIC:
@@ -1686,6 +1725,7 @@ case 1:
           BC_u_E_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcED);
           break;
     }	
+break;
 case 2:
        switch(scSrcE) {
         case PERIODIC:
@@ -1698,6 +1738,7 @@ case 2:
           BC_v_E_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcED);
           break;
     }
+break;
 case 3:
        switch(scSrcE) {
         case PERIODIC:
@@ -1710,6 +1751,7 @@ case 3:
           BC_w_E_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcED);
           break;
     }
+break;
 default:break;
   }
 }
@@ -1747,7 +1789,7 @@ case 0:
           BC_p_S_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcSD);
           break;
     }
-
+break;
 case 1:     
  // apply BC to all fields for this face
           switch(scSrcS) {
@@ -1761,6 +1803,7 @@ case 1:
           BC_u_S_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcSD);
           break;
     }
+break;
 case 2:     
  // apply BC to all fields for this face
           switch(scSrcS) {
@@ -1774,6 +1817,7 @@ case 2:
           BC_v_S_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcSD);
           break;
     }
+break;
 case 3:     
  // apply BC to all fields for this face
           switch(scSrcS) {
@@ -1787,6 +1831,7 @@ case 3:
           BC_w_S_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcSD);
           break;
     }
+break;
 default:break;
  
 
@@ -1829,6 +1874,7 @@ case 0:
           BC_p_N_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcND);
           break;
 	}
+break;
 case 1:   
       // apply BC to all fields for this face
       switch(scSrcN) {
@@ -1842,6 +1888,7 @@ case 1:
           BC_u_N_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcND);
           break;
 	}
+break;
 case 2:   
       // apply BC to all fields for this face
       switch(scSrcN) {
@@ -1855,6 +1902,7 @@ case 2:
           BC_v_N_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcND);
           break;
 	}
+break;
 case 3:   
       // apply BC to all fields for this face
       switch(scSrcN) {
@@ -1872,6 +1920,7 @@ case 3:
 
     }
 }
+
     if(dom[dev].B == -1) {
       // set up kernel call
       // pressure
@@ -1907,6 +1956,7 @@ case 0:
           BC_p_B_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcBD);
           break;
 	}
+break;
 case 1:   
       // apply BC to all fields for this face
            switch(scSrcB) {
@@ -1920,6 +1970,7 @@ case 1:
           BC_u_B_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcBD);
           break;
 	}
+break;
 case 2:   
       // apply BC to all fields for this face
            switch(scSrcB) {
@@ -1933,6 +1984,7 @@ case 2:
           BC_v_B_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcBD);
           break;
 	}
+break;
 case 3:
       // apply BC to all fields for this face
            switch(scSrcB) {
@@ -1946,6 +1998,7 @@ case 3:
           BC_w_B_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcBD);
           break;
 	}
+break;
 default:break;
 
 
@@ -1985,6 +2038,7 @@ case 0:
           BC_p_T_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcTD);
           break;
 		}
+break;
 case 1:
         switch(scSrcT) {
         case PERIODIC:
@@ -1997,6 +2051,7 @@ case 1:
           BC_u_T_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcTD);
           break;
 		}
+break;
 case 2:
         switch(scSrcT) {
         case PERIODIC:
@@ -2009,6 +2064,7 @@ case 2:
           BC_v_T_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcTD);
           break;
 		}
+break;
 case 3:
         switch(scSrcT) {
         case PERIODIC:
@@ -2021,11 +2077,12 @@ case 3:
           BC_w_T_D<<<numBlocks_p, dimBlocks_p>>>(scSrc, _dom[dev],scSrcTD);
           break;
 		}
+break;
 default:break;		
     	}
 }
 getLastCudaError("Kernel execution failed.");
-
+ 
 }
 
 extern "C"
@@ -2248,12 +2305,10 @@ void cuda_scalar_BC(void)
         case DIRICHLET:
           BC_sc_T_D<<<numBlocks_p, dimBlocks_p>>>(_sc[dev], _dom[dev],sc_bc.scTD);
           break;
-
    	 	}
 
     	}
 getLastCudaError("Kernel execution failed.");
-
  }
 }
 

@@ -3028,9 +3028,11 @@ s_rhs[ti + tj*blockDim.x]  =sc_c[ti + tj*blockDim.x]+(s_c[ti + tj*blockDim.x]+rh
 
  __global__ void lpt_scalar_source_init(real *A, real *B,dom_struct *dom)
 {
-  int tj = blockDim.x*blockIdx.x + threadIdx.x;
-  int tk = blockDim.y*blockIdx.y + threadIdx.y;
-  int ti = blockDim.z*blockIdx.z + threadIdx.z;
+
+  int ti = blockDim.x*blockIdx.x + threadIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y;
+//  int tk = blockDim.z*blockIdx.z + threadIdx.z;
+
 /*
   int s1b = dom->Gcc._s1b;
   int s2b = dom->Gcc._s2b;
@@ -3043,17 +3045,26 @@ int jeb=tex1Dfetch(texRefDomInfo,10);
 int keb=tex1Dfetch(texRefDomInfo,16);
 
 
-/*
-if(tj < dom->Gcc._jeb && tk < dom->Gcc._keb) {
-    for(int i = dom->Gcc._isb; i < dom->Gcc._ieb; i++) 
-*/
+if(tj < jeb && ti < ieb) {
+    for(int tk = dom->Gcc._ksb; tk < dom->Gcc._keb; tk++) 
+       {
+        int index=ti+tj*s1b+tk*s2b;
+	A[index]=0.f;
+	B[index]=0.f;
+         }
+}
 
+/*
 if(ti<ieb &&tj < jeb && tk < keb) {
 	{
 	A[ti+tj*s1b+tk*s2b]=0.f;
 	B[ti+tj*s1b+tk*s2b]=0.f;
+//if(ti==ieb-1&&tj==jeb-1&&tk==keb-1) printf("\nInit done %d %d %d \n",ti,tj,tk);
+//if(ti==ieb-1&&tj==3) printf("\nTest1 done %d %d %d %d %d %d\n",ti,tj,tk,blockIdx.z,blockDim.z,threadIdx.z);
+//if(ti==2&&tj==3) printf("\nTest2 done %d %d %d \n",ti,tj,tk);
 	}
  }
+*/
 
 }
 
@@ -3064,15 +3075,16 @@ if(ti<ieb &&tj < jeb && tk < keb) {
 __global__ void lpt_epsp_clip(real *epsp,dom_struct *dom)
 {
 
-  int tj = blockDim.x*blockIdx.x + threadIdx.x- 2*blockIdx.x;
-  int tk = blockDim.y*blockIdx.y + threadIdx.y- 2*blockIdx.y;
+  int ti = blockDim.x*blockIdx.x + threadIdx.x- 2*blockIdx.x;
+  int tj = blockDim.y*blockIdx.y + threadIdx.y- 2*blockIdx.y;
 
   int s1b = dom->Gcc._s1b;
   int s2b = dom->Gcc._s2b;
-if(tj < dom->Gcc._jeb && tk < dom->Gcc._keb) {
-    for(int i = dom->Gcc._isb; i < dom->Gcc._ieb; i++) 
+if(tj < dom->Gcc._jeb && ti < dom->Gcc._ieb) {
+    for(int k = dom->Gcc._ksb; k < dom->Gcc._keb; k++) 
         {
-        if(epsp[i+tj*s1b+tk*s2b]>EPSP_CLIP)  epsp[i+tj*s1b+tk*s2b]=EPSP_CLIP;
+        int index=ti+tj*s1b+k*s2b;
+        if(epsp[index]>EPSP_CLIP)  epsp[index]=EPSP_CLIP;
  //       if(epsp[i+tj*s1b+tk*s2b]>0) printf("\ntest %d %d %d %f\n",i,tj,tk,epsp[i+tj*s1b+tk*s2b]); 
         }
     }

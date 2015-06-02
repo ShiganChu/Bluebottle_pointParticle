@@ -1764,6 +1764,14 @@ return val;
 }
 
 
+
+__device__ void periodic_ms_init(real &z,real &w,real &ms,real &mp0, real &sc_init_percent,dom_struct *dom)
+{
+real ze=dom->ze;
+
+if(z>ze&&w>0)  ms=mp0*sc_init_percent;
+}
+
 __device__ void periodic_grid_position(real &x,real &y,real &z,dom_struct *dom)
 {
 real xl=dom->xl;real yl=dom->yl;real zl=dom->zl;
@@ -1771,15 +1779,12 @@ real xs=dom->xs;real ys=dom->ys;real zs=dom->zs;
 real xe=dom->xe;real ye=dom->ye;real ze=dom->ze;
 
 real xr=x-xs;real yr=y-ys;real zr=z-zs;
-
 if(x<xs||x>xe)  xr=xr-floor(__fdiv_rd(xr,xl))*xl;
 if(y<ys||y>ye)  yr=yr-floor(__fdiv_rd(yr,yl))*yl;
 if(z<zs||z>ze)  zr=zr-floor(__fdiv_rd(zr,zl))*zl;
-
 x=xs+xr;
 y=ys+yr;
 z=zs+zr;
-
 }
 
 //Eg: for Gfx system, if i> Gfx.ie-1, then we change it
@@ -2157,11 +2162,11 @@ case 0:
     Ap=-points[pp].msdot;break;
  //    Ap=1;break;
      case 1:
-{//Particle volume filter
-     real rad=points[pp].r;
-     Ap=PI*4/3*rad*rad*rad;
+//Particle volume filter
+{     real rad=points[pp].r;
+     Ap=PI*4/3*rad*rad*rad;}
  //    Ap=1;
-     break;}
+     break;
      default:break;
 	}
 break;
@@ -2193,7 +2198,7 @@ __global__ void print_kernel_array_int(int *cell,int lenCell)
 	
 	if(index>=lenCell) return;
 
-        if(cell[index]>0) printf("\nindex cell %d %d\n",index,cell[index]);
+        if(fabsf(cell[index])>EPSILON) printf("\nindex cell %d %d\n",index,cell[index]);
         if(index==lenCell-1) printf("\nEnd index cell %d %d\n",index,cell[index]);
 }
 
@@ -2206,8 +2211,8 @@ __global__ void print_kernel_array_real(real *cell,int lenCell)
 
         if(index>=lenCell) return;
 
-        if(index==lenCell-1)     printf("\nindex cell %d %f\n",index,cell[index]);
-        //if(cell[index]>EPSILON||cell[index]<-EPSILON)     printf("\nindex cell %d %f\n",index,cell[index]);
+        if(index==lenCell-1)     printf("\nend index cell %d %f\n",index,cell[index]);
+        if(fabsf(cell[index])>EPSILON) printf("\nindex cell %d %f\n",index,cell[index]);
 	//printf("\nindex cell %d %f\n",index,cell[index]);
 }
 
@@ -2754,7 +2759,7 @@ Ag[pp]=0;
 periodic_grid_index(ic,jc,kc,dom,0);
   Ag[pp]+=weight[ii][jj][kk]*A[ic +jc*dom->Gcc.s1b + kc*dom->Gcc.s2b];
 
-//if(pp==1) printf("\nweight %f %f %d %d %d\n",weight[ii][jj][kk],A[ic +jc*dom->Gcc.s1b + kc*dom->Gcc.s2b],ic,jc,kc);
+//if(pp==1||pp==0) printf("\nweight %f %f %d %d %d %d\n",Ag[pp],weight[ii][jj][kk],A[ic +jc*dom->Gcc.s1b + kc*dom->Gcc.s2b],ic,jc,kc);
  }
 
 //TODO add mask infomation as in lpt_mollify_sc in lpt_interpolator.f90
@@ -3365,7 +3370,7 @@ real *lpt_omegaX,real *lpt_omegaY,real *lpt_omegaZ,
 real *scg,
 real rho_f,real mu, g_struct g,gradP_struct gradP,
 real C_add,real C_stress,real C_drag,real C_lift,
-real sc_eq,real DIFF,real dt)
+real sc_init_percent,real sc_eq,real DIFF,real dt)
 //gradP serve as bodyforce for the time being
 {
   int pp = threadIdx.x + blockIdx.x*blockDim.x;
@@ -3447,7 +3452,7 @@ real lift_x=rho_f*volume*((vf-vp)*lpt_omega_z-(wf-wp)*lpt_omega_y);
 real lift_y=rho_f*volume*((wf-wp)*lpt_omega_x-(uf-up)*lpt_omega_z);
 real lift_z=rho_f*volume*((uf-up)*lpt_omega_y-(vf-vp)*lpt_omega_x);
 
-//printf("\nlift %f %f %f %f %f %f\n",lift_x,lift_y,lift_z,lpt_omega_x,lpt_omega_y,lpt_omega_z);
+//if(pp==0) printf("\nlift %f %f %f %f %f %f\n",lift_x,lift_y,lift_z,lpt_omega_x,lpt_omega_y,lpt_omega_z);
 
 //Store the fluid force on particle including add mass, drag, fluid force and gravity
 //default C_add=0.5; C_stress=1; C_drag=1;
@@ -3554,9 +3559,16 @@ points[pp].Fy=(rhs_y-mp*g.y)*dt-(C_add*(v1-vp)*mf+C_drag*(y1-yp)*mp*itau);
 points[pp].Fz=(rhs_z-mp*g.z)*dt-(C_add*(w1-wp)*mf+C_drag*(z1-zp)*mp*itau);
 */
 
+//Initialize ms when particle goes from top to bottom
+real mp0=volume*rhod;
+if(abs(g.z)>0) periodic_ms_init(points[pp].z,points[pp].w,points[pp].ms,mp0,sc_init_percent,dom);
+
 
 ///TODO periodic BC for particles, may need to change in future
 periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
+
+
+
 //update old values
       points[pp].x0 = points[pp].x;
       points[pp].y0 = points[pp].y;
@@ -3788,6 +3800,7 @@ periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
 
 //Twoway coupling of point motion
 //The relaxed condition would be that C_drag*dms/dt can't be 0 together!
+//Does not include lift force on particles
 __global__ void drag_move_points_twoway(point_struct *points,dom_struct *dom, int npoints,
 real *ug,real *vg,real *wg,
 real *lpt_stress_u,real *lpt_stress_v,real *lpt_stress_w,
@@ -3796,7 +3809,7 @@ real *lpt_omegaX,real *lpt_omegaY,real *lpt_omegaZ,
 real *scg,
 real rho_f,real mu, g_struct g,gradP_struct gradP,
 real C_add,real C_stress,real C_drag, real C_lift,
-real sc_eq,real DIFF,real dt)
+real sc_init_percent,real sc_eq,real DIFF,real dt)
 //gradP serve as bodyforce for the time being
 {
   int pp = threadIdx.x + blockIdx.x*blockDim.x;
@@ -4014,6 +4027,11 @@ if(pp==0) printf("\nvelPredic %f %f %f\n",points[pp].Fz/Vg,points[pp].Fz,Vg);
 
 //if(pp==0) printf("\nposition %f %f %f %f %f\n",x1-xp,x1,z1-zp,z1,zp);
 //if(pp==0) printf("\npart vel %f %f %f %f %f %f\n",w1-wp,w1,u1,u1-up,dt,rhs_z);
+
+//Initialize ms when particle goes from top to bottom
+real mp0=volume*rhod;
+if(abs(g.z)>0) periodic_ms_init(points[pp].z,points[pp].w,points[pp].ms,mp0,sc_init_percent,dom);
+
 
 //TODO periodic BC for particles, may need to change in future
 periodic_grid_position(points[pp].x,points[pp].y,points[pp].z,dom);
